@@ -17,10 +17,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Pseudo
-@Mixin(targets = {
-        "net.minecraft.client.resources.model.ModelBakery",
-        "net.minecraft.client.resources.model.ModelBaker"
-})
+@Mixin(targets = "net.minecraft.client.resources.model.ModelBakery")
 public abstract class ModelLoaderDedupMixin {
 
     @Unique
