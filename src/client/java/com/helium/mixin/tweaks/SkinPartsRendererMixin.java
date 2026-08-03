@@ -16,7 +16,7 @@ public abstract class SkinPartsRendererMixin {
     @Redirect(
             method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/world/entity/Avatar;isModelPartVisible(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z"),
+                    target = "Lnet/minecraft/world/entity/Avatar;isModelPartShown(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z"),
             require = 0
     )
     private boolean helium$forceskinparts(Avatar instance, PlayerModelPart part) {

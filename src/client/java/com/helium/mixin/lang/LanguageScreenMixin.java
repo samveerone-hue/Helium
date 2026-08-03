@@ -16,9 +16,8 @@ public abstract class LanguageScreenMixin {
             method = "onDone",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/Minecraft;reloadResources()Ljava/util/concurrent/CompletableFuture;"
-            ),
-            require = 0
+                    target = "Lnet/minecraft/client/Minecraft;reloadResourcePacks()Ljava/util/concurrent/CompletableFuture;"
+            )
     )
     private void helium$beforelanguagereload(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();

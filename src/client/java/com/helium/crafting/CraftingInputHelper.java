@@ -4,36 +4,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
+import com.helium.mixin.crafting.KeyMappingAccessor;
 import org.lwjgl.glfw.GLFW;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-
 public final class CraftingInputHelper {
-
-    private static Field boundkeyfield = null;
-    private static boolean boundkeyfieldresolved = false;
-    private static Method keypressedmethod = null;
-    private static boolean keypressedresolved = false;
 
     private CraftingInputHelper() {}
 
     private static boolean iskeypressed(int keycode) {
         Window window = Minecraft.getInstance().getWindow();
-        try {
-            return InputConstants.isKeyDown(window, keycode);
-        } catch (NoSuchMethodError e) {
-            try {
-                if (!keypressedresolved) {
-                    keypressedresolved = true;
-                    keypressedmethod = InputConstants.class.getMethod("isKeyDown", com.mojang.blaze3d.platform.Window.class, int.class);
-                }
-                if (keypressedmethod != null) {
-                    return (boolean) keypressedmethod.invoke(null, window.handle(), keycode);
-                }
-            } catch (Throwable ignored) {}
-            return GLFW.glfwGetKey(window.handle(), keycode) == GLFW.GLFW_PRESS;
-        }
+        return InputConstants.isKeyDown(window, keycode);
     }
 
     public static boolean isshiftdown() {
@@ -65,27 +45,7 @@ public final class CraftingInputHelper {
     }
 
     private static int getboundkeycode(KeyMapping keyBinding) {
-        try {
-            if (!boundkeyfieldresolved) {
-                boundkeyfieldresolved = true;
-                try {
-                    boundkeyfield = KeyMapping.class.getDeclaredField("boundKey");
-                    boundkeyfield.setAccessible(true);
-                } catch (NoSuchFieldException e) {
-                    for (Field f : KeyMapping.class.getDeclaredFields()) {
-                        if (InputConstants.Key.class.isAssignableFrom(f.getType())) {
-                            f.setAccessible(true);
-                            boundkeyfield = f;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (boundkeyfield != null) {
-                InputConstants.Key key = (InputConstants.Key) boundkeyfield.get(keyBinding);
-                return key.getValue();
-            }
-        } catch (Throwable ignored) {}
-        return InputConstants.UNKNOWN.getValue();
+        InputConstants.Key key = ((KeyMappingAccessor) keyBinding).helium$getBoundKey();
+        return key == null ? InputConstants.UNKNOWN.getValue() : key.getValue();
     }
 }

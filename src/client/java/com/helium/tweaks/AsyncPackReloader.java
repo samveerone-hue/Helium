@@ -117,19 +117,7 @@ public final class AsyncPackReloader {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static ResourceLoadStateTracker.ReloadReason getreloadreason() {
-        try {
-            return ResourceLoadStateTracker.ReloadReason.UNKNOWN;
-        } catch (Throwable t1) {
-            try {
-                Class<?> clazz = Class.forName("net.minecraft.client.ResourceLoadStateTracker.ReloadReason");
-                Object[] constants = clazz.getEnumConstants();
-                if (constants != null && constants.length > 0) {
-                    return (ResourceLoadStateTracker.ReloadReason) constants[0];
-                }
-            } catch (Throwable ignored) {}
-            return null;
-        }
+        return ResourceLoadStateTracker.ReloadReason.MANUAL;
     }
 }
