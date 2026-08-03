@@ -30,23 +30,41 @@ base {
 }
 
 repositories {
-    maven {
-        name = 'Shedaniel'
-        url = 'https://maven.shedaniel.me/'
-    }
-    maven {
-        name = 'Terraformers'
-        url = 'https://maven.terraformersmc.com/'
-    }
-    maven {
-        name = 'CaffeineMC'
-        url = 'https://maven.caffeinemc.net/releases'
-    }
+    mavenCentral()
+
+    // 1. Modrinth (Only queried for maven.modrinth)
     maven {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven'
         content {
             includeGroup 'maven.modrinth'
+        }
+    }
+
+    // 2. Shedaniel (Only queried for me.shedaniel.cloth)
+    maven {
+        name = 'Shedaniel'
+        url = 'https://maven.shedaniel.me/'
+        content {
+            includeGroup 'me.shedaniel.cloth'
+        }
+    }
+
+    // 3. CaffeineMC (Only queried for net.caffeinemc)
+    maven {
+        name = 'CaffeineMC'
+        url = 'https://maven.caffeinemc.net/releases'
+        content {
+            includeGroup 'net.caffeinemc'
+        }
+    }
+
+    // 4. Terraformers (Only queried for com.terraformersmc)
+    maven {
+        name = 'Terraformers'
+        url = 'https://maven.terraformersmc.com/'
+        content {
+            includeGroup 'com.terraformersmc'
         }
     }
 }
@@ -64,22 +82,22 @@ loom {
 }
 
 dependencies {
-    // Minecraft 26.x ships de-obfuscated jars: no mapping set is applied, sources use
-    // Mojang official names directly.
+    // Minecraft & Fabric Loader/API
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-    // cloth config
+    // Cloth Config
     api("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
         exclude(group: "net.fabricmc.fabric-api")
     }
 
+    // Mod Menu & Sodium from Modrinth
     compileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
     compileOnly "net.caffeinemc:sodium-fabric-api:${project.sodium_api_version}"
     compileOnly "maven.modrinth:sodium:mc26.1.2-0.9.1-fabric"
 
-    // optional deps the dev client needs on its runtime classpath
+    // Optional runtime dependencies for local test run
     localRuntime "maven.modrinth:modmenu:${project.modmenu_version}"
     localRuntime "maven.modrinth:sodium:mc26.1.2-0.9.1-fabric"
 }
@@ -107,7 +125,6 @@ java {
 jar {
     inputs.property "archivesName", project.base.archivesName
 
-    // split source sets: the client classes must ship in the same jar
     from sourceSets.client.output
 
     from("LICENSE") {
@@ -116,9 +133,6 @@ jar {
 }
 
 // ─── Publish Jar ───────────────────────────────────────────────────────────────
-// ./gradlew publish - creates a clean, professional release jar
-// Output: build/publish/Helium-1.6.1+mc1.21.11.jar
-
 tasks.register('publishJar', Copy) {
     dependsOn tasks.jar
     group = 'helium'
@@ -142,9 +156,6 @@ tasks.register('release') {
 }
 
 // ─── Dev Build ─────────────────────────────────────────────────────────────────
-// ./gradlew buildDev - creates a dev jar with auto-incrementing build number
-// Output: build/dev/Helium-1.6.1+mc1.21.11-dev.42.jar
-
 tasks.register('buildDev') {
     dependsOn tasks.jar
     group = 'helium'
