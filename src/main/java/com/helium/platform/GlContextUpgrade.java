@@ -1,4 +1,4 @@
-ppackage com.helium.platform;
+package com.helium.platform;
 
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
