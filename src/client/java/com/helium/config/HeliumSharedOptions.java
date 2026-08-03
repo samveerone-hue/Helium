@@ -341,7 +341,7 @@ public final class HeliumSharedOptions {
     private static void applywindowstyle() {
         try {
             com.helium.platform.DwmApi.applyWindowStyle(false,
-                    net.minecraft.client.MinecraftClient.getInstance().getWindow().getHandle());
+                    net.minecraft.client.Minecraft.getInstance().getWindow().handle());
         } catch (Throwable ignored) {}
     }
 

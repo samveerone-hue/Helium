@@ -4,12 +4,12 @@ import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
 import com.helium.render.ShaderUniformCache;
 import com.helium.render.TextRenderOptimizer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.resource.ResourceReloadLogger;
-import net.minecraft.resource.ResourcePack;
-import net.minecraft.resource.ResourceReload;
-import net.minecraft.util.math.ChunkPos;
-import net.minecraft.util.math.ChunkSectionPos;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.ResourceLoadStateTracker;
+import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.resources.ReloadInstance;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.core.SectionPos;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -37,7 +37,7 @@ public final class AsyncPackReloader {
     public static void reloadasync() {
         if (_loading.getAndSet(true)) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client == null) {
             _loading.set(false);
             return;
@@ -50,30 +50,30 @@ public final class AsyncPackReloader {
                 DeduplicationManager.clearcaches();
             }
 
-            client.getResourcePackManager().scanPacks();
-            List<ResourcePack> packs = client.resourcePackManager.createResourcePacks();
+            client.getResourcePackRepository().reload();
+            List<PackResources> packs = client.resourcePackRepository.openAllSelected();
 
-            ResourceReloadLogger.ReloadReason reason = getreloadreason();
+            ResourceLoadStateTracker.ReloadReason reason = getreloadreason();
             if (reason != null) {
-                client.resourceReloadLogger.reload(reason, packs);
+                client.reloadStateTracker.startReload(reason, packs);
             }
 
-            ResourceReload reload = client.resourceManager.reload(
+            ReloadInstance reload = client.resourceManager.createReload(
                     RELOAD_EXECUTOR,
                     client,
-                    MinecraftClient.COMPLETED_UNIT_FUTURE,
+                    Minecraft.RESOURCE_RELOAD_INITIAL_TASK,
                     packs
             );
 
-            reload.whenComplete().thenRun(() -> {
+            reload.done().thenRun(() -> {
                 _needsrerender = true;
 
                 try {
-                    client.resourceReloadLogger.finish();
+                    client.reloadStateTracker.finishReload();
                 } catch (Throwable ignored) {}
 
                 try {
-                    client.serverResourcePackLoader.onReloadSuccess();
+                    client.downloadedPackSource.onReloadSuccess();
                 } catch (Throwable ignored) {}
 
                 ShaderUniformCache.invalidate();
@@ -98,35 +98,35 @@ public final class AsyncPackReloader {
     }
 
     private static void rerenderchunks() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client == null || client.player == null || client.world == null) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client == null || client.player == null || client.level == null) return;
 
-        int renderdist = client.options.getViewDistance().getValue() * 2;
-        ChunkPos center = client.player.getChunkPos();
-        int worldheight = client.world.getHeight();
-        int ysections = ChunkSectionPos.getSectionCoord(worldheight);
+        int renderdist = client.options.renderDistance().get() * 2;
+        ChunkPos center = client.player.chunkPosition();
+        int worldheight = client.level.getHeight();
+        int ysections = SectionPos.blockToSectionCoord(worldheight);
 
         for (int dx = 0; dx < renderdist; dx++) {
             for (int dz = 0; dz < renderdist; dz++) {
-                int cx = center.x + dx - renderdist / 2;
-                int cz = center.z + dz - renderdist / 2;
+                int cx = center.x() + dx - renderdist / 2;
+                int cz = center.z() + dz - renderdist / 2;
                 for (int cy = 0; cy < ysections; cy++) {
-                    client.worldRenderer.scheduleChunkRender(cx, cy, cz);
+                    client.levelRenderer.setSectionDirty(cx, cy, cz);
                 }
             }
         }
     }
 
     @SuppressWarnings("unchecked")
-    private static ResourceReloadLogger.ReloadReason getreloadreason() {
+    private static ResourceLoadStateTracker.ReloadReason getreloadreason() {
         try {
-            return ResourceReloadLogger.ReloadReason.UNKNOWN;
+            return ResourceLoadStateTracker.ReloadReason.UNKNOWN;
         } catch (Throwable t1) {
             try {
-                Class<?> clazz = Class.forName("net.minecraft.client.resource.ResourceReloadLogger$ReloadReason");
+                Class<?> clazz = Class.forName("net.minecraft.client.ResourceLoadStateTracker.ReloadReason");
                 Object[] constants = clazz.getEnumConstants();
                 if (constants != null && constants.length > 0) {
-                    return (ResourceReloadLogger.ReloadReason) constants[0];
+                    return (ResourceLoadStateTracker.ReloadReason) constants[0];
                 }
             } catch (Throwable ignored) {}
             return null;

@@ -1,6 +1,6 @@
 package com.helium.math;
 
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
@@ -16,24 +16,24 @@ public class GBFMatrix4f extends Matrix4f {
 
     @Override
     public GBFMatrix4f rotateX(float ang) {
-        float c = MathHelper.cos(ang);
-        float s = MathHelper.sin(ang);
+        float c = Mth.cos(ang);
+        float s = Mth.sin(ang);
         this.applyrotation(1.0F, 0.0F, 0.0F, 0.0F, c, -s, 0.0F, s, c);
         return this;
     }
 
     @Override
     public GBFMatrix4f rotateY(float ang) {
-        float c = MathHelper.cos(ang);
-        float s = MathHelper.sin(ang);
+        float c = Mth.cos(ang);
+        float s = Mth.sin(ang);
         this.applyrotation(c, 0.0F, s, 0.0F, 1.0F, 0.0F, -s, 0.0F, c);
         return this;
     }
 
     @Override
     public GBFMatrix4f rotateZ(float ang) {
-        float c = MathHelper.cos(ang);
-        float s = MathHelper.sin(ang);
+        float c = Mth.cos(ang);
+        float s = Mth.sin(ang);
         this.applyrotation(c, -s, 0f, s, c, 0f, 0f, 0f, 1f);
         return this;
     }
@@ -45,8 +45,8 @@ public class GBFMatrix4f extends Matrix4f {
         y *= invLen;
         z *= invLen;
 
-        float c = MathHelper.cos(ang);
-        float s = MathHelper.sin(ang);
+        float c = Mth.cos(ang);
+        float s = Mth.sin(ang);
         float t = 1.0f - c;
 
         float r00 = c + x * x * t;
@@ -66,9 +66,9 @@ public class GBFMatrix4f extends Matrix4f {
 
     @Override
     public GBFMatrix4f rotateXYZ(float angleX, float angleY, float angleZ) {
-        float cx = MathHelper.cos(angleX), sx = MathHelper.sin(angleX);
-        float cy = MathHelper.cos(angleY), sy = MathHelper.sin(angleY);
-        float cz = MathHelper.cos(angleZ), sz = MathHelper.sin(angleZ);
+        float cx = Mth.cos(angleX), sx = Mth.sin(angleX);
+        float cy = Mth.cos(angleY), sy = Mth.sin(angleY);
+        float cz = Mth.cos(angleZ), sz = Mth.sin(angleZ);
 
         float r00 = cy * cz;
         float r01 = -cy * sz;

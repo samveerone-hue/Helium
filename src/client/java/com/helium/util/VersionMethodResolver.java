@@ -1,12 +1,12 @@
 package com.helium.util;
 
 import com.helium.HeliumClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
-import net.minecraft.client.particle.ParticleManager;
-import net.minecraft.client.util.ScreenshotRecorder;
-import net.minecraft.client.util.Window;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.Minecraft;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import net.minecraft.client.particle.ParticleEngine;
+import net.minecraft.client.Screenshot;
+import com.mojang.blaze3d.platform.Window;
+import net.minecraft.util.Mth;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -64,7 +64,7 @@ public final class VersionMethodResolver {
             int sincount = 0;
             int coscount = 0;
 
-            for (Method m : MathHelper.class.getDeclaredMethods()) {
+            for (Method m : Mth.class.getDeclaredMethods()) {
                 if (m.getParameterCount() != 1) continue;
                 if (m.getReturnType() != float.class) continue;
                 if (!java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
@@ -96,11 +96,11 @@ public final class VersionMethodResolver {
                 }
             }
 
-            if (hasfloatsincos) HeliumClient.LOGGER.info("detected legacy MathHelper API (float sin/cos)");
-            if (hasdoublesincos) HeliumClient.LOGGER.info("detected modern MathHelper API (double sin/cos)");
-            if (!hasfloatsincos && !hasdoublesincos) HeliumClient.LOGGER.warn("no MathHelper sin/cos found");
+            if (hasfloatsincos) HeliumClient.LOGGER.info("detected legacy Mth API (float sin/cos)");
+            if (hasdoublesincos) HeliumClient.LOGGER.info("detected modern Mth API (double sin/cos)");
+            if (!hasfloatsincos && !hasdoublesincos) HeliumClient.LOGGER.warn("no Mth sin/cos found");
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve MathHelper API ({})", t.getMessage());
+            HeliumClient.LOGGER.warn("failed to resolve Mth API ({})", t.getMessage());
         }
     }
 
@@ -108,7 +108,7 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            for (Method m : Framebuffer.class.getDeclaredMethods()) {
+            for (Method m : RenderTarget.class.getDeclaredMethods()) {
                 if (m.getParameterCount() == 0 && m.getReturnType() == void.class
                         && !java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
                     if (blittoscreenhandle == null) {
@@ -131,7 +131,7 @@ public final class VersionMethodResolver {
                 }
             }
 
-            for (Field f : Framebuffer.class.getDeclaredFields()) {
+            for (Field f : RenderTarget.class.getDeclaredFields()) {
                 if (f.getType() == int.class && !java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                     String fname = f.getName().toLowerCase();
                     if (fname.equals("fbo") || fname.equals("field_1042")) {
@@ -143,31 +143,31 @@ public final class VersionMethodResolver {
                 }
             }
 
-            if (hasblittoscreen) HeliumClient.LOGGER.info("detected Framebuffer blitToScreen");
-            if (haslegacydraw) HeliumClient.LOGGER.info("detected Framebuffer legacy draw");
-            if (haslegacyfbo) HeliumClient.LOGGER.info("detected Framebuffer fbo field");
+            if (hasblittoscreen) HeliumClient.LOGGER.info("detected RenderTarget blitToScreen");
+            if (haslegacydraw) HeliumClient.LOGGER.info("detected RenderTarget legacy draw");
+            if (haslegacyfbo) HeliumClient.LOGGER.info("detected RenderTarget fbo field");
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve Framebuffer API ({})", t.getMessage());
+            HeliumClient.LOGGER.warn("failed to resolve RenderTarget API ({})", t.getMessage());
         }
     }
 
     private static void resolvescreenshot() {
         try {
-            for (Method m : ScreenshotRecorder.class.getDeclaredMethods()) {
+            for (Method m : Screenshot.class.getDeclaredMethods()) {
                 if (m.getParameterCount() == 2 && java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
                     Class<?>[] params = m.getParameterTypes();
-                    if (params[0] == Framebuffer.class && params[1] == java.util.function.Consumer.class) {
+                    if (params[0] == RenderTarget.class && params[1] == java.util.function.Consumer.class) {
                         hastakescreenshot = true;
-                        HeliumClient.LOGGER.info("detected modern ScreenshotRecorder API (takeScreenshot)");
+                        HeliumClient.LOGGER.info("detected modern Screenshot API (takeScreenshot)");
                         break;
                     }
                 }
             }
             if (!hastakescreenshot) {
-                HeliumClient.LOGGER.info("detected legacy ScreenshotRecorder API");
+                HeliumClient.LOGGER.info("detected legacy Screenshot API");
             }
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve ScreenshotRecorder API ({})", t.getMessage());
+            HeliumClient.LOGGER.warn("failed to resolve Screenshot API ({})", t.getMessage());
         }
     }
 
@@ -185,7 +185,7 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            for (Method m : MinecraftClient.class.getDeclaredMethods()) {
+            for (Method m : Minecraft.class.getDeclaredMethods()) {
                 if (m.getParameterCount() != 0) continue;
                 if (java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
 
@@ -195,16 +195,16 @@ public final class VersionMethodResolver {
                     m.setAccessible(true);
                     getinactivitylimiterhandle = lookup.unreflect(m);
                     hasinactivitylimiter = true;
-                    HeliumClient.LOGGER.info("detected modern MinecraftClient API (InactivityFpsLimiter)");
+                    HeliumClient.LOGGER.info("detected modern Minecraft API (InactivityFpsLimiter)");
                     break;
                 }
             }
 
             if (!hasinactivitylimiter) {
-                HeliumClient.LOGGER.info("detected legacy MinecraftClient API");
+                HeliumClient.LOGGER.info("detected legacy Minecraft API");
             }
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve MinecraftClient API ({})", t.getMessage());
+            HeliumClient.LOGGER.warn("failed to resolve Minecraft API ({})", t.getMessage());
         }
     }
 
@@ -212,17 +212,17 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            for (Field f : ParticleManager.class.getDeclaredFields()) {
+            for (Field f : ParticleEngine.class.getDeclaredFields()) {
                 if (Map.class.isAssignableFrom(f.getType()) && !java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                     f.setAccessible(true);
                     particlesmapfield = f;
-                    HeliumClient.LOGGER.info("detected ParticleManager particles map field");
+                    HeliumClient.LOGGER.info("detected ParticleEngine particles map field");
                     break;
                 }
             }
 
             try {
-                for (Method m : ParticleManager.class.getDeclaredMethods()) {
+                for (Method m : ParticleEngine.class.getDeclaredMethods()) {
                     if (m.getParameterCount() == 1 && m.getReturnType() != void.class
                             && !java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
                         Class<?> retType = m.getReturnType();
@@ -243,10 +243,10 @@ public final class VersionMethodResolver {
             } catch (Throwable ignored) {}
 
             if (!hasmodernparticlerenderer) {
-                HeliumClient.LOGGER.info("detected legacy ParticleManager particle storage");
+                HeliumClient.LOGGER.info("detected legacy ParticleEngine particle storage");
             }
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve ParticleManager API ({})", t.getMessage());
+            HeliumClient.LOGGER.warn("failed to resolve ParticleEngine API ({})", t.getMessage());
         }
     }
 

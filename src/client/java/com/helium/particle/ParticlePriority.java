@@ -1,7 +1,7 @@
 package com.helium.particle;
 
 import net.minecraft.client.particle.Particle;
-import net.minecraft.particle.ParticleTypes;
+import net.minecraft.core.particles.ParticleTypes;
 
 public final class ParticlePriority {
 

@@ -1,6 +1,6 @@
 package com.helium.mixin.idle;
 
-import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 
 @Mixin(GameRenderer.class)

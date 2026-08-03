@@ -2,8 +2,8 @@ package com.helium.mixin.dedup;
 
 import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
-@Mixin(RegistryKey.class)
+@Mixin(ResourceKey.class)
 public abstract class RegistryKeyDedupMixin {
 
     @Unique
@@ -38,7 +38,7 @@ public abstract class RegistryKeyDedupMixin {
 
         for (String name : registrynames) {
             try {
-                Field f = RegistryKey.class.getDeclaredField(name);
+                Field f = ResourceKey.class.getDeclaredField(name);
                 if (Identifier.class.isAssignableFrom(f.getType()) || f.getType() == Object.class) {
                     f.setAccessible(true);
                     helium$registryField = f;
@@ -49,7 +49,7 @@ public abstract class RegistryKeyDedupMixin {
 
         for (String name : valuenames) {
             try {
-                Field f = RegistryKey.class.getDeclaredField(name);
+                Field f = ResourceKey.class.getDeclaredField(name);
                 if (Identifier.class.isAssignableFrom(f.getType()) || f.getType() == Object.class) {
                     f.setAccessible(true);
                     helium$valueField = f;
@@ -60,7 +60,7 @@ public abstract class RegistryKeyDedupMixin {
 
         if (helium$registryField == null || helium$valueField == null) {
             int found = 0;
-            for (Field f : RegistryKey.class.getDeclaredFields()) {
+            for (Field f : ResourceKey.class.getDeclaredFields()) {
                 if (Modifier.isStatic(f.getModifiers())) continue;
                 if (Identifier.class.isAssignableFrom(f.getType())) {
                     f.setAccessible(true);

@@ -2,9 +2,9 @@ package com.helium.mixin.particle;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
-import net.minecraft.client.render.Camera;
+import net.minecraft.client.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -30,13 +30,13 @@ public abstract class ParticleLODMixin {
             Particle self = (Particle) (Object) this;
             if (!helium$shouldApplyLOD(self)) return;
 
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client.gameRenderer == null) return;
 
-            Camera camera = client.gameRenderer.getCamera();
+            Camera camera = client.gameRenderer.getMainCamera();
             if (camera == null) return;
 
-            net.minecraft.util.math.Vec3d camPos = com.helium.util.VersionCompat.getCameraPosition(camera);
+            net.minecraft.world.phys.Vec3 camPos = com.helium.util.VersionCompat.getCameraPosition(camera);
             double dx = self.getBoundingBox().getCenter().x - camPos.x;
             double dy = self.getBoundingBox().getCenter().y - camPos.y;
             double dz = self.getBoundingBox().getCenter().z - camPos.z;
@@ -45,7 +45,7 @@ public abstract class ParticleLODMixin {
 
             if (distSq > threshold * threshold) {
                 if (ThreadLocalRandom.current().nextDouble() > config.particleLODReduction) {
-                    self.markDead();
+                    self.remove();
                     ci.cancel();
                 }
             }

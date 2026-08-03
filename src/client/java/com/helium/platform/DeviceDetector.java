@@ -6,7 +6,7 @@ import java.io.File;
 
 public final class DeviceDetector {
 
-    private static final Util.OperatingSystem OS = Util.getOperatingSystem();
+    private static final Util.OS OS = Util.getPlatform();
     private static final boolean ANDROID = detectAndroid();
 
     private DeviceDetector() {}
@@ -20,15 +20,15 @@ public final class DeviceDetector {
     }
 
     public static boolean isWindows() {
-        return OS == Util.OperatingSystem.WINDOWS;
+        return OS == Util.OS.WINDOWS;
     }
 
     public static boolean isLinux() {
-        return OS == Util.OperatingSystem.LINUX && !ANDROID;
+        return OS == Util.OS.LINUX && !ANDROID;
     }
 
     public static boolean isMacOS() {
-        return OS == Util.OperatingSystem.OSX;
+        return OS == Util.OS.OSX;
     }
 
     public static boolean isAndroid() {

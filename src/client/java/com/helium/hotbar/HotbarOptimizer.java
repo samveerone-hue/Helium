@@ -2,9 +2,9 @@ package com.helium.hotbar;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -33,24 +33,24 @@ public final class HotbarOptimizer {
         return serverdisabled;
     }
 
-    public static void syncslot(MinecraftClient client, int slot) {
+    public static void syncslot(Minecraft client, int slot) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
         if (serverdisabled) return;
 
         if (sent.get() && !config.hotbarMultiSwitch) return;
 
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) return;
-        ClientPlayerInteractionManager im = client.interactionManager;
+        MultiPlayerGameMode im = client.gameMode;
         if (im == null) return;
-        if (player.isInCreativeMode()) return;
+        if (player.hasInfiniteMaterials()) return;
 
         setselectedslot(player, slot);
         lastslot.set(slot);
 
         try {
-            java.lang.reflect.Method m = ClientPlayerInteractionManager.class.getDeclaredMethod("syncSelectedSlot");
+            java.lang.reflect.Method m = MultiPlayerGameMode.class.getDeclaredMethod("syncSelectedSlot");
             m.setAccessible(true);
             m.invoke(im);
         } catch (NoSuchMethodException e) {
@@ -61,7 +61,7 @@ public final class HotbarOptimizer {
                                 "net.minecraft.class_636",
                                 "method_2923",
                                 "()V");
-                java.lang.reflect.Method m = ClientPlayerInteractionManager.class.getDeclaredMethod(mapped);
+                java.lang.reflect.Method m = MultiPlayerGameMode.class.getDeclaredMethod(mapped);
                 m.setAccessible(true);
                 m.invoke(im);
             } catch (Throwable t) {
@@ -74,15 +74,15 @@ public final class HotbarOptimizer {
         sent.set(true);
     }
 
-    public static void checkscrollsync(MinecraftClient client) {
+    public static void checkscrollsync(Minecraft client) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
         if (serverdisabled) return;
-        if (client.isInSingleplayer()) return;
+        if (client.isLocalServer()) return;
 
-        ClientPlayerEntity player = client.player;
-        if (player == null || client.interactionManager == null) return;
-        if (player.isInCreativeMode()) return;
+        LocalPlayer player = client.player;
+        if (player == null || client.gameMode == null) return;
+        if (player.hasInfiniteMaterials()) return;
 
         int current = getselectedslot(player);
         if (current < 0) return;
@@ -114,7 +114,7 @@ public final class HotbarOptimizer {
         return _slotfield;
     }
 
-    private static int getselectedslot(ClientPlayerEntity player) {
+    private static int getselectedslot(LocalPlayer player) {
         try {
             return player.getInventory().getSelectedSlot();
         } catch (NoSuchMethodError e) {
@@ -128,7 +128,7 @@ public final class HotbarOptimizer {
         }
     }
 
-    private static void setselectedslot(ClientPlayerEntity player, int slot) {
+    private static void setselectedslot(LocalPlayer player, int slot) {
         try {
             player.getInventory().setSelectedSlot(slot);
         } catch (NoSuchMethodError e) {

@@ -3,7 +3,7 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.FastWorldLoadingOptimizer;
-import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
+import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

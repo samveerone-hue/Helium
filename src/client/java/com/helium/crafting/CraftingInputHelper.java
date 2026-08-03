@@ -1,9 +1,9 @@
 package com.helium.crafting;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.Window;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Field;
@@ -19,20 +19,20 @@ public final class CraftingInputHelper {
     private CraftingInputHelper() {}
 
     private static boolean iskeypressed(int keycode) {
-        Window window = MinecraftClient.getInstance().getWindow();
+        Window window = Minecraft.getInstance().getWindow();
         try {
-            return InputUtil.isKeyPressed(window, keycode);
+            return InputConstants.isKeyDown(window, keycode);
         } catch (NoSuchMethodError e) {
             try {
                 if (!keypressedresolved) {
                     keypressedresolved = true;
-                    keypressedmethod = InputUtil.class.getMethod("isKeyPressed", long.class, int.class);
+                    keypressedmethod = InputConstants.class.getMethod("isKeyDown", com.mojang.blaze3d.platform.Window.class, int.class);
                 }
                 if (keypressedmethod != null) {
-                    return (boolean) keypressedmethod.invoke(null, window.getHandle(), keycode);
+                    return (boolean) keypressedmethod.invoke(null, window.handle(), keycode);
                 }
             } catch (Throwable ignored) {}
-            return GLFW.glfwGetKey(window.getHandle(), keycode) == GLFW.GLFW_PRESS;
+            return GLFW.glfwGetKey(window.handle(), keycode) == GLFW.GLFW_PRESS;
         }
     }
 
@@ -48,14 +48,14 @@ public final class CraftingInputHelper {
         return iskeypressed(GLFW.GLFW_KEY_LEFT_ALT) || iskeypressed(GLFW.GLFW_KEY_RIGHT_ALT);
     }
 
-    public static boolean iskeybindingpressed(KeyBinding keyBinding) {
+    public static boolean iskeybindingpressed(KeyMapping keyBinding) {
         int code = getboundkeycode(keyBinding);
-        if (code == InputUtil.UNKNOWN_KEY.getCode()) return false;
+        if (code == InputConstants.UNKNOWN.getValue()) return false;
         return iskeypressed(code);
     }
 
     public static boolean isdropkeypressed() {
-        return iskeybindingpressed(MinecraftClient.getInstance().options.dropKey);
+        return iskeybindingpressed(Minecraft.getInstance().options.keyDrop);
     }
 
     public static boolean istogglekey(int keycode) {
@@ -64,16 +64,16 @@ public final class CraftingInputHelper {
                 keycode == GLFW.GLFW_KEY_SCROLL_LOCK;
     }
 
-    private static int getboundkeycode(KeyBinding keyBinding) {
+    private static int getboundkeycode(KeyMapping keyBinding) {
         try {
             if (!boundkeyfieldresolved) {
                 boundkeyfieldresolved = true;
                 try {
-                    boundkeyfield = KeyBinding.class.getDeclaredField("boundKey");
+                    boundkeyfield = KeyMapping.class.getDeclaredField("boundKey");
                     boundkeyfield.setAccessible(true);
                 } catch (NoSuchFieldException e) {
-                    for (Field f : KeyBinding.class.getDeclaredFields()) {
-                        if (InputUtil.Key.class.isAssignableFrom(f.getType())) {
+                    for (Field f : KeyMapping.class.getDeclaredFields()) {
+                        if (InputConstants.Key.class.isAssignableFrom(f.getType())) {
                             f.setAccessible(true);
                             boundkeyfield = f;
                             break;
@@ -82,10 +82,10 @@ public final class CraftingInputHelper {
                 }
             }
             if (boundkeyfield != null) {
-                InputUtil.Key key = (InputUtil.Key) boundkeyfield.get(keyBinding);
-                return key.getCode();
+                InputConstants.Key key = (InputConstants.Key) boundkeyfield.get(keyBinding);
+                return key.getValue();
             }
         } catch (Throwable ignored) {}
-        return InputUtil.UNKNOWN_KEY.getCode();
+        return InputConstants.UNKNOWN.getValue();
     }
 }

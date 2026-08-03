@@ -3,32 +3,30 @@ package com.helium.mixin.hotbar;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.hotbar.HotbarOptimizer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.network.protocol.game.ClientboundLoginPacket;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ClientPlayNetworkHandler.class)
+@Mixin(ClientPacketListener.class)
 public abstract class HotbarGameJoinMixin {
 
     @Inject(method = "onGameJoin", at = @At("TAIL"), require = 0)
-    private void helium$warnhotbardisabled(GameJoinS2CPacket packet, CallbackInfo ci) {
+    private void helium$warnhotbardisabled(ClientboundLoginPacket packet, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
         if (!HotbarOptimizer.isserverdisabled()) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
 
-        client.player.sendMessage(
-                Text.literal("[Helium] ").formatted(Formatting.GOLD)
-                        .append(Text.literal("Hotbar Optimizer disabled on this server.").formatted(Formatting.RED)),
-                false
-        );
+        client.player.sendSystemMessage(
+                Component.literal("[Helium] ").withStyle(ChatFormatting.GOLD)
+                        .append(Component.literal("Hotbar Optimizer disabled on this server.").withStyle(ChatFormatting.RED)));
     }
 }

@@ -3,7 +3,7 @@ package com.helium.mixin.reflex;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.reflex.ReflexManager;
-import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

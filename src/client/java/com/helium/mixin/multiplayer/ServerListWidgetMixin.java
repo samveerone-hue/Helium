@@ -3,7 +3,7 @@ package com.helium.mixin.multiplayer;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.gui.screen.multiplayer.MultiplayerServerListWidget;
+import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
-@Mixin(MultiplayerServerListWidget.class)
+@Mixin(ServerSelectionList.class)
 public abstract class ServerListWidgetMixin {
 
     @Shadow
@@ -27,7 +27,7 @@ public abstract class ServerListWidgetMixin {
 
     @Shadow
     @Final
-    private List<MultiplayerServerListWidget.ServerEntry> servers;
+    private List<ServerSelectionList.OnlineServerEntry> servers;
 
     @Unique
     private static final int HELIUM_THREAD_OVERHEAD = 5;

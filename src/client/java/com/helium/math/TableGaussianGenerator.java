@@ -1,10 +1,10 @@
 package com.helium.math;
 
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.random.GaussianGenerator;
-import net.minecraft.util.math.random.Random;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.levelgen.MarsagliaPolarGaussian;
+import net.minecraft.util.RandomSource;
 
-public class TableGaussianGenerator extends GaussianGenerator {
+public class TableGaussianGenerator extends MarsagliaPolarGaussian {
 
     private static final int TABLE_SIZE = 256;
     private static final float R = 3.442619855899F;
@@ -21,12 +21,12 @@ public class TableGaussianGenerator extends GaussianGenerator {
         Y[1] = f;
 
         for (int i = 2; i <= TABLE_SIZE; i++) {
-            X[i] = MathHelper.sqrt(-2.0F * GBFMath.fastlog(GBFMath.fastexp(-0.5F * X[i - 1] * X[i - 1]) + Y[i - 1] / X[i - 1]));
+            X[i] = Mth.sqrt(-2.0F * GBFMath.fastlog(GBFMath.fastexp(-0.5F * X[i - 1] * X[i - 1]) + Y[i - 1] / X[i - 1]));
             Y[i] = GBFMath.fastexp(-0.5F * X[i] * X[i]);
         }
     }
 
-    public TableGaussianGenerator(Random rand) {
+    public TableGaussianGenerator(RandomSource rand) {
         super(rand);
     }
 
@@ -34,10 +34,10 @@ public class TableGaussianGenerator extends GaussianGenerator {
     public void reset() {}
 
     @Override
-    public double next() {
+    public double nextGaussian() {
         while (true) {
-            int i = this.baseRandom.nextInt(TABLE_SIZE);
-            long j = this.baseRandom.nextInt() & 0xFFFFFFFFL;
+            int i = this.randomSource.nextInt(TABLE_SIZE);
+            long j = this.randomSource.nextInt() & 0xFFFFFFFFL;
 
             double xVal = j * (X[i] / 4294967296.0);
 
@@ -48,14 +48,14 @@ public class TableGaussianGenerator extends GaussianGenerator {
             if (i == 0) {
                 double xx, yy;
                 do {
-                    xx = -GBFMath.fastlog((float) this.baseRandom.nextDouble()) * INV_R;
-                    yy = -GBFMath.fastlog((float) this.baseRandom.nextDouble());
+                    xx = -GBFMath.fastlog((float) this.randomSource.nextDouble()) * INV_R;
+                    yy = -GBFMath.fastlog((float) this.randomSource.nextDouble());
                 } while (yy + yy < xx * xx);
-                return (this.baseRandom.nextBoolean() ? R + xx : -R - xx);
+                return (this.randomSource.nextBoolean() ? R + xx : -R - xx);
             }
 
-            if (Y[i + 1] + (Y[i] - Y[i + 1]) * this.baseRandom.nextDouble() < GBFMath.fastexp((float) (-0.5 * xVal * xVal))) {
-                return this.baseRandom.nextBoolean() ? xVal : -xVal;
+            if (Y[i + 1] + (Y[i] - Y[i + 1]) * this.randomSource.nextDouble() < GBFMath.fastexp((float) (-0.5 * xVal * xVal))) {
+                return this.randomSource.nextBoolean() ? xVal : -xVal;
             }
         }
     }

@@ -2,13 +2,13 @@ package com.helium.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Frustum;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.Vec3;
 import com.helium.util.VersionCompat;
 
 public final class CullingHelper {
@@ -25,31 +25,31 @@ public final class CullingHelper {
         return currentfrustum;
     }
 
-    public static boolean isvisible(Box box) {
+    public static boolean isvisible(AABB box) {
         Frustum f = currentfrustum;
         if (f == null) return true;
         return f.isVisible(box);
     }
 
     public static boolean isvisible(BlockPos pos, int expand) {
-        return isvisible(new Box(
+        return isvisible(new AABB(
                 pos.getX() - expand, pos.getY() - expand, pos.getZ() - expand,
                 pos.getX() + 1 + expand, pos.getY() + 1 + expand, pos.getZ() + 1 + expand
         ));
     }
 
     public static boolean shouldcullback(BlockPos pos, Direction facing) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.world == null) return false;
-        BlockPos behind = pos.offset(facing.getOpposite());
-        BlockState state = client.world.getBlockState(behind);
-        return state.isOpaque() && state.isFullCube(client.world, behind);
+        Minecraft client = Minecraft.getInstance();
+        if (client.level == null) return false;
+        BlockPos behind = pos.relative(facing.getOpposite());
+        BlockState state = client.level.getBlockState(behind);
+        return state.canOcclude() && state.isCollisionShapeFullBlock(client.level, behind);
     }
 
-    public static boolean isfacingcamera(Direction facing, Vec3d entitypos) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.gameRenderer == null || client.gameRenderer.getCamera() == null) return true;
-        Vec3d camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getCamera());
+    public static boolean isfacingcamera(Direction facing, Vec3 entitypos) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.gameRenderer == null || client.gameRenderer.getMainCamera() == null) return true;
+        Vec3 camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getMainCamera());
         return switch (facing) {
             case DOWN -> camerapos.y <= entitypos.y;
             case UP -> camerapos.y >= entitypos.y;
@@ -60,10 +60,10 @@ public final class CullingHelper {
         };
     }
 
-    public static boolean issignfacingcamera(Direction facing, Vec3d signpos) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.gameRenderer == null || client.gameRenderer.getCamera() == null) return true;
-        Vec3d camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getCamera());
+    public static boolean issignfacingcamera(Direction facing, Vec3 signpos) {
+        Minecraft client = Minecraft.getInstance();
+        if (client.gameRenderer == null || client.gameRenderer.getMainCamera() == null) return true;
+        Vec3 camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getMainCamera());
         return switch (facing) {
             case NORTH -> camerapos.z <= signpos.z;
             case SOUTH -> camerapos.z >= signpos.z;

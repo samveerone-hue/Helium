@@ -16,9 +16,10 @@ import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Set;
 
+@Pseudo
 @Mixin(targets = {
-        "net.minecraft.client.render.model.ModelLoader",
-        "net.minecraft.client.render.model.baker.ModelBaker"
+        "net.minecraft.client.resources.model.ModelBakery",
+        "net.minecraft.client.resources.model.ModelBaker"
 })
 public abstract class ModelLoaderDedupMixin {
 

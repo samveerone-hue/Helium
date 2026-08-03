@@ -3,13 +3,13 @@ package com.helium.mixin.math;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.math.FastMath;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(MathHelper.class)
+@Mixin(Mth.class)
 public abstract class MathHelperMixin {
 
     @Inject(method = "atan2(DD)D", at = @At("HEAD"), cancellable = true, require = 0)
@@ -44,7 +44,7 @@ public abstract class MathHelperMixin {
     private static void helium$fastFloorModFloat(float dividend, float divisor, CallbackInfoReturnable<Float> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
-            cir.setReturnValue(dividend - MathHelper.floor(dividend / divisor) * divisor);
+            cir.setReturnValue(dividend - Mth.floor(dividend / divisor) * divisor);
         }
     }
 

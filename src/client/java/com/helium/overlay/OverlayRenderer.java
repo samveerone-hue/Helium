@@ -4,10 +4,10 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.particle.ParticleLimiter;
 import com.helium.tweaks.AsyncPackReloader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
 import net.minecraft.util.Util;
 
 public final class OverlayRenderer {
@@ -26,26 +26,26 @@ public final class OverlayRenderer {
 
     private OverlayRenderer() {}
 
-    public static void render(DrawContext context, MinecraftClient client) {
+    public static void render(GuiGraphicsExtractor context, Minecraft client) {
         renderspinner(context, client);
         renderInternal(context, client);
     }
 
-    private static void renderInternal(DrawContext context, MinecraftClient client) {
+    private static void renderInternal(GuiGraphicsExtractor context, Minecraft client) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fpsOverlay) return;
         if (client.player == null) return;
-        if (client.options.hudHidden) return;
+        if (client.options.hideGui) return;
 
         fpsStats.updateFps(getfps(client));
 
-        int screenWidth = client.getWindow().getScaledWidth();
-        int screenHeight = client.getWindow().getScaledHeight();
+        int screenWidth = client.getWindow().getGuiScaledWidth();
+        int screenHeight = client.getWindow().getGuiScaledHeight();
 
         String[] lines = buildOverlayLines(client, config);
         int maxWidth = 0;
         for (String line : lines) {
-            int w = client.textRenderer.getWidth(line);
+            int w = client.font.width(line);
             if (w > maxWidth) maxWidth = w;
         }
 
@@ -67,12 +67,12 @@ public final class OverlayRenderer {
         int textX = boxX + PADDING;
         int textY = boxY + PADDING;
         for (String line : lines) {
-            context.drawText(client.textRenderer, Text.literal(line), textX, textY, textColor, false);
+            context.text(client.font, Component.literal(line), textX, textY, textColor, false);
             textY += LINE_HEIGHT;
         }
     }
 
-    private static String[] buildOverlayLines(MinecraftClient client, HeliumConfig config) {
+    private static String[] buildOverlayLines(Minecraft client, HeliumConfig config) {
         java.util.List<String> lines = new java.util.ArrayList<>();
 
         if (config.overlayShowFps) {
@@ -99,12 +99,12 @@ public final class OverlayRenderer {
                     client.player.getX(), client.player.getY(), client.player.getZ()));
         }
 
-        if (config.overlayShowBiome && client.player != null && client.world != null) {
+        if (config.overlayShowBiome && client.player != null && client.level != null) {
             try {
-                var biomeEntry = client.world.getBiome(client.player.getBlockPos());
-                var biomeKey = biomeEntry.getKey();
+                var biomeEntry = client.level.getBiome(client.player.blockPosition());
+                var biomeKey = biomeEntry.unwrapKey();
                 if (biomeKey.isPresent()) {
-                    String biomeName = biomeKey.get().getValue().getPath();
+                    String biomeName = biomeKey.get().identifier().getPath();
                     biomeName = biomeName.replace('_', ' ');
                     StringBuilder formatted = new StringBuilder();
                     boolean capitalize = true;
@@ -144,12 +144,12 @@ public final class OverlayRenderer {
         };
     }
 
-    private static void drawShadow(DrawContext context, int x, int y, int width, int height) {
+    private static void drawShadow(GuiGraphicsExtractor context, int x, int y, int width, int height) {
         int shadowColor = ColorUtils.createColor(0, 0, 0, 40);
         context.fill(x + SHADOW_OFFSET, y + SHADOW_OFFSET, x + width + SHADOW_OFFSET, y + height + SHADOW_OFFSET, shadowColor);
     }
 
-    private static void drawRoundedBox(DrawContext context, int x, int y, int width, int height, int color) {
+    private static void drawRoundedBox(GuiGraphicsExtractor context, int x, int y, int width, int height, int color) {
         context.fill(x, y, x + width, y + height, color);
 
         int cornerRadius = 2;
@@ -161,31 +161,31 @@ public final class OverlayRenderer {
         context.fill(x + cornerRadius, y + height, x + width - cornerRadius, y + height + 1, cornerColor);
     }
 
-    private static void renderspinner(DrawContext context, MinecraftClient client) {
+    private static void renderspinner(GuiGraphicsExtractor context, Minecraft client) {
         if (!AsyncPackReloader.isloading()) return;
         renderglobalspinner(context, client);
     }
 
-    public static void renderglobalspinner(DrawContext context, MinecraftClient client) {
+    public static void renderglobalspinner(GuiGraphicsExtractor context, Minecraft client) {
         if (!AsyncPackReloader.isloading()) return;
 
-        long time = Util.getMeasuringTimeMs();
+        long time = Util.getMillis();
         int frame = (int) ((time / SPINNER_SPEED_MS) % SPINNER_FRAMES.length);
         String text = SPINNER_FRAMES[frame] + " Reloading packs...";
 
         int x = 10;
-        int y = client.getWindow().getScaledHeight() - 20;
+        int y = client.getWindow().getGuiScaledHeight() - 20;
         int padding = 6;
         int bgx = x - padding;
         int bgy = y - padding + 2;
-        int bgw = client.textRenderer.getWidth(text) + padding * 2;
+        int bgw = client.font.width(text) + padding * 2;
         int bgh = 14;
 
         drawroundedbox(context, bgx, bgy, bgw, bgh, 4, 0xDD000000);
-        context.drawText(client.textRenderer, Text.literal(text), x, y, 0xFFFFFFFF, true);
+        context.text(client.font, Component.literal(text), x, y, 0xFFFFFFFF, true);
     }
 
-    private static void drawroundedbox(DrawContext context, int x, int y, int w, int h, int radius, int color) {
+    private static void drawroundedbox(GuiGraphicsExtractor context, int x, int y, int w, int h, int radius, int color) {
         context.fill(x + radius, y, x + w - radius, y + h, color);
         context.fill(x, y + radius, x + radius, y + h - radius, color);
         context.fill(x + w - radius, y + radius, x + w, y + h - radius, color);
@@ -196,16 +196,16 @@ public final class OverlayRenderer {
         context.fill(x + w - radius, y + h - radius, x + w - 1, y + h - 1, color);
     }
 
-    public static void renderglobal(DrawContext context, MinecraftClient client) {
+    public static void renderglobal(GuiGraphicsExtractor context, Minecraft client) {
         if (client == null) return;
         try {
             renderglobalspinner(context, client);
         } catch (Throwable ignored) {}
     }
 
-    private static int getfps(MinecraftClient client) {
+    private static int getfps(Minecraft client) {
         try {
-            return client.getCurrentFps();
+            return client.getFps();
         } catch (NoSuchMethodError e) {
             if (!_fpsfieldresolved) {
                 try {
@@ -215,7 +215,7 @@ public final class OverlayRenderer {
                                     "net.minecraft.class_310",
                                     "field_1728",
                                     "I");
-                    java.lang.reflect.Field f = MinecraftClient.class.getDeclaredField(mapped);
+                    java.lang.reflect.Field f = Minecraft.class.getDeclaredField(mapped);
                     f.setAccessible(true);
                     _fpsfield = f;
                 } catch (Throwable t) {

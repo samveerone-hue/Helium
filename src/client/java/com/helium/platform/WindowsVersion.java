@@ -24,10 +24,10 @@ public final class WindowsVersion {
         if (!DeviceDetector.isWindows()) return;
 
         try {
-            long ntdll = WinBase.LoadLibrary("ntdll");
+            long ntdll = WinBase.LoadLibrary(null, "ntdll");
             if (ntdll == 0) return;
 
-            long func = WinBase.GetProcAddress(ntdll, "RtlGetNtVersionNumbers");
+            long func = WinBase.GetProcAddress(null, ntdll, "RtlGetNtVersionNumbers");
             if (func == 0) return;
 
             try (MemoryStack stack = MemoryStack.stackPush()) {

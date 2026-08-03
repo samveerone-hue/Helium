@@ -2,7 +2,7 @@ package com.helium.mixin.memory;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.gl.Framebuffer;
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +15,7 @@ import java.lang.ref.Cleaner;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
-@Mixin(Framebuffer.class)
+@Mixin(RenderTarget.class)
 public abstract class FramebufferCleanerMixin {
 
     @Unique
@@ -143,7 +143,7 @@ public abstract class FramebufferCleanerMixin {
     private static Field helium$findField(String[] names) {
         for (String name : names) {
             try {
-                Field f = Framebuffer.class.getDeclaredField(name);
+                Field f = RenderTarget.class.getDeclaredField(name);
                 f.setAccessible(true);
                 return f;
             } catch (NoSuchFieldException ignored) {}
@@ -155,7 +155,7 @@ public abstract class FramebufferCleanerMixin {
     private static Field helium$findIntField(String[] names) {
         for (String name : names) {
             try {
-                Field f = Framebuffer.class.getDeclaredField(name);
+                Field f = RenderTarget.class.getDeclaredField(name);
                 if (f.getType() == int.class) {
                     f.setAccessible(true);
                     return f;

@@ -1,18 +1,14 @@
 package com.helium.mixin.dedup;
 
 import com.helium.dedup.DeduplicationManager;
-import net.minecraft.util.math.Direction;
+import net.minecraft.core.Direction;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(targets = {
-        "net.minecraft.block.ComposterBlock$ComposterInventory",
-        "net.minecraft.block.ComposterBlock$InputContainer",
-        "net.minecraft.block.ComposterBlock.ComposterInventory"
-})
+@Mixin(targets = "net.minecraft.world.level.block.ComposterBlock$InputContainer")
 public abstract class ComposterInputMixin {
 
     @Unique

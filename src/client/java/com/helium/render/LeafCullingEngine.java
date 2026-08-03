@@ -2,15 +2,15 @@ package com.helium.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.block.MangroveRootsBlock;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.state.property.IntProperty;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.MangroveRootsBlock;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
 
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
@@ -22,7 +22,7 @@ public final class LeafCullingEngine {
     }
 
     private static final Direction[] ALL_DIRECTIONS = Direction.values();
-    private static final IntProperty DISTANCE = LeavesBlock.DISTANCE;
+    private static final IntegerProperty DISTANCE = LeavesBlock.DISTANCE;
 
     private LeafCullingEngine() {}
 
@@ -57,9 +57,9 @@ public final class LeafCullingEngine {
 
     public static boolean areLeavesOpaque() {
         try {
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client == null || client.options == null) return false;
-            return !client.options.getCutoutLeaves().getValue();
+            return !client.options.cutoutLeaves().get();
         } catch (Throwable t) {
             return false;
         }
@@ -69,11 +69,11 @@ public final class LeafCullingEngine {
 
     //--// mode: STATE — cull based on distance property modulo
 
-    public static Optional<Boolean> shoulddrawstate(BlockView view, BlockState sidestate, BlockPos thispos,
+    public static Optional<Boolean> shoulddrawstate(BlockGetter view, BlockState sidestate, BlockPos thispos,
                                                      BlockPos sidepos, Direction side) {
         if (isleaflike(sidestate.getBlock())) {
             try {
-                if (sidestate.contains(DISTANCE) && sidestate.get(DISTANCE) % 3 != 1) {
+                if (sidestate.hasProperty(DISTANCE) && sidestate.getValue(DISTANCE) % 3 != 1) {
                     return Optional.of(false);
                 }
             } catch (Throwable ignored) {}
@@ -84,13 +84,13 @@ public final class LeafCullingEngine {
 
     //--// mode: CHECK — cull if block is fully surrounded by leaves/solid
 
-    public static Optional<Boolean> shoulddrawcheck(BlockView view, BlockState sidestate, BlockPos thispos,
+    public static Optional<Boolean> shoulddrawcheck(BlockGetter view, BlockState sidestate, BlockPos thispos,
                                                      BlockPos sidepos, Direction side) {
         if (isleaflike(sidestate.getBlock()) || issidesolid(sidestate, side.getOpposite())) {
             boolean surrounded = true;
             for (Direction dir : ALL_DIRECTIONS) {
                 if (dir != side) {
-                    BlockPos neighborpos = thispos.offset(dir);
+                    BlockPos neighborpos = thispos.relative(dir);
                     BlockState neighborstate = view.getBlockState(neighborpos);
                     surrounded &= isleaflike(neighborstate.getBlock()) || issidesolid(neighborstate, dir.getOpposite());
                 }
@@ -102,13 +102,13 @@ public final class LeafCullingEngine {
 
     //--// mode: GAP — cull based on gap depth
 
-    public static Optional<Boolean> shoulddrawgap(BlockView view, BlockState sidestate, BlockPos sidepos,
+    public static Optional<Boolean> shoulddrawgap(BlockGetter view, BlockState sidestate, BlockPos sidepos,
                                                     Direction side) {
         Direction opposite = side.getOpposite();
         if (isleaflike(sidestate.getBlock()) || issidesolid(sidestate, opposite)) {
             int amount = getamount();
             for (int i = 1; i < (5 - amount); i++) {
-                BlockPos pos = sidepos.offset(side, i);
+                BlockPos pos = sidepos.relative(side, i);
                 BlockState state = view.getBlockState(pos);
                 if (state == null || !(isleaflike(state.getBlock()) || issidesolid(state, opposite))) {
                     return Optional.of(false);
@@ -120,12 +120,12 @@ public final class LeafCullingEngine {
 
     //--// mode: DEPTH — cull based on depth from nearest air
 
-    public static Optional<Boolean> shoulddrawdepth(BlockView view, BlockState sidestate, BlockPos sidepos,
+    public static Optional<Boolean> shoulddrawdepth(BlockGetter view, BlockState sidestate, BlockPos sidepos,
                                                      Direction side) {
         if (isleaflike(sidestate.getBlock()) || issidesolid(sidestate, side.getOpposite())) {
             int amount = getamount();
             for (int i = 1; i < amount + 1; i++) {
-                BlockState state = view.getBlockState(sidepos.offset(side, i));
+                BlockState state = view.getBlockState(sidepos.relative(side, i));
                 if (state == null || state.isAir()) {
                     return Optional.of(true);
                 }
@@ -137,7 +137,7 @@ public final class LeafCullingEngine {
 
     //--// mode: RANDOM — probabilistic culling
 
-    public static Optional<Boolean> shoulddrawrandom(BlockView view, BlockState sidestate, BlockPos sidepos,
+    public static Optional<Boolean> shoulddrawrandom(BlockGetter view, BlockState sidestate, BlockPos sidepos,
                                                       Direction side) {
         if (isleaflike(sidestate.getBlock()) || issidesolid(sidestate, side.getOpposite())) {
             int amount = getamount();
@@ -150,7 +150,7 @@ public final class LeafCullingEngine {
 
     //--// dispatcher for custom modes (STATE/CHECK/GAP/DEPTH/RANDOM)
 
-    public static Optional<Boolean> customshoulddraw(BlockView view, BlockState thisstate, BlockState sidestate,
+    public static Optional<Boolean> customshoulddraw(BlockGetter view, BlockState thisstate, BlockState sidestate,
                                                       BlockPos thispos, BlockPos sidepos, Direction side) {
         return switch (getmode()) {
             case STATE -> shoulddrawstate(view, sidestate, thispos, sidepos, side);
@@ -165,7 +165,7 @@ public final class LeafCullingEngine {
     //--// utility
 
     private static boolean issidesolid(BlockState state, Direction side) {
-        return state.isOpaque() && state.isSideSolidFullSquare(MinecraftClient.getInstance().world, BlockPos.ORIGIN, side);
+        return state.canOcclude() && state.isFaceSturdy(Minecraft.getInstance().level, BlockPos.ZERO, side);
     }
 
     public static float getconstantrandom(BlockPos pos) {

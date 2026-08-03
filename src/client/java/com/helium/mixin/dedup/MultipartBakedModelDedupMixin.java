@@ -15,7 +15,8 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-@Mixin(targets = "net.minecraft.client.render.model.MultipartBakedModel")
+@Pseudo
+@Mixin(targets = "net.minecraft.client.renderer.block.dispatch.multipart.MultiPartModel")
 public abstract class MultipartBakedModelDedupMixin {
 
     @Unique

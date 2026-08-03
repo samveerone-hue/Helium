@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.helium.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "plugin": "com.helium.mixin.HeliumMixinPlugin",
   "client": [
     "math.MathHelperMixin",
@@ -94,7 +94,6 @@
     "dedup.BakedQuadDedupMixin",
     "dedup.NbtCompoundDedupMixin",
     "dedup.ModelLoaderDedupMixin",
-    "dedup.ModelIdentifierDedupMixin",
     "dedup.BasicBakedModelDedupMixin",
     "dedup.MultipartBakedModelDedupMixin",
     "dedup.WeightedBakedModelDedupMixin",

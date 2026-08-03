@@ -2,17 +2,17 @@ package com.helium.crafting;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ingame.CraftingScreen;
-import net.minecraft.client.gui.screen.ingame.HandledScreen;
-import net.minecraft.client.gui.screen.ingame.InventoryScreen;
-import net.minecraft.client.gui.screen.ingame.StonecutterScreen;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.StonecutterScreenHandler;
-import net.minecraft.screen.slot.Slot;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.CraftingScreen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.InventoryScreen;
+import net.minecraft.client.gui.screens.inventory.StonecutterScreen;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.inventory.StonecutterMenu;
+import net.minecraft.world.inventory.Slot;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -83,10 +83,10 @@ public final class OneClickCraftingManager {
         isdropping = CraftingInputHelper.isdropkeypressed();
         isshiftdropping = isdropping && CraftingInputHelper.isshiftdown();
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientWorld world = client.world;
+        Minecraft client = Minecraft.getInstance();
+        ClientLevel world = client.level;
         if (world == null) return;
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) return;
 
         try {
@@ -109,11 +109,11 @@ public final class OneClickCraftingManager {
     public static void onresultslotupdated(ItemStack itemStack) {
         if (lastcraft == null) return;
         if (itemStack.getItem() == Items.AIR) return;
-        if (!ItemStack.areItemsEqual(itemStack, lastcraft)) return;
+        if (!ItemStack.isSameItem(itemStack, lastcraft)) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.interactionManager == null) return;
-        if (!(client.currentScreen instanceof HandledScreen<?> gui)) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.gameMode == null) return;
+        if (!(client.screen instanceof AbstractContainerScreen<?> gui)) return;
 
         if (isdropping) {
             if (isshiftdropping) {
@@ -140,14 +140,14 @@ public final class OneClickCraftingManager {
         isshiftdropping = isdropping && isshifting;
         lastselected = selectedRecipe;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ClientWorld world = client.world;
+        Minecraft client = Minecraft.getInstance();
+        ClientLevel world = client.level;
         if (world == null) return;
-        ClientPlayerEntity player = client.player;
+        LocalPlayer player = client.player;
         if (player == null) return;
 
         try {
-            StonecutterScreenHandler handler = screen.getScreenHandler();
+            StonecutterMenu handler = screen.getMenu();
             Object recipes = getstonerecipes(handler);
             if (recipes == null) return;
             ItemStack result = getstoneresult(recipes, selectedRecipe);
@@ -170,21 +170,21 @@ public final class OneClickCraftingManager {
         }
         if (lastbutton == -1 || lastcraft == null) return;
         if (itemStack.getItem() == Items.AIR) return;
-        if (!ItemStack.areItemsEqual(itemStack, lastcraft)) return;
+        if (!ItemStack.isSameItem(itemStack, lastcraft)) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.interactionManager == null) return;
-        if (!(client.currentScreen instanceof HandledScreen<?> gui)) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.gameMode == null) return;
+        if (!(client.screen instanceof AbstractContainerScreen<?> gui)) return;
 
         Slot input = CraftingInventoryUtils.getslot(gui, 0);
         if (isdropping) {
             if (isshifting) {
-                if (input.getStack().getCount() != 64) {
+                if (input.getItem().getCount() != 64) {
                     CraftingInventoryUtils.movematchingintoslot(gui, 0);
-                    gui.getScreenHandler().onButtonClick(client.player, lastselected);
-                    client.interactionManager.clickButton(gui.getScreenHandler().syncId, lastselected);
+                    gui.getMenu().clickMenuButton(client.player, lastselected);
+                    client.gameMode.handleInventoryButtonClick(gui.getMenu().containerId, lastselected);
                     onnextupdate = (m) -> {
-                        if (!ItemStack.areItemsEqual(m, lastcraft) || m.getItem() == Items.AIR) return;
+                        if (!ItemStack.isSameItem(m, lastcraft) || m.getItem() == Items.AIR) return;
                         onnextupdate = null;
                         CraftingInventoryUtils.dropstack(gui, 1);
                         refill(gui);
@@ -192,7 +192,7 @@ public final class OneClickCraftingManager {
                     return;
                 }
             } else {
-                boolean shouldRefill = input.getStack().getCount() == 1;
+                boolean shouldRefill = input.getItem().getCount() == 1;
                 CraftingInventoryUtils.dropitem(gui, 1);
                 CraftingInventoryUtils.leftclickslot(gui, 0);
                 CraftingInventoryUtils.leftclickslot(gui, 0);
@@ -204,12 +204,12 @@ public final class OneClickCraftingManager {
             }
         } else {
             if (isshifting) {
-                if (input.getStack().getCount() != 64) {
+                if (input.getItem().getCount() != 64) {
                     CraftingInventoryUtils.movematchingintoslot(gui, 0);
-                    gui.getScreenHandler().onButtonClick(client.player, lastselected);
-                    client.interactionManager.clickButton(gui.getScreenHandler().syncId, lastselected);
+                    gui.getMenu().clickMenuButton(client.player, lastselected);
+                    client.gameMode.handleInventoryButtonClick(gui.getMenu().containerId, lastselected);
                     onnextupdate = (m) -> {
-                        if (!ItemStack.areItemsEqual(m, lastcraft) || m.getItem() == Items.AIR) return;
+                        if (!ItemStack.isSameItem(m, lastcraft) || m.getItem() == Items.AIR) return;
                         onnextupdate = null;
                         CraftingInventoryUtils.shiftclickslot(gui, 1);
                         refill(gui);
@@ -220,14 +220,14 @@ public final class OneClickCraftingManager {
                     refill(gui);
                 }
             } else {
-                if (input.getStack().getCount() != 1) {
+                if (input.getItem().getCount() != 1) {
                     CraftingInventoryUtils.leftclickslot(gui, 0);
                     CraftingInventoryUtils.rightclickslot(gui, 0);
-                    MinecraftClient mc = MinecraftClient.getInstance();
-                    gui.getScreenHandler().onButtonClick(mc.player, lastselected);
-                    mc.interactionManager.clickButton(gui.getScreenHandler().syncId, lastselected);
+                    Minecraft mc = Minecraft.getInstance();
+                    gui.getMenu().clickMenuButton(mc.player, lastselected);
+                    mc.gameMode.handleInventoryButtonClick(gui.getMenu().containerId, lastselected);
                     onnextupdate = (next) -> {
-                        if (!ItemStack.areItemsEqual(next, lastcraft) || next.getItem() == Items.AIR) return;
+                        if (!ItemStack.isSameItem(next, lastcraft) || next.getItem() == Items.AIR) return;
                         onnextupdate = null;
                         CraftingInventoryUtils.shiftclickslot(gui, 1);
                         CraftingInventoryUtils.leftclickslot(gui, 0);
@@ -243,11 +243,11 @@ public final class OneClickCraftingManager {
         reset();
     }
 
-    private static void refill(HandledScreen<?> gui) {
+    private static void refill(AbstractContainerScreen<?> gui) {
         if (lastingredient != null) {
             Optional<Slot> refill = CraftingInventoryUtils.findmatchingslot(gui, lastingredient);
             refill.ifPresent(slot -> {
-                boolean multi = slot.getStack().getCount() > 1;
+                boolean multi = slot.getItem().getCount() > 1;
                 CraftingInventoryUtils.leftclickslot(gui, slot);
                 CraftingInventoryUtils.rightclickslot(gui, 0);
                 if (multi) {
@@ -259,7 +259,7 @@ public final class OneClickCraftingManager {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<?, ?> getrecipebook(ClientPlayerEntity player) {
+    private static Map<?, ?> getrecipebook(LocalPlayer player) {
         try {
             Object recipeBook = player.getRecipeBook();
             for (Field f : recipeBook.getClass().getDeclaredFields()) {
@@ -272,7 +272,7 @@ public final class OneClickCraftingManager {
         return null;
     }
 
-    private static ItemStack getresultfromentry(Object entry, ClientWorld world) {
+    private static ItemStack getresultfromentry(Object entry, ClientLevel world) {
         try {
             Method displayMethod = null;
             for (Method m : entry.getClass().getDeclaredMethods()) {
@@ -305,7 +305,7 @@ public final class OneClickCraftingManager {
             }
             if (getStacksMethod == null) return null;
 
-            Class<?> slotDisplayContexts = Class.forName("net.minecraft.recipe.display.SlotDisplayContexts");
+            Class<?> slotDisplayContexts = Class.forName("net.minecraft.world.item.crafting.display.SlotDisplayContext");
             Method createParams = null;
             for (Method m : slotDisplayContexts.getDeclaredMethods()) {
                 if (m.getParameterCount() == 1 && m.getParameterTypes()[0].getSimpleName().contains("World")) {
@@ -324,7 +324,7 @@ public final class OneClickCraftingManager {
         return null;
     }
 
-    private static Object getstonerecipes(StonecutterScreenHandler handler) {
+    private static Object getstonerecipes(StonecutterMenu handler) {
         try {
             Method m = handler.getClass().getMethod("getAvailableRecipes");
             return m.invoke(handler);

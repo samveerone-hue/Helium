@@ -2,7 +2,7 @@ package com.helium.mixin.dedup;
 
 import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
-import net.minecraft.client.render.model.BakedQuad;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

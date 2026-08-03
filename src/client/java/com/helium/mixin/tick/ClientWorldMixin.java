@@ -4,14 +4,14 @@ import com.helium.HeliumClient;
 import com.helium.lighting.AsyncLightEngine;
 import com.helium.memory.MemoryCompactor;
 import com.helium.tick.ClientTickCache;
-import net.minecraft.client.world.ClientWorld;
+import net.minecraft.client.multiplayer.ClientLevel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ClientWorld.class)
+@Mixin(ClientLevel.class)
 public abstract class ClientWorldMixin {
 
     @Unique

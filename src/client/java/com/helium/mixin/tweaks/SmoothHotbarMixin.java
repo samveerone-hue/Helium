@@ -2,11 +2,11 @@ package com.helium.mixin.tweaks;
 
 import com.helium.HeliumClient;
 import com.helium.tweaks.SmoothHotbar;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.hud.InGameHud;
-import net.minecraft.client.render.RenderTickCounter;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -16,18 +16,18 @@ import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
-@Mixin(InGameHud.class)
+@Mixin(Gui.class)
 public abstract class SmoothHotbarMixin {
 
     @Shadow
     @Nullable
-    protected abstract PlayerEntity getCameraPlayer();
+    protected abstract Player getCameraPlayer();
 
     @Inject(method = "renderHotbar", at = @At("HEAD"))
-    private void helium$onRenderHotbarHead(DrawContext context, RenderTickCounter counter, CallbackInfo ci) {
+    private void helium$onRenderHotbarHead(GuiGraphicsExtractor context, DeltaTracker counter, CallbackInfo ci) {
         if (!HeliumClient.getConfig().smoothHotbar) return;
 
-        PlayerEntity player = getCameraPlayer();
+        Player player = getCameraPlayer();
         if (player == null) return;
 
         int slot = player.getInventory().getSelectedSlot();
@@ -35,7 +35,7 @@ public abstract class SmoothHotbarMixin {
         SmoothHotbar.update(slot, delta);
     }
 
-    private static float getdelta(RenderTickCounter counter) {
+    private static float getdelta(DeltaTracker counter) {
         try {
             var method = counter.getClass().getMethod("getTickDelta", boolean.class);
             return ((Number) method.invoke(counter, true)).floatValue();
@@ -53,7 +53,7 @@ public abstract class SmoothHotbarMixin {
             method = "renderHotbar",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/util/Identifier;IIII)V",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/resources/Identifier;IIII)V",
                     ordinal = 1
             ),
             require = 0
@@ -61,8 +61,8 @@ public abstract class SmoothHotbarMixin {
     private void helium$modifyHotbarSelectorPos(Args args) {
         if (!HeliumClient.getConfig().smoothHotbar) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        int basex = (client.getWindow().getScaledWidth() / 2) - 92;
+        Minecraft client = Minecraft.getInstance();
+        int basex = (client.getWindow().getGuiScaledWidth() / 2) - 92;
         args.set(2, SmoothHotbar.getoffsetx(basex));
     }
 
@@ -70,7 +70,7 @@ public abstract class SmoothHotbarMixin {
             method = "renderHotbar",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/DrawContext;drawGuiTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/util/Identifier;IIII)V",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",
                     ordinal = 1
             ),
             require = 0
@@ -78,8 +78,8 @@ public abstract class SmoothHotbarMixin {
     private void helium$modifyHotbarSelectorPosAlt(Args args) {
         if (!HeliumClient.getConfig().smoothHotbar) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        int basex = (client.getWindow().getScaledWidth() / 2) - 92;
+        Minecraft client = Minecraft.getInstance();
+        int basex = (client.getWindow().getGuiScaledWidth() / 2) - 92;
         args.set(2, SmoothHotbar.getoffsetx(basex));
     }
 }

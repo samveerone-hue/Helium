@@ -2,13 +2,13 @@ package com.helium.mixin.render;
 
 import com.helium.HeliumClient;
 import com.helium.feature.FullbrightManager;
-import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.renderer.Lightmap;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(LightmapTextureManager.class)
+@Mixin(Lightmap.class)
 public abstract class LightmapFullbrightMixin {
 
     @Unique

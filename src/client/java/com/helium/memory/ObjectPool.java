@@ -1,6 +1,6 @@
 package com.helium.memory;
 
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 import org.joml.Vector3f;
 
 import java.util.ArrayDeque;
@@ -8,7 +8,7 @@ import java.util.function.Supplier;
 
 public final class ObjectPool {
 
-    private static final ThreadLocal<ArrayDeque<BlockPos.Mutable>> BLOCK_POS_POOL =
+    private static final ThreadLocal<ArrayDeque<BlockPos.MutableBlockPos>> BLOCK_POS_POOL =
             ThreadLocal.withInitial(ArrayDeque::new);
     private static final ThreadLocal<ArrayDeque<Vector3f>> VEC3F_POOL =
             ThreadLocal.withInitial(ArrayDeque::new);
@@ -21,14 +21,14 @@ public final class ObjectPool {
         maxPoolSize = poolSize;
     }
 
-    public static BlockPos.Mutable borrowBlockPos() {
-        ArrayDeque<BlockPos.Mutable> pool = BLOCK_POS_POOL.get();
-        BlockPos.Mutable pos = pool.pollFirst();
-        return pos != null ? pos : new BlockPos.Mutable();
+    public static BlockPos.MutableBlockPos borrowBlockPos() {
+        ArrayDeque<BlockPos.MutableBlockPos> pool = BLOCK_POS_POOL.get();
+        BlockPos.MutableBlockPos pos = pool.pollFirst();
+        return pos != null ? pos : new BlockPos.MutableBlockPos();
     }
 
-    public static void returnBlockPos(BlockPos.Mutable pos) {
-        ArrayDeque<BlockPos.Mutable> pool = BLOCK_POS_POOL.get();
+    public static void returnBlockPos(BlockPos.MutableBlockPos pos) {
+        ArrayDeque<BlockPos.MutableBlockPos> pool = BLOCK_POS_POOL.get();
         if (pool.size() < maxPoolSize) {
             pos.set(0, 0, 0);
             pool.offerFirst(pos);

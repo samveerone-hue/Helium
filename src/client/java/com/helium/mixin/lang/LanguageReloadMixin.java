@@ -3,12 +3,12 @@ package com.helium.mixin.lang;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.lang.LanguageHelper;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Overlay;
-import net.minecraft.client.gui.screen.SplashOverlay;
-import net.minecraft.client.gui.screen.option.LanguageOptionsScreen;
-import net.minecraft.client.resource.language.LanguageManager;
-import net.minecraft.resource.ResourceManager;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Overlay;
+import net.minecraft.client.gui.screens.LoadingOverlay;
+import net.minecraft.client.gui.screens.options.LanguageSelectScreen;
+import net.minecraft.client.resources.language.LanguageManager;
+import net.minecraft.server.packs.resources.ResourceManager;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.concurrent.CompletableFuture;
 
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public abstract class LanguageReloadMixin {
 
     @Shadow
@@ -33,7 +33,7 @@ public abstract class LanguageReloadMixin {
 
     @Shadow
     @Nullable
-    public net.minecraft.client.gui.screen.Screen currentScreen;
+    public net.minecraft.client.gui.screens.Screen currentScreen;
 
     @Inject(method = "reloadResources()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$skipFullReloadForLanguage(CallbackInfoReturnable<CompletableFuture<Void>> cir) {
@@ -44,7 +44,7 @@ public abstract class LanguageReloadMixin {
     private void helium$cancelSplashOnLanguageChange(Overlay overlay, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.instantLanguageChange) return;
-        if (overlay instanceof SplashOverlay && currentScreen instanceof LanguageOptionsScreen) {
+        if (overlay instanceof LoadingOverlay && currentScreen instanceof LanguageSelectScreen) {
             ci.cancel();
         }
     }
@@ -55,7 +55,7 @@ public abstract class LanguageReloadMixin {
         if (config == null || !config.instantLanguageChange) return;
 
         if (LanguageHelper.shouldSkipFullReload()) {
-            this.languageManager.reload(this.getResourceManager());
+            this.languageManager.onResourceManagerReload(this.getResourceManager());
             cir.setReturnValue(CompletableFuture.completedFuture(null));
         }
     }

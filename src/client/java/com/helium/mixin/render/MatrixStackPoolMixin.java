@@ -2,7 +2,7 @@ package com.helium.mixin.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.util.math.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +16,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 
-@Mixin(MatrixStack.class)
+@Mixin(PoseStack.class)
 public abstract class MatrixStackPoolMixin {
 
     @Unique
@@ -35,10 +35,10 @@ public abstract class MatrixStackPoolMixin {
     private static Method helium$copyIntoMethod = null;
 
     @Unique
-    private static Constructor<MatrixStack.Entry> helium$noArgCtor = null;
+    private static Constructor<PoseStack.Pose> helium$noArgCtor = null;
 
     @Unique
-    private final Deque<MatrixStack.Entry> helium$pool = new ArrayDeque<>();
+    private final Deque<PoseStack.Pose> helium$pool = new ArrayDeque<>();
 
     @Unique
     private static boolean helium$hasStackDepth = false;
@@ -49,13 +49,13 @@ public abstract class MatrixStackPoolMixin {
         helium$resolved = true;
 
         try {
-            MatrixStack.class.getDeclaredField("stackDepth");
+            PoseStack.class.getDeclaredField("stackDepth");
             helium$hasStackDepth = true;
             return;
         } catch (NoSuchFieldException ignored) {}
 
         try {
-            Field f2 = MatrixStack.class.getDeclaredField("field_55850");
+            Field f2 = PoseStack.class.getDeclaredField("field_55850");
             if (f2.getType() == int.class) {
                 helium$hasStackDepth = true;
                 return;
@@ -65,7 +65,7 @@ public abstract class MatrixStackPoolMixin {
         String[] fieldNames = {"stack", "field_55849", "field_22924"};
         for (String name : fieldNames) {
             try {
-                Field f = MatrixStack.class.getDeclaredField(name);
+                Field f = PoseStack.class.getDeclaredField(name);
                 f.setAccessible(true);
                 helium$stackField = f;
                 Class<?> type = f.getType();
@@ -75,12 +75,12 @@ public abstract class MatrixStackPoolMixin {
         }
 
         try {
-            helium$copyIntoMethod = MatrixStack.Entry.class.getDeclaredMethod("copy", MatrixStack.Entry.class);
+            helium$copyIntoMethod = PoseStack.Pose.class.getDeclaredMethod("copy", PoseStack.Pose.class);
             helium$copyIntoMethod.setAccessible(true);
         } catch (NoSuchMethodException ignored) {}
 
         try {
-            helium$noArgCtor = MatrixStack.Entry.class.getDeclaredConstructor();
+            helium$noArgCtor = PoseStack.Pose.class.getDeclaredConstructor();
             helium$noArgCtor.setAccessible(true);
         } catch (NoSuchMethodException ignored) {}
     }
@@ -97,38 +97,38 @@ public abstract class MatrixStackPoolMixin {
     }
 
     @Unique
-    private MatrixStack.Entry helium$createCopy(MatrixStack.Entry source) {
+    private PoseStack.Pose helium$createCopy(PoseStack.Pose source) {
         if (helium$noArgCtor != null && helium$copyIntoMethod != null) {
             try {
-                MatrixStack.Entry entry = helium$noArgCtor.newInstance();
+                PoseStack.Pose entry = helium$noArgCtor.newInstance();
                 helium$copyIntoMethod.invoke(entry, source);
                 return entry;
             } catch (Throwable ignored) {}
         }
 
         try {
-            Constructor<MatrixStack.Entry> ctor =
-                    MatrixStack.Entry.class.getDeclaredConstructor(
+            Constructor<PoseStack.Pose> ctor =
+                    PoseStack.Pose.class.getDeclaredConstructor(
                             org.joml.Matrix4f.class, org.joml.Matrix3f.class);
             ctor.setAccessible(true);
             return ctor.newInstance(
-                    new org.joml.Matrix4f(source.getPositionMatrix()),
-                    new org.joml.Matrix3f(source.getNormalMatrix()));
+                    new org.joml.Matrix4f(source.pose()),
+                    new org.joml.Matrix3f(source.normal()));
         } catch (Throwable ignored) {}
 
         return null;
     }
 
     @Unique
-    private void helium$copyData(MatrixStack.Entry dest, MatrixStack.Entry source) {
+    private void helium$copyData(PoseStack.Pose dest, PoseStack.Pose source) {
         if (helium$copyIntoMethod != null) {
             try {
                 helium$copyIntoMethod.invoke(dest, source);
                 return;
             } catch (Throwable ignored) {}
         }
-        dest.getPositionMatrix().set(source.getPositionMatrix());
-        dest.getNormalMatrix().set(source.getNormalMatrix());
+        dest.pose().set(source.pose());
+        dest.normal().set(source.normal());
     }
 
     @SuppressWarnings("unchecked")
@@ -146,16 +146,16 @@ public abstract class MatrixStackPoolMixin {
             Object stackObj = helium$getStack();
             if (stackObj == null) return;
 
-            MatrixStack.Entry top;
+            PoseStack.Pose top;
             if (helium$isList) {
-                List<MatrixStack.Entry> list = (List<MatrixStack.Entry>) stackObj;
+                List<PoseStack.Pose> list = (List<PoseStack.Pose>) stackObj;
                 top = list.get(list.size() - 1);
             } else {
-                Deque<MatrixStack.Entry> deque = (Deque<MatrixStack.Entry>) stackObj;
+                Deque<PoseStack.Pose> deque = (Deque<PoseStack.Pose>) stackObj;
                 top = deque.getLast();
             }
 
-            MatrixStack.Entry reused = helium$pool.pollLast();
+            PoseStack.Pose reused = helium$pool.pollLast();
             if (reused == null) {
                 reused = helium$createCopy(top);
                 if (reused == null) return;
@@ -164,9 +164,9 @@ public abstract class MatrixStackPoolMixin {
             }
 
             if (helium$isList) {
-                ((List<MatrixStack.Entry>) stackObj).add(reused);
+                ((List<PoseStack.Pose>) stackObj).add(reused);
             } else {
-                ((Deque<MatrixStack.Entry>) stackObj).addLast(reused);
+                ((Deque<PoseStack.Pose>) stackObj).addLast(reused);
             }
             ci.cancel();
         } catch (Throwable t) {
@@ -193,15 +193,15 @@ public abstract class MatrixStackPoolMixin {
             if (stackObj == null) return;
 
             int size;
-            MatrixStack.Entry removed;
+            PoseStack.Pose removed;
 
             if (helium$isList) {
-                List<MatrixStack.Entry> list = (List<MatrixStack.Entry>) stackObj;
+                List<PoseStack.Pose> list = (List<PoseStack.Pose>) stackObj;
                 size = list.size();
                 if (size <= 1) return;
                 removed = list.remove(size - 1);
             } else {
-                Deque<MatrixStack.Entry> deque = (Deque<MatrixStack.Entry>) stackObj;
+                Deque<PoseStack.Pose> deque = (Deque<PoseStack.Pose>) stackObj;
                 size = deque.size();
                 if (size <= 1) return;
                 removed = deque.removeLast();

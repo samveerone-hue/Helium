@@ -2,7 +2,7 @@ package com.helium.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.text.Style;
+import net.minecraft.network.chat.Style;
 
 import java.util.concurrent.ConcurrentHashMap;
 

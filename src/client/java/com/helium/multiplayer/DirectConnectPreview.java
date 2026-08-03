@@ -2,12 +2,12 @@ package com.helium.multiplayer;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.network.MultiplayerServerListPinger;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.network.NetworkingBackend;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ServerStatusPinger;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.server.network.EventLoopGroupHolder;
+import net.minecraft.network.chat.Component;
 
 import java.net.UnknownHostException;
 
@@ -39,43 +39,43 @@ public final class DirectConnectPreview {
     }
 
     private static void pingServer(String address) {
-        ServerInfo info = new ServerInfo(address, address, ServerInfo.ServerType.OTHER);
-        MultiplayerServerListPinger pinger = new MultiplayerServerListPinger();
+        ServerData info = new ServerData(address, address, ServerData.Type.OTHER);
+        ServerStatusPinger pinger = new ServerStatusPinger();
 
         try {
-            pinger.add(info, () -> {}, () -> {
+            pinger.pingServer(info, () -> {}, () -> {
                 dispatchResult(info);
-            }, NetworkingBackend.remote(true));
+            }, EventLoopGroupHolder.remote(true));
         } catch (UnknownHostException e) {
-            info.label = Text.literal("Unknown host");
-            info.playerCountLabel = Text.literal("0/0");
-            info.setStatus(ServerInfo.Status.UNREACHABLE);
+            info.motd = Component.literal("Unknown host");
+            info.status = Component.literal("0/0");
+            info.setState(ServerData.State.UNREACHABLE);
             dispatchResult(info);
         }
     }
 
-    private static void dispatchResult(ServerInfo info) {
+    private static void dispatchResult(ServerData info) {
         if (info == null) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         client.execute(() -> {
-            Screen screen = client.currentScreen;
+            Screen screen = client.screen;
             if (screen instanceof ServerPreviewUpdater updater) {
-                if (info.label != null) {
-                    updater.helium$setMotdText(info.label);
+                if (info.motd != null) {
+                    updater.helium$setMotdText(info.motd);
                 } else {
-                    updater.helium$setMotdText(Text.empty());
+                    updater.helium$setMotdText(Component.empty());
                 }
 
-                String[] motdLines = info.label != null ? info.label.getString().split("\n") : new String[]{""};
+                String[] motdLines = info.motd != null ? info.motd.getString().split("\n") : new String[]{""};
                 updater.helium$updateServerData(
                         info.name != null ? info.name : "",
                         motdLines,
-                        info.playerCountLabel != null ? info.playerCountLabel.getString() : "0/0",
+                        info.status != null ? info.status.getString() : "0/0",
                         info.ping
                 );
 
-                updater.helium$updateFavicon(info.getFavicon());
+                updater.helium$updateFavicon(info.getIconBytes());
             }
         });
     }

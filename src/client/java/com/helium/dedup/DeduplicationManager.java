@@ -2,7 +2,7 @@ package com.helium.dedup;
 
 import com.helium.HeliumClient;
 import it.unimi.dsi.fastutil.Hash;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;

@@ -3,7 +3,7 @@ package com.helium.mixin.math;
 import com.helium.HeliumClient;
 import com.helium.math.FastMath;
 import com.helium.util.VersionMethodResolver;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.invoke.MethodHandle;
 
-@Mixin(MathHelper.class)
+@Mixin(Mth.class)
 public abstract class MathHelperDoubleMixin {
 
     @Inject(method = "sin(D)F", at = @At("HEAD"), cancellable = true, require = 0)

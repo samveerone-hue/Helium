@@ -3,8 +3,8 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.FastAnimationOptimizer;
-import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.model.geom.ModelPart;
+import com.mojang.blaze3d.vertex.PoseStack;
 import org.joml.Quaternionf;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,7 +30,7 @@ public abstract class ModelPartAnimationMixin {
     private final Quaternionf helium$reusedQuat = new Quaternionf();
 
     @Inject(method = "applyTransform", at = @At("HEAD"), cancellable = true, require = 0)
-    private void helium$fastApplyTransform(MatrixStack matrices, CallbackInfo ci) {
+    private void helium$fastApplyTransform(PoseStack matrices, CallbackInfo ci) {
         try {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.fastAnimations) return;
@@ -39,7 +39,7 @@ public abstract class ModelPartAnimationMixin {
             matrices.translate(originX / 16.0f, originY / 16.0f, originZ / 16.0f);
 
             if (pitch != 0f || yaw != 0f || roll != 0f) {
-                matrices.multiply(helium$reusedQuat.rotationZYX(roll, yaw, pitch));
+                matrices.mulPose(helium$reusedQuat.rotationZYX(roll, yaw, pitch));
             }
 
             if (xScale != 1f || yScale != 1f || zScale != 1f) {

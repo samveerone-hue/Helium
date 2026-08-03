@@ -4,7 +4,7 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.math.GBFMatrix3f;
 import com.helium.math.GBFMatrix4f;
-import net.minecraft.client.util.math.MatrixStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(MatrixStack.Entry.class)
+@Mixin(PoseStack.Pose.class)
 public abstract class MatrixStackEntryMixin {
 
     @Mutable
@@ -42,7 +42,7 @@ public abstract class MatrixStackEntryMixin {
         } catch (Throwable t) {
             if (!helium$matrixReplaceFailed) {
                 helium$matrixReplaceFailed = true;
-                HeliumClient.LOGGER.warn("[helium] fast matrix replacement in MatrixStack.Entry failed", t);
+                HeliumClient.LOGGER.warn("[helium] fast matrix replacement in PoseStack.Pose failed", t);
             }
         }
     }

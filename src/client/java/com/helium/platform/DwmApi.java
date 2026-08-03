@@ -26,8 +26,8 @@ public final class DwmApi {
     private static long getSetAttrFunc() {
         if (setAttrFunc == -1) {
             try {
-                long module = WinBase.LoadLibrary("dwmapi");
-                setAttrFunc = module != 0 ? WinBase.GetProcAddress(module, "DwmSetWindowAttribute") : 0;
+                long module = WinBase.LoadLibrary(null, "dwmapi");
+                setAttrFunc = module != 0 ? WinBase.GetProcAddress(null, module, "DwmSetWindowAttribute") : 0;
             } catch (Throwable t) {
                 HeliumClient.LOGGER.debug("dwm: failed to load dwmapi - {}", t.getMessage());
                 setAttrFunc = 0;
@@ -39,8 +39,8 @@ public final class DwmApi {
     private static long getSetWcaFunc() {
         if (setWcaFunc == -1) {
             try {
-                long module = WinBase.LoadLibrary("user32");
-                setWcaFunc = module != 0 ? WinBase.GetProcAddress(module, "SetWindowCompositionAttribute") : 0;
+                long module = WinBase.LoadLibrary(null, "user32");
+                setWcaFunc = module != 0 ? WinBase.GetProcAddress(null, module, "SetWindowCompositionAttribute") : 0;
             } catch (Throwable t) {
                 HeliumClient.LOGGER.debug("dwm: failed to load SetWindowCompositionAttribute - {}", t.getMessage());
                 setWcaFunc = 0;

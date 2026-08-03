@@ -2,31 +2,31 @@ package com.helium.mixin.tweaks;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.entity.PlayerEntityRenderer;
-import net.minecraft.entity.PlayerLikeEntity;
-import net.minecraft.entity.player.PlayerModelPart;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
+import net.minecraft.world.entity.Avatar;
+import net.minecraft.world.entity.player.PlayerModelPart;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(PlayerEntityRenderer.class)
+@Mixin(AvatarRenderer.class)
 public abstract class SkinPartsRendererMixin {
 
     @Redirect(
-            method = "updateRenderState(Lnet/minecraft/entity/PlayerLikeEntity;Lnet/minecraft/client/render/entity/state/PlayerEntityRenderState;F)V",
+            method = "updateRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/entity/PlayerLikeEntity;isModelPartVisible(Lnet/minecraft/entity/player/PlayerModelPart;)Z"),
+                    target = "Lnet/minecraft/world/entity/Avatar;isModelPartVisible(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z"),
             require = 0
     )
-    private boolean helium$forceskinparts(PlayerLikeEntity instance, PlayerModelPart part) {
+    private boolean helium$forceskinparts(Avatar instance, PlayerModelPart part) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.forceSkinParts) {
-            MinecraftClient mc = MinecraftClient.getInstance();
+            Minecraft mc = Minecraft.getInstance();
             if (mc.player != null && instance == mc.player) {
-                return mc.options.isPlayerModelPartEnabled(part);
+                return mc.options.isModelPartEnabled(part);
             }
         }
-        return instance.isModelPartVisible(part);
+        return instance.isModelPartShown(part);
     }
 }

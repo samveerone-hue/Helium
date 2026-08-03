@@ -1,7 +1,7 @@
 package com.helium.render;
 
 import com.helium.HeliumClient;
-import net.minecraft.util.math.Direction;
+import net.minecraft.core.Direction;
 
 import java.lang.reflect.Method;
 
@@ -50,13 +50,13 @@ public final class EnumValueCache {
     @SuppressWarnings("unchecked")
     private static void cacheGenericEnums() {
         try {
-            Class<?> dyeColorClass = Class.forName("net.minecraft.util.DyeColor");
+            Class<?> dyeColorClass = Class.forName("net.minecraft.world.item.DyeColor");
             Method valuesMethod = dyeColorClass.getMethod("values");
             cachedDyeColors = (Object[]) valuesMethod.invoke(null);
         } catch (Throwable ignored) {}
 
         try {
-            Class<?> formattingClass = Class.forName("net.minecraft.util.Formatting");
+            Class<?> formattingClass = Class.forName("net.minecraft.ChatFormatting");
             Method valuesMethod = formattingClass.getMethod("values");
             cachedFormattings = (Object[]) valuesMethod.invoke(null);
         } catch (Throwable ignored) {}

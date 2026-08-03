@@ -3,6 +3,7 @@ package com.helium.mixin.dedup;
 import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -12,7 +13,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
 
-@Mixin(targets = "net.minecraft.client.render.model.WeightedBakedModel")
+@Pseudo
+@Mixin(targets = "net.minecraft.client.renderer.block.dispatch.WeightedVariants")
 public abstract class WeightedBakedModelDedupMixin {
 
     @Unique
