@@ -9,14 +9,11 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.core.NonNullList;
+import net.minecraft.world.item.crafting.Ingredient;
 
-import java.lang.reflect.Method;
 import java.util.Optional;
 
 public final class CraftingInventoryUtils {
-
-    private static Method onmouseclickmethod = null;
-    private static boolean onmouseclickresolved = false;
 
     private CraftingInventoryUtils() {}
 
@@ -35,21 +32,7 @@ public final class CraftingInventoryUtils {
 
     public static void clickslot(AbstractContainerScreen<? extends AbstractContainerMenu> gui, Slot slot, int slotNum, int mouseButton, ContainerInput type) {
         try {
-            if (!onmouseclickresolved) {
-                onmouseclickresolved = true;
-                for (Method m : AbstractContainerScreen.class.getDeclaredMethods()) {
-                    Class<?>[] params = m.getParameterTypes();
-                    if (params.length == 4 && params[0] == Slot.class && params[1] == int.class
-                            && params[2] == int.class && params[3] == ContainerInput.class) {
-                        m.setAccessible(true);
-                        onmouseclickmethod = m;
-                        break;
-                    }
-                }
-            }
-            if (onmouseclickmethod != null) {
-                onmouseclickmethod.invoke(gui, slot, slotNum, mouseButton, type);
-            }
+            gui.slotClicked(slot, slotNum, mouseButton, type);
         } catch (Throwable t) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.gameMode != null) {
@@ -104,19 +87,11 @@ public final class CraftingInventoryUtils {
         return gui.getMenu().getSlot(slotNum);
     }
 
-    @SuppressWarnings("unchecked")
-    public static Optional<Slot> findmatchingslot(AbstractContainerScreen<? extends AbstractContainerMenu> gui, Object ingredient) {
+    public static Optional<Slot> findmatchingslot(AbstractContainerScreen<? extends AbstractContainerMenu> gui, Ingredient ingredient) {
         NonNullList<Slot> slots = gui.getMenu().slots;
         for (Slot slot : slots) {
             if (!(slot.container instanceof Inventory)) continue;
-            try {
-                Class<?> ingredientClass = Class.forName("net.minecraft.world.item.crafting.Ingredient");
-                Method matchesMethod = ingredientClass.getMethod("matches", Optional.class, net.minecraft.world.item.ItemStack.class);
-                Boolean matches = (Boolean) matchesMethod.invoke(null, Optional.of(ingredient), slot.getItem());
-                if (matches) return Optional.of(slot);
-            } catch (Throwable t) {
-                continue;
-            }
+            if (ingredient.test(slot.getItem())) return Optional.of(slot);
         }
         return Optional.empty();
     }

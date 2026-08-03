@@ -31,51 +31,18 @@ public abstract class SmoothHotbarMixin {
         if (player == null) return;
 
         int slot = player.getInventory().getSelectedSlot();
-        float delta = getdelta(counter);
-        SmoothHotbar.update(slot, delta);
-    }
-
-    private static float getdelta(DeltaTracker counter) {
-        try {
-            var method = counter.getClass().getMethod("getTickDelta", boolean.class);
-            return ((Number) method.invoke(counter, true)).floatValue();
-        } catch (Exception e1) {
-            try {
-                var method = counter.getClass().getMethod("getLastFrameDuration");
-                return ((Number) method.invoke(counter)).floatValue();
-            } catch (Exception e2) {
-                return 1.0f;
-            }
-        }
+        SmoothHotbar.update(slot, counter.getGameTimeDeltaPartialTick(true));
     }
 
     @ModifyArgs(
             method = "extractItemHotbar",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/resources/Identifier;IIII)V",
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",
                     ordinal = 1
-            ),
-            require = 0
+            )
     )
     private void helium$modifyHotbarSelectorPos(Args args) {
-        if (!HeliumClient.getConfig().smoothHotbar) return;
-
-        Minecraft client = Minecraft.getInstance();
-        int basex = (client.getWindow().getGuiScaledWidth() / 2) - 92;
-        args.set(2, SmoothHotbar.getoffsetx(basex));
-    }
-
-    @ModifyArgs(
-            method = "extractItemHotbar",
-            at = @At(
-                    value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",
-                    ordinal = 1
-            ),
-            require = 0
-    )
-    private void helium$modifyHotbarSelectorPosAlt(Args args) {
         if (!HeliumClient.getConfig().smoothHotbar) return;
 
         Minecraft client = Minecraft.getInstance();

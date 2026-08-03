@@ -13,10 +13,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.StonecutterMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.SelectableRecipe;
+import net.minecraft.world.item.crafting.display.RecipeDisplayEntry;
+import net.minecraft.world.item.crafting.display.RecipeDisplayId;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
+import net.minecraft.util.context.ContextMap;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 
 public final class OneClickCraftingManager {
@@ -30,7 +34,7 @@ public final class OneClickCraftingManager {
     private static volatile boolean isshifting = false;
     private static volatile int lastbutton = -1;
     private static volatile boolean ispending = false;
-    private static volatile Object lastingredient = null;
+    private static volatile Ingredient lastingredient = null;
     private static volatile int lastselected = -1;
     private static volatile java.util.function.Consumer<ItemStack> onnextupdate = null;
 
@@ -75,7 +79,7 @@ public final class OneClickCraftingManager {
 
     public static boolean ispending() { return ispending; }
 
-    public static void recipeclicked(Object recipeId) {
+    public static void recipeclicked(RecipeDisplayId recipeId) {
         if (!isenabled()) {
             reset();
             return;
@@ -90,13 +94,12 @@ public final class OneClickCraftingManager {
         if (player == null) return;
 
         try {
-            Map<?, ?> recipes = getrecipebook(player);
-            if (recipes == null || recipeId == null) return;
-            Object entry = recipes.get(recipeId);
+            if (recipeId == null) return;
+            RecipeDisplayEntry entry = player.getRecipeBook().known.get(recipeId);
             if (entry == null) return;
-            ItemStack result = getresultfromentry(entry, world);
-            if (result != null) {
-                setlastcraft(result);
+            List<ItemStack> results = entry.resultItems(SlotDisplayContext.fromLevel(world));
+            if (!results.isEmpty()) {
+                setlastcraft(results.getFirst());
             }
         } catch (Throwable t) {
             if (!failed) {
@@ -148,12 +151,15 @@ public final class OneClickCraftingManager {
 
         try {
             StonecutterMenu handler = screen.getMenu();
-            Object recipes = getstonerecipes(handler);
-            if (recipes == null) return;
-            ItemStack result = getstoneresult(recipes, selectedRecipe);
-            if (result != null) {
+            List<? extends SelectableRecipe.SingleInputEntry<?>> entries = handler.getVisibleRecipes().entries();
+            if (selectedRecipe < 0 || selectedRecipe >= entries.size()) return;
+
+            SelectableRecipe.SingleInputEntry<?> entry = entries.get(selectedRecipe);
+            ContextMap context = SlotDisplayContext.fromLevel(world);
+            ItemStack result = entry.recipe().optionDisplay().resolveForFirstStack(context);
+            if (!result.isEmpty()) {
                 setlastcraft(result);
-                lastingredient = getstoneingredient(recipes, selectedRecipe);
+                lastingredient = entry.input();
             }
         } catch (Throwable t) {
             if (!failed) {
@@ -258,110 +264,8 @@ public final class OneClickCraftingManager {
         ispending = false;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Map<?, ?> getrecipebook(LocalPlayer player) {
-        try {
-            Object recipeBook = player.getRecipeBook();
-            for (Field f : recipeBook.getClass().getDeclaredFields()) {
-                if (Map.class.isAssignableFrom(f.getType())) {
-                    f.setAccessible(true);
-                    return (Map<?, ?>) f.get(recipeBook);
-                }
-            }
-        } catch (Throwable ignored) {}
-        return null;
-    }
 
-    private static ItemStack getresultfromentry(Object entry, ClientLevel world) {
-        try {
-            Method displayMethod = null;
-            for (Method m : entry.getClass().getDeclaredMethods()) {
-                if (m.getParameterCount() == 0 && m.getReturnType().getSimpleName().contains("RecipeDisplay")) {
-                    displayMethod = m;
-                    break;
-                }
-            }
-            if (displayMethod == null) return null;
-            displayMethod.setAccessible(true);
-            Object display = displayMethod.invoke(entry);
 
-            Method resultMethod = null;
-            for (Method m : display.getClass().getDeclaredMethods()) {
-                if (m.getParameterCount() == 0 && m.getReturnType().getSimpleName().contains("SlotDisplay")) {
-                    resultMethod = m;
-                    break;
-                }
-            }
-            if (resultMethod == null) return null;
-            resultMethod.setAccessible(true);
-            Object slotDisplay = resultMethod.invoke(display);
 
-            Method getStacksMethod = null;
-            for (Method m : slotDisplay.getClass().getMethods()) {
-                if (m.getName().equals("getStacks") && m.getParameterCount() == 1) {
-                    getStacksMethod = m;
-                    break;
-                }
-            }
-            if (getStacksMethod == null) return null;
 
-            Class<?> slotDisplayContexts = Class.forName("net.minecraft.world.item.crafting.display.SlotDisplayContext");
-            Method createParams = null;
-            for (Method m : slotDisplayContexts.getDeclaredMethods()) {
-                if (m.getParameterCount() == 1 && m.getParameterTypes()[0].getSimpleName().contains("World")) {
-                    createParams = m;
-                    break;
-                }
-            }
-            if (createParams == null) return null;
-            createParams.setAccessible(true);
-            Object params = createParams.invoke(null, world);
-
-            Object stacks = getStacksMethod.invoke(slotDisplay, params);
-            Method getFirst = stacks.getClass().getMethod("getFirst");
-            return (ItemStack) getFirst.invoke(stacks);
-        } catch (Throwable ignored) {}
-        return null;
-    }
-
-    private static Object getstonerecipes(StonecutterMenu handler) {
-        try {
-            Method m = handler.getClass().getMethod("getAvailableRecipes");
-            return m.invoke(handler);
-        } catch (Throwable ignored) {}
-        return null;
-    }
-
-    private static ItemStack getstoneresult(Object recipes, int index) {
-        try {
-            Method entriesMethod = recipes.getClass().getMethod("entries");
-            Object entries = entriesMethod.invoke(recipes);
-            Method getMethod = entries.getClass().getMethod("get", int.class);
-            Object group = getMethod.invoke(entries, index);
-
-            Method recipeMethod = group.getClass().getMethod("recipe");
-            Object recipe = recipeMethod.invoke(group);
-
-            Method optionDisplay = recipe.getClass().getMethod("optionDisplay");
-            Object display = optionDisplay.invoke(recipe);
-
-            Field stackField = display.getClass().getDeclaredField("stack");
-            stackField.setAccessible(true);
-            return (ItemStack) stackField.get(display);
-        } catch (Throwable ignored) {}
-        return null;
-    }
-
-    private static Object getstoneingredient(Object recipes, int index) {
-        try {
-            Method entriesMethod = recipes.getClass().getMethod("entries");
-            Object entries = entriesMethod.invoke(recipes);
-            Method getMethod = entries.getClass().getMethod("get", int.class);
-            Object group = getMethod.invoke(entries, index);
-
-            Method inputMethod = group.getClass().getMethod("input");
-            return inputMethod.invoke(group);
-        } catch (Throwable ignored) {}
-        return null;
-    }
 }

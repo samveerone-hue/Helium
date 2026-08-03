@@ -5,6 +5,7 @@ import com.helium.config.HeliumConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import com.helium.mixin.hotbar.MultiPlayerGameModeInvoker;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,23 +51,7 @@ public final class HotbarOptimizer {
         lastslot.set(slot);
 
         try {
-            java.lang.reflect.Method m = MultiPlayerGameMode.class.getDeclaredMethod("syncSelectedSlot");
-            m.setAccessible(true);
-            m.invoke(im);
-        } catch (NoSuchMethodException e) {
-            try {
-                String mapped = net.fabricmc.loader.api.FabricLoader.getInstance()
-                        .getMappingResolver()
-                        .mapMethodName("intermediary",
-                                "net.minecraft.class_636",
-                                "method_2923",
-                                "()V");
-                java.lang.reflect.Method m = MultiPlayerGameMode.class.getDeclaredMethod(mapped);
-                m.setAccessible(true);
-                m.invoke(im);
-            } catch (Throwable t) {
-                HeliumClient.LOGGER.warn("hotbar sync failed ({})", t.getClass().getSimpleName());
-            }
+            ((MultiPlayerGameModeInvoker) im).helium$sendCarriedItem();
         } catch (Throwable t) {
             HeliumClient.LOGGER.warn("hotbar sync failed ({})", t.getClass().getSimpleName());
         }
