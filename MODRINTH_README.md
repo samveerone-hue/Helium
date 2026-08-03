@@ -113,9 +113,9 @@ Optional: grab [ModMenu](https://modrinth.com/mod/modmenu) if you want a quick o
 
 **Android / PojavLauncher**: Not supported. Helium needs desktop OpenGL, not OpenGL ES. The mod will detect Android and disable itself automatically.
 
-**Minecraft versions**: 1.21.1 to 1.21.11
+**Minecraft versions**: 26.1.x
 
-**Java**: 21 or newer
+**Java**: 25 or newer
 
 <br>
 
