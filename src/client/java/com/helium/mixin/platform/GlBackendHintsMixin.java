@@ -1,6 +1,7 @@
 package com.helium.mixin.platform;
 
 import com.helium.HeliumClient;
+import com.helium.platform.GlContextUpgrade;
 import com.mojang.blaze3d.opengl.GlBackend;
 import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
