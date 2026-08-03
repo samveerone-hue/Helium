@@ -6,10 +6,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-/**
- * Reads the gl context upgrade toggle before the config is loaded, since the window
- * is created long before Helium's own initialisation runs.
- */
 final class GlContextUpgrade {
 
     private static Boolean enabled = null;
@@ -19,9 +15,10 @@ final class GlContextUpgrade {
     static boolean isEnabled() {
         if (enabled != null) return enabled;
 
-        if (FabricLoader.getInstance().isModLoaded("threatengl")) {
+        // Added Catalyst check here alongside threatengl
+        if (FabricLoader.getInstance().isModLoaded("threatengl") || FabricLoader.getInstance().isModLoaded("catalyst")) {
             enabled = false;
-            HeliumClient.LOGGER.info("threatengl detected - disabling gl context upgrade to avoid conflicts");
+            HeliumClient.LOGGER.info("catalyst or threatengl detected - disabling gl context upgrade to avoid conflicts");
             return false;
         }
 
