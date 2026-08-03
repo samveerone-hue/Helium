@@ -2,28 +2,26 @@ package com.helium.mixin.tweaks;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.mojang.blaze3d.platform.FramerateLimitTracker;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(Minecraft.class)
+@Mixin(FramerateLimitTracker.class)
 public class MenuFramerateMixin {
 
-    @ModifyArg(
-            method = "renderFrame",
-            at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;limitDisplayFPS(I)V"),
-            index = 0
-    )
-    private int helium$menuframeratelimit(int original) {
+    @Inject(method = "getFramerateLimit", at = @At("RETURN"), cancellable = true, require = 0)
+    private void helium$menuframeratelimit(CallbackInfoReturnable<Integer> cir) {
         HeliumConfig config = HeliumClient.getConfig();
-        if (config == null) return original;
+        if (config == null) return;
         int limit = config.menuFramerateLimit;
-        if (limit <= 0) return original;
-        Minecraft self = (Minecraft) (Object) this;
-        if (self.level == null) {
-            return limit;
+        if (limit <= 0) return;
+
+        Minecraft client = Minecraft.getInstance();
+        if (client != null && client.level == null && cir.getReturnValue() > limit) {
+            cir.setReturnValue(limit);
         }
-        return original;
     }
 }
