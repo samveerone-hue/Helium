@@ -1,18 +1,12 @@
 name: Build & Test Helium 26.1.2
 
 on:
-  push:
-    branches:
-      - main
-      - upgrade/v26.1.2
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # ... rest of your jobs and steps remain unchanged
 
     steps:
       # Step 1: Checkout repository code
