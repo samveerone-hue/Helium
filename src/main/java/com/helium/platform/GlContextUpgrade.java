@@ -1,12 +1,13 @@
 package com.helium.platform;
 
-import com.helium.HeliumClient;
+import com.helium.HeliumClient; // Ensure this points to the correct package where HeliumClient lives
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 final class GlContextUpgrade {
+    // ... rest of your code ...
 
     private static volatile Boolean enabled = null;
 
