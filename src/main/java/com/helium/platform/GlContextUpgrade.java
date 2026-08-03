@@ -1,13 +1,15 @@
 package com.helium.platform;
 
-import com.helium.HeliumClient;
 import net.fabricmc.loader.api.FabricLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 final class GlContextUpgrade {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger("Helium/GlContextUpgrade");
     private static volatile Boolean enabled = null;
 
     private GlContextUpgrade() {}
@@ -18,7 +20,7 @@ final class GlContextUpgrade {
         // Added Catalyst check here alongside threatengl
         if (FabricLoader.getInstance().isModLoaded("threatengl") || FabricLoader.getInstance().isModLoaded("catalyst")) {
             enabled = false;
-            HeliumClient.LOGGER.info("catalyst or threatengl detected - disabling gl context upgrade to avoid conflicts");
+            LOGGER.info("catalyst or threatengl detected - disabling gl context upgrade to avoid conflicts");
             return false;
         }
 
