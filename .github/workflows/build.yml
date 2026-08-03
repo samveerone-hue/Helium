@@ -6,7 +6,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    # ... rest of your jobs and steps remain unchanged
 
     steps:
       # Step 1: Checkout repository code
