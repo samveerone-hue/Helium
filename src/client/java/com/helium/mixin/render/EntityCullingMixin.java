@@ -3,11 +3,11 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.TemporalReprojection;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,13 +21,13 @@ public abstract class EntityCullingMixin<T extends Entity> {
     private static boolean helium$frustumFailed = false;
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true)
-    private void helium$cullDistantEntities(T entity, net.minecraft.client.render.Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
+    private void helium$cullDistantEntities(T entity, net.minecraft.client.renderer.culling.Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
-        if (entity instanceof PlayerEntity) return;
+        if (entity instanceof Player) return;
 
         double dx = entity.getX() - client.player.getX();
         double dy = entity.getY() - client.player.getY();
@@ -43,7 +43,7 @@ public abstract class EntityCullingMixin<T extends Entity> {
 
             if (!helium$frustumFailed) {
                 try {
-                    float yaw = client.player.getYaw();
+                    float yaw = client.player.getYRot();
                     float yawRad = (float) Math.toRadians(yaw);
                     double forwardX = -Math.sin(yawRad);
                     double forwardZ = Math.cos(yawRad);
@@ -59,7 +59,7 @@ public abstract class EntityCullingMixin<T extends Entity> {
         }
 
         if (config.temporalReprojection && TemporalReprojection.isInitialized()) {
-            if (!(entity instanceof HostileEntity)) {
+            if (!(entity instanceof Monster)) {
                 if (TemporalReprojection.shouldSkipEntity(distSq)) {
                     cir.setReturnValue(false);
                 }

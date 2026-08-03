@@ -4,18 +4,18 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.multiplayer.DirectConnectPreview;
 import com.helium.multiplayer.ServerPreviewUpdater;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.multiplayer.DirectConnectScreen;
-import net.minecraft.client.gui.screen.world.WorldIcon;
-import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.network.ServerInfo;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.text.OrderedText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.DirectJoinServerScreen;
+import net.minecraft.client.gui.screens.FaviconTexture;
+import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.multiplayer.ServerData;
+import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.util.FormattedCharSequence;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -26,32 +26,32 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.Arrays;
 import java.util.List;
 
-@Mixin(DirectConnectScreen.class)
+@Mixin(DirectJoinServerScreen.class)
 public abstract class DirectConnectScreenMixin extends Screen implements ServerPreviewUpdater {
 
-    @Unique private static final Identifier PING_1 = Identifier.of("helium", "gui/serverlist/ping_1.png");
-    @Unique private static final Identifier PING_2 = Identifier.of("helium", "gui/serverlist/ping_2.png");
-    @Unique private static final Identifier PING_3 = Identifier.of("helium", "gui/serverlist/ping_3.png");
-    @Unique private static final Identifier PING_4 = Identifier.of("helium", "gui/serverlist/ping_4.png");
-    @Unique private static final Identifier PING_5 = Identifier.of("helium", "gui/serverlist/ping_5.png");
-    @Unique private static final Identifier PINGING_1 = Identifier.of("helium", "gui/serverlist/pinging_1.png");
-    @Unique private static final Identifier PINGING_2 = Identifier.of("helium", "gui/serverlist/pinging_2.png");
-    @Unique private static final Identifier PINGING_3 = Identifier.of("helium", "gui/serverlist/pinging_3.png");
-    @Unique private static final Identifier PINGING_4 = Identifier.of("helium", "gui/serverlist/pinging_4.png");
-    @Unique private static final Identifier PINGING_5 = Identifier.of("helium", "gui/serverlist/pinging_5.png");
-    @Unique private static final Identifier DEFAULT_ICON = Identifier.of("helium", "gui/serverlist/default_icon.png");
+    @Unique private static final Identifier PING_1 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/ping_1.png");
+    @Unique private static final Identifier PING_2 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/ping_2.png");
+    @Unique private static final Identifier PING_3 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/ping_3.png");
+    @Unique private static final Identifier PING_4 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/ping_4.png");
+    @Unique private static final Identifier PING_5 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/ping_5.png");
+    @Unique private static final Identifier PINGING_1 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_1.png");
+    @Unique private static final Identifier PINGING_2 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_2.png");
+    @Unique private static final Identifier PINGING_3 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_3.png");
+    @Unique private static final Identifier PINGING_4 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_4.png");
+    @Unique private static final Identifier PINGING_5 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_5.png");
+    @Unique private static final Identifier DEFAULT_ICON = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/default_icon.png");
 
-    @Shadow private TextFieldWidget addressField;
+    @Shadow private EditBox addressField;
 
     @Unique private String helium$lastAddress = "";
     @Unique private String helium$serverName = "";
-    @Unique private Text helium$motdText = Text.empty();
+    @Unique private Component helium$motdText = Component.empty();
     @Unique private String helium$playerCount = "0/0";
     @Unique private long helium$pingValue = -1;
-    @Unique private WorldIcon helium$serverIcon = null;
+    @Unique private FaviconTexture helium$serverIcon = null;
     @Unique private byte[] helium$lastFavicon = null;
 
-    protected DirectConnectScreenMixin(Text title) {
+    protected DirectConnectScreenMixin(Component title) {
         super(title);
     }
 
@@ -63,14 +63,14 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
     }
 
     @Override
-    public void helium$setMotdText(Text motd) {
-        this.helium$motdText = motd != null ? motd : Text.empty();
+    public void helium$setMotdText(Component motd) {
+        this.helium$motdText = motd != null ? motd : Component.empty();
     }
 
     @Override
     public void helium$updateFavicon(byte[] faviconBytes) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (!client.isOnThread()) {
+        Minecraft client = Minecraft.getInstance();
+        if (!client.isSameThread()) {
             client.execute(() -> helium$updateFavicon(faviconBytes));
             return;
         }
@@ -89,7 +89,7 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
         }
         helium$lastFavicon = faviconBytes;
 
-        byte[] valid = ServerInfo.validateFavicon(faviconBytes);
+        byte[] valid = ServerData.validateIcon(faviconBytes);
         if (valid == null) {
             return;
         }
@@ -101,10 +101,10 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
             }
 
             String idSource = helium$lastAddress != null && !helium$lastAddress.isBlank() ? helium$lastAddress : "helium_preview";
-            helium$serverIcon = WorldIcon.forServer(client.getTextureManager(), idSource);
+            helium$serverIcon = FaviconTexture.forServer(client.getTextureManager(), idSource);
 
             NativeImage img = NativeImage.read(valid);
-            helium$serverIcon.load(img);
+            helium$serverIcon.upload(img);
         } catch (Exception e) {
             if (helium$serverIcon != null) {
                 helium$serverIcon.close();
@@ -114,14 +114,14 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
     }
 
     @Inject(method = "render", at = @At("TAIL"), require = 0)
-    private void helium$renderServerPreview(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+    private void helium$renderServerPreview(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.directConnectPreview) {
             return;
         }
 
         if (addressField != null) {
-            String address = addressField.getText();
+            String address = addressField.getValue();
             if (address != null && !address.isBlank() && !address.equals(helium$lastAddress)) {
                 helium$lastAddress = address;
                 DirectConnectPreview.onAddressChanged(address);
@@ -141,23 +141,23 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
         int iconSize = 32;
 
         if (helium$serverIcon != null) {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, helium$serverIcon.getTextureId(),
+            context.blit(RenderPipelines.GUI_TEXTURED, helium$serverIcon.textureLocation(),
                     baseX, baseY, 0, 0, iconSize, iconSize, iconSize, iconSize);
         } else {
-            context.drawTexture(RenderPipelines.GUI_TEXTURED, DEFAULT_ICON,
+            context.blit(RenderPipelines.GUI_TEXTURED, DEFAULT_ICON,
                     baseX, baseY, 0, 0, iconSize, iconSize, iconSize, iconSize);
         }
 
         int textX = baseX + iconSize + 3;
-        context.drawTextWithShadow(this.textRenderer, Text.literal(helium$serverName), textX, baseY, 0xFFFFFFFF);
+        context.text(this.font, Component.literal(helium$serverName), textX, baseY, 0xFFFFFFFF);
 
         if (helium$motdText != null && !helium$motdText.getString().isEmpty()) {
             int motdY = baseY + 12;
-            int lineHeight = this.textRenderer.fontHeight;
+            int lineHeight = this.font.lineHeight;
             int availableWidth = rowWidth - iconSize - 10;
-            List<OrderedText> lines = this.textRenderer.wrapLines(helium$motdText, availableWidth);
-            for (OrderedText line : lines) {
-                context.drawTextWithShadow(this.textRenderer, line, textX, motdY, 0xFFFFFFFF);
+            List<FormattedCharSequence> lines = this.font.split(helium$motdText, availableWidth);
+            for (FormattedCharSequence line : lines) {
+                context.text(this.font, line, textX, motdY, 0xFFFFFFFF);
                 motdY += lineHeight;
             }
         }
@@ -184,7 +184,7 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
         int pingX = baseX + rowWidth - 10 - 5;
         int pingWidth = 10;
         int pingHeight = 8;
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, pingTexture, pingX, baseY,
+        context.blit(RenderPipelines.GUI_TEXTURED, pingTexture, pingX, baseY,
                 0, 0, pingWidth, pingHeight, pingWidth, pingHeight);
 
         if (helium$pingValue >= 0) {
@@ -192,15 +192,15 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
             String maxPlayers = helium$playerCount.contains("/") ? helium$playerCount.split("/")[1] : "0";
             String slash = "/";
 
-            int playersWidth = this.textRenderer.getWidth(players);
-            int slashWidth = this.textRenderer.getWidth(slash);
-            int maxPlayersWidth = this.textRenderer.getWidth(maxPlayers);
+            int playersWidth = this.font.width(players);
+            int slashWidth = this.font.width(slash);
+            int maxPlayersWidth = this.font.width(maxPlayers);
 
             int playerTextX = pingX - (playersWidth + slashWidth + maxPlayersWidth) - 5;
 
-            context.drawTextWithShadow(this.textRenderer, Text.literal(players), playerTextX, baseY, 0xFFAAAAAA);
-            context.drawTextWithShadow(this.textRenderer, Text.literal(slash), playerTextX + playersWidth, baseY, 0xFF555555);
-            context.drawTextWithShadow(this.textRenderer, Text.literal(maxPlayers), playerTextX + playersWidth + slashWidth, baseY, 0xFFAAAAAA);
+            context.text(this.font, Component.literal(players), playerTextX, baseY, 0xFFAAAAAA);
+            context.text(this.font, Component.literal(slash), playerTextX + playersWidth, baseY, 0xFF555555);
+            context.text(this.font, Component.literal(maxPlayers), playerTextX + playersWidth + slashWidth, baseY, 0xFFAAAAAA);
         }
     }
 }

@@ -2,9 +2,9 @@ package com.helium.mixin.hotbar;
 
 import com.helium.hotbar.HotbarOptimizer;
 import com.helium.hotbar.HotbarServerDatabase;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.multiplayer.ConnectScreen;
-import net.minecraft.client.network.ServerInfo;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.multiplayer.ServerData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -18,11 +18,11 @@ public abstract class HotbarConnectScreenMixin {
         HotbarOptimizer.setserverdisabled(false);
         HotbarOptimizer.resetslot();
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        ServerInfo entry = client.getCurrentServerEntry();
+        Minecraft client = Minecraft.getInstance();
+        ServerData entry = client.getCurrentServer();
         if (entry == null) return;
 
-        String address = entry.address;
+        String address = entry.ip;
         if (HotbarServerDatabase.isblocked(address) || HotbarServerDatabase.isflagged(address)) {
             HotbarOptimizer.setserverdisabled(true);
         }

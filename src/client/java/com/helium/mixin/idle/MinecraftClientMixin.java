@@ -3,14 +3,14 @@ package com.helium.mixin.idle;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.util.VersionMethodResolver;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(MinecraftClient.class)
+@Mixin(Minecraft.class)
 public abstract class MinecraftClientMixin {
 
     @Shadow
@@ -21,8 +21,8 @@ public abstract class MinecraftClientMixin {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.reduceFpsWhenInactive) return;
 
-        MinecraftClient client = (MinecraftClient) (Object) this;
-        if (!client.isWindowFocused()) {
+        Minecraft client = (Minecraft) (Object) this;
+        if (!client.isWindowActive()) {
             VersionMethodResolver.applyinactivefpslimit(client, config.inactiveFpsLimit);
         }
     }

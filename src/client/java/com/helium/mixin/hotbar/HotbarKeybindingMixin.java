@@ -3,15 +3,15 @@ package com.helium.mixin.hotbar;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.hotbar.HotbarOptimizer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.KeyMapping;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(KeyBinding.class)
+@Mixin(KeyMapping.class)
 public abstract class HotbarKeybindingMixin {
 
     @Inject(method = "setPressed", at = @At("HEAD"), require = 0)
@@ -21,16 +21,16 @@ public abstract class HotbarKeybindingMixin {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
 
-        KeyBinding bind = (KeyBinding) (Object) this;
-        String key = bind.getId();
+        KeyMapping bind = (KeyMapping) (Object) this;
+        String key = bind.getName();
         if (!key.startsWith("key.hotbar.")) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.isInSingleplayer()) return;
-        if (client.interactionManager == null) return;
+        Minecraft client = Minecraft.getInstance();
+        if (client.isLocalServer()) return;
+        if (client.gameMode == null) return;
 
-        ClientPlayerEntity player = client.player;
-        if (player == null || player.isInCreativeMode()) return;
+        LocalPlayer player = client.player;
+        if (player == null || player.hasInfiniteMaterials()) return;
 
         try {
             int slot = Integer.parseInt(key.substring("key.hotbar.".length())) - 1;

@@ -3,7 +3,7 @@ package com.helium.mixin.lighting;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.lighting.AsyncLightEngine;
-import net.minecraft.world.chunk.light.LightingProvider;
+import net.minecraft.world.level.lighting.LevelLightEngine;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(LightingProvider.class)
+@Mixin(LevelLightEngine.class)
 public abstract class LightingProviderMixin {
 
     @Unique

@@ -3,8 +3,8 @@ package com.helium.mixin.compat;
 import com.helium.HeliumClient;
 import com.helium.compat.HeliumSodiumLegacyPage;
 import com.helium.config.HeliumConfigScreen;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -91,8 +91,8 @@ public abstract class SodiumOptionsGUILegacyMixin {
                 ci.cancel();
 
                 Screen parentScreen = (Screen)(Object)this;
-                MinecraftClient.getInstance().execute(() ->
-                    MinecraftClient.getInstance().setScreen(HeliumConfigScreen.create(parentScreen))
+                Minecraft.getInstance().execute(() ->
+                    Minecraft.getInstance().setScreen(HeliumConfigScreen.create(parentScreen))
                 );
             }
         } catch (Throwable t) {

@@ -3,13 +3,13 @@ package com.helium.mixin.math;
 import com.helium.HeliumClient;
 import com.helium.math.FastMath;
 import com.helium.util.VersionMethodResolver;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 import java.lang.invoke.MethodHandle;
 
-@Mixin(MathHelper.class)
+@Mixin(Mth.class)
 public abstract class MathHelperFloatMixin {
 
     @Unique

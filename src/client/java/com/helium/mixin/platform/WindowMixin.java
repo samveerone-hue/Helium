@@ -4,7 +4,7 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.platform.DwmApi;
 import com.helium.platform.WindowsVersion;
-import net.minecraft.client.util.Window;
+import com.mojang.blaze3d.platform.Window;
 import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Final;
@@ -59,7 +59,7 @@ public abstract class WindowMixin {
     @Redirect(method = "<init>", at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwWindowHint(II)V", remap = false), require = 0)
     private void helium$overrideGLContext(int hint, int value) {
         if (helium$isGlContextUpgradeEnabled()) {
-            boolean isMacOS = Util.getOperatingSystem() == Util.OperatingSystem.OSX;
+            boolean isMacOS = Util.getPlatform() == Util.OS.OSX;
             if (hint == GLFW.GLFW_CONTEXT_VERSION_MAJOR) {
                 value = 4;
                 HeliumClient.LOGGER.info("gl context upgrade: major version set to {}", value);
@@ -73,7 +73,7 @@ public abstract class WindowMixin {
 
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
     private void helium$initWindowStyle(CallbackInfo ci) {
-        if (Util.getOperatingSystem() != Util.OperatingSystem.WINDOWS) return;
+        if (Util.getPlatform() != Util.OS.WINDOWS) return;
 
         WindowsVersion.init();
         DwmApi.applyWindowStyle(this.fullscreen, this.handle);
@@ -81,7 +81,7 @@ public abstract class WindowMixin {
 
     @Inject(method = "toggleFullscreen", at = @At("TAIL"), require = 0)
     private void helium$onToggleFullscreen(CallbackInfo ci) {
-        if (Util.getOperatingSystem() != Util.OperatingSystem.WINDOWS) return;
+        if (Util.getPlatform() != Util.OS.WINDOWS) return;
 
         DwmApi.applyWindowStyle(this.fullscreen, this.handle);
     }

@@ -1,10 +1,12 @@
-accessWidener v2 named
+accessWidener v2 official
 
-accessible field net/minecraft/client/MinecraftClient resourceReloadLogger Lnet/minecraft/client/resource/ResourceReloadLogger;
-accessible field net/minecraft/client/MinecraftClient resourceManager Lnet/minecraft/resource/ReloadableResourceManagerImpl;
-accessible field net/minecraft/client/MinecraftClient serverResourcePackLoader Lnet/minecraft/client/resource/server/ServerResourcePackLoader;
-accessible field net/minecraft/client/MinecraftClient COMPLETED_UNIT_FUTURE Ljava/util/concurrent/CompletableFuture;
-accessible field net/minecraft/client/MinecraftClient resourcePackManager Lnet/minecraft/resource/ResourcePackManager;
+accessible field net/minecraft/client/Minecraft reloadStateTracker Lnet/minecraft/client/ResourceLoadStateTracker;
+accessible field net/minecraft/client/Minecraft resourceManager Lnet/minecraft/server/packs/resources/ReloadableResourceManager;
+accessible field net/minecraft/client/Minecraft downloadedPackSource Lnet/minecraft/client/resources/server/DownloadedPackSource;
+accessible field net/minecraft/client/Minecraft RESOURCE_RELOAD_INITIAL_TASK Ljava/util/concurrent/CompletableFuture;
+accessible field net/minecraft/client/Minecraft resourcePackRepository Lnet/minecraft/server/packs/repository/PackRepository;
 
-accessible method net/minecraft/client/gui/screen/ingame/HandledScreen onMouseClick (Lnet/minecraft/screen/slot/Slot;IILnet/minecraft/screen/slot/SlotActionType;)V
-accessible field net/minecraft/client/recipebook/ClientRecipeBook recipes Ljava/util/Map;
+accessible method net/minecraft/client/gui/screens/inventory/AbstractContainerScreen slotClicked (Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V
+accessible field net/minecraft/client/ClientRecipeBook known Ljava/util/Map;
+
+accessible method net/minecraft/client/Camera createProjectionMatrixForCulling ()Lorg/joml/Matrix4f;

@@ -2,7 +2,7 @@ package com.helium.mixin.dedup;
 
 import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;

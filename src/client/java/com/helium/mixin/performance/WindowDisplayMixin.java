@@ -1,7 +1,7 @@
 package com.helium.mixin.performance;
 
 import com.helium.render.DisplaySyncOptimizer;
-import net.minecraft.client.util.Window;
+import com.mojang.blaze3d.platform.Window;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

@@ -4,15 +4,15 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.DevModeOptimizer;
 import com.helium.render.RenderPipeline;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(WorldRenderer.class)
+@Mixin(LevelRenderer.class)
 public abstract class WorldRendererPipelineMixin {
 
     @Unique
@@ -31,8 +31,8 @@ public abstract class WorldRendererPipelineMixin {
 
             if (!config.renderPipelining || !RenderPipeline.isInitialized()) return;
 
-            MinecraftClient client = MinecraftClient.getInstance();
-            int maxFps = client.options.getMaxFps().getValue();
+            Minecraft client = Minecraft.getInstance();
+            int maxFps = client.options.framerateLimit().get();
             if (maxFps > 0 && maxFps < 260) {
                 RenderPipeline.setTargetFps(maxFps);
             }

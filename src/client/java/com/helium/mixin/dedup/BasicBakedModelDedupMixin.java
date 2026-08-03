@@ -14,10 +14,8 @@ import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Map;
 
-@Mixin(targets = {
-        "net.minecraft.client.render.model.BasicBakedModel",
-        "net.minecraft.client.render.model.SimpleBakedModel"
-})
+@Pseudo
+@Mixin(targets = "net.minecraft.client.resources.model.SimpleModelWrapper")
 public abstract class BasicBakedModelDedupMixin {
 
     @Unique

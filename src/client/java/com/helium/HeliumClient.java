@@ -36,9 +36,9 @@ import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
 import com.helium.compat.CrossLoaderCompat;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +50,8 @@ public class HeliumClient implements ClientModInitializer {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
     private static HeliumConfig config;
-    private static KeyBinding fullbrightKey;
-    private static KeyBinding reloadpackskey;
+    private static KeyMapping fullbrightKey;
+    private static KeyMapping reloadpackskey;
 
     private static boolean hasLithium = false;
     private static boolean hasIris = false;
@@ -221,7 +221,7 @@ public class HeliumClient implements ClientModInitializer {
 
         fullbrightKey = CrossLoaderCompat.registerkeybinding(createKeyBinding(
                 "helium.key.fullbright",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_G,
                 "helium.key.category"
         ));
@@ -232,7 +232,7 @@ public class HeliumClient implements ClientModInitializer {
         }
 
         CrossLoaderCompat.registertickevent(() -> {
-            if (fullbrightKey.wasPressed()) {
+            if (fullbrightKey.consumeClick()) {
                 FullbrightManager.toggle();
                 config.fullbright = FullbrightManager.isEnabled();
                 config.save();
@@ -241,20 +241,20 @@ public class HeliumClient implements ClientModInitializer {
 
         reloadpackskey = CrossLoaderCompat.registerkeybinding(createKeyBinding(
                 "helium.key.reload_packs",
-                InputUtil.Type.KEYSYM,
+                InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_UNKNOWN,
                 "helium.key.category"
         ));
 
         CrossLoaderCompat.registertickevent(() -> {
-            if (reloadpackskey.wasPressed() && config.asyncPackReload) {
+            if (reloadpackskey.consumeClick() && config.asyncPackReload) {
                 AsyncPackReloader.reloadasync();
             }
             AsyncPackReloader.tick();
         });
 
         CrossLoaderCompat.registertickevent(() -> {
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (gpuInitDeferred && client != null && client.getWindow() != null) {
                 gpuInitDeferred = false;
                 initDeferredGpuFeatures();
@@ -286,9 +286,9 @@ public class HeliumClient implements ClientModInitializer {
 
         initFeatureSafely("AdaptiveSync", () -> {
             if (config.adaptiveSync) {
-                MinecraftClient mc = MinecraftClient.getInstance();
+                Minecraft mc = Minecraft.getInstance();
                 if (mc != null && mc.getWindow() != null) {
-                    AdaptiveSyncManager.init(mc.getWindow().getHandle());
+                    AdaptiveSyncManager.init(mc.getWindow().handle());
                 }
             }
         }, () -> adaptiveSyncFailed = true);
@@ -351,31 +351,31 @@ public class HeliumClient implements ClientModInitializer {
     public static boolean isTemporalReprojectionAvailable() { return !temporalReprojectionFailed; }
     public static boolean isAndroid() { return DeviceDetector.isAndroid(); }
 
-    private static KeyBinding.Category heliumkeycategory = null;
+    private static KeyMapping.Category heliumkeycategory = null;
 
-    private static KeyBinding createKeyBinding(String id, InputUtil.Type type, int code, String category) {
+    private static KeyMapping createKeyBinding(String id, InputConstants.Type type, int code, String category) {
         try {
             if (heliumkeycategory == null) {
-                heliumkeycategory = KeyBinding.Category.create(
+                heliumkeycategory = KeyMapping.Category.register(
                         com.helium.util.VersionCompat.createIdentifier(MOD_ID, "keys"));
             }
-            return new KeyBinding(id, type, code, heliumkeycategory);
+            return new KeyMapping(id, type, code, heliumkeycategory);
         } catch (NoClassDefFoundError | NoSuchMethodError e1) {
             try {
-                java.lang.reflect.Constructor<?> ctor = KeyBinding.class.getDeclaredConstructor(
-                        String.class, InputUtil.Type.class, int.class, String.class);
+                java.lang.reflect.Constructor<?> ctor = KeyMapping.class.getDeclaredConstructor(
+                        String.class, InputConstants.Type.class, int.class, String.class);
                 ctor.setAccessible(true);
-                return (KeyBinding) ctor.newInstance(id, type, code, category);
+                return (KeyMapping) ctor.newInstance(id, type, code, category);
             } catch (Throwable e2) {
                 LOGGER.warn("keybinding compat fallback failed, using MISC category");
                 try {
-                    return new KeyBinding(id, code, KeyBinding.Category.MISC);
+                    return new KeyMapping(id, code, KeyMapping.Category.MISC);
                 } catch (NoClassDefFoundError | NoSuchMethodError e3) {
                     java.lang.reflect.Constructor<?> simpleCtor;
                     try {
-                        simpleCtor = KeyBinding.class.getDeclaredConstructor(String.class, int.class, String.class);
+                        simpleCtor = KeyMapping.class.getDeclaredConstructor(String.class, int.class, String.class);
                         simpleCtor.setAccessible(true);
-                        return (KeyBinding) simpleCtor.newInstance(id, code, category);
+                        return (KeyMapping) simpleCtor.newInstance(id, code, category);
                     } catch (Throwable e4) {
                         throw new RuntimeException("cannot create keybinding on this minecraft version", e4);
                     }

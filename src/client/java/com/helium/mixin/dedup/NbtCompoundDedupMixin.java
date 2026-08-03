@@ -3,8 +3,8 @@ package com.helium.mixin.dedup;
 import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,7 +15,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 
-@Mixin(NbtCompound.class)
+@Mixin(CompoundTag.class)
 public abstract class NbtCompoundDedupMixin {
 
     @Unique
@@ -35,7 +35,7 @@ public abstract class NbtCompoundDedupMixin {
         String[] names = {"entries", "tags", "field_5765"};
         for (String name : names) {
             try {
-                Field f = NbtCompound.class.getDeclaredField(name);
+                Field f = CompoundTag.class.getDeclaredField(name);
                 if (Map.class.isAssignableFrom(f.getType())) {
                     f.setAccessible(true);
                     helium$entriesField = f;
@@ -44,7 +44,7 @@ public abstract class NbtCompoundDedupMixin {
             } catch (NoSuchFieldException ignored) {}
         }
 
-        for (Field f : NbtCompound.class.getDeclaredFields()) {
+        for (Field f : CompoundTag.class.getDeclaredFields()) {
             if (Modifier.isStatic(f.getModifiers())) continue;
             if (Map.class.isAssignableFrom(f.getType())) {
                 f.setAccessible(true);
@@ -55,7 +55,7 @@ public abstract class NbtCompoundDedupMixin {
     }
 
     @Inject(method = "<init>(Ljava/util/Map;)V", at = @At("RETURN"), require = 0)
-    private void helium$replacemapimpl(Map<String, NbtElement> entries, CallbackInfo ci) {
+    private void helium$replacemapimpl(Map<String, Tag> entries, CallbackInfo ci) {
         helium$replacewitho2o();
     }
 
@@ -80,7 +80,7 @@ public abstract class NbtCompoundDedupMixin {
 
             Object current = helium$entriesField.get(this);
             if (current instanceof Map<?, ?> map && !(current instanceof Object2ObjectOpenHashMap)) {
-                helium$entriesField.set(this, new Object2ObjectOpenHashMap<>((Map<String, NbtElement>) map));
+                helium$entriesField.set(this, new Object2ObjectOpenHashMap<>((Map<String, Tag>) map));
             }
         } catch (Throwable t) {
             if (!helium$failed) {

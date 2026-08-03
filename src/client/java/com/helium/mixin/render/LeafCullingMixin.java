@@ -3,11 +3,11 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.render.LeafCullingEngine;
 import com.helium.render.LeafCullingEngine.CullingMode;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.render.block.BlockModelRenderer;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockRenderView;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.client.renderer.block.ModelBlockRenderer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Optional;
 
-@Mixin(BlockModelRenderer.class)
+@Mixin(ModelBlockRenderer.class)
 public abstract class LeafCullingMixin {
 
     @Unique
@@ -28,7 +28,7 @@ public abstract class LeafCullingMixin {
             cancellable = true,
             require = 0
     )
-    private static void helium$cullLeafFace(BlockRenderView world, BlockState state, boolean defaultval, Direction side, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+    private static void helium$cullLeafFace(BlockAndTintGetter world, BlockState state, boolean defaultval, Direction side, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         if (helium$failed) return;
 
         try {
@@ -37,7 +37,7 @@ public abstract class LeafCullingMixin {
 
             if (!LeafCullingEngine.isleaflike(state.getBlock())) return;
 
-            BlockPos sidepos = pos.offset(side);
+            BlockPos sidepos = pos.relative(side);
             BlockState sidestate = world.getBlockState(sidepos);
 
             Optional<Boolean> result = LeafCullingEngine.customshoulddraw(world, state, sidestate, pos, sidepos, side);

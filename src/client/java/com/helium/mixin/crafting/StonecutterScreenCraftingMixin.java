@@ -3,7 +3,7 @@ package com.helium.mixin.crafting;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.crafting.OneClickCraftingManager;
-import net.minecraft.client.gui.screen.ingame.StonecutterScreen;
+import net.minecraft.client.gui.screens.inventory.StonecutterScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,7 +25,7 @@ public abstract class StonecutterScreenCraftingMixin {
         if (!OneClickCraftingManager.isinitialized()) return;
 
         StonecutterScreen screen = (StonecutterScreen) ((Object) this);
-        int selectedRecipe = screen.getScreenHandler().getSelectedRecipe();
+        int selectedRecipe = screen.getMenu().getSelectedRecipeIndex();
         if (selectedRecipe != -1) {
             OneClickCraftingManager.setlastbutton(button);
             OneClickCraftingManager.stonecutterrecipeclicked(screen, button, selectedRecipe);

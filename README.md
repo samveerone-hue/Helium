@@ -21,7 +21,7 @@ lightweight client-side performance mod for Minecraft
 
 ## Building From Source
 
-you'll need **Java 21** installed. that's it. gradle wrapper handles everything else.
+you'll need **Java 25** installed. that's it. gradle wrapper handles everything else.
 
 ```bash
 git clone https://github.com/qborder/Helium.git
@@ -87,7 +87,7 @@ src/
 
 PRs welcome. if you're fixing a bug, please describe what was broken and why. if you're adding a feature, open an issue first so we don't waste each other's time.
 
-the codebase uses **Yarn mappings** and targets **Minecraft 1.21.x** with **Fabric Loader 0.16+**.
+the codebase uses **official Mojang names** (Minecraft 26.1+ ships de-obfuscated, so there is no Yarn mapping set) and targets **Minecraft 26.1.x** with **Fabric Loader 0.19+**.
 
 fair warning: the mixin naming convention uses `helium$` prefix for all injected methods. keep it consistent.
 

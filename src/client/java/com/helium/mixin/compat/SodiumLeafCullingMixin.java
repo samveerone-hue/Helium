@@ -3,11 +3,11 @@ package com.helium.mixin.compat;
 import com.helium.HeliumClient;
 import com.helium.render.Cullable;
 import com.helium.render.LeafCullingEngine;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,7 +31,7 @@ public class SodiumLeafCullingMixin {
             cancellable = true,
             require = 1
     )
-    private void helium$cullLeafFace(BlockState state, BlockView view, BlockPos pos, Direction facing, CallbackInfoReturnable<Boolean> cir) {
+    private void helium$cullLeafFace(BlockState state, BlockGetter view, BlockPos pos, Direction facing, CallbackInfoReturnable<Boolean> cir) {
         if (helium$failed) return;
 
         try {

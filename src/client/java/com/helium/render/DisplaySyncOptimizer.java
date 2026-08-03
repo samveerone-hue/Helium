@@ -3,7 +3,7 @@ package com.helium.render;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.gpu.GpuDetector;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWVidMode;
 
@@ -76,9 +76,9 @@ public final class DisplaySyncOptimizer {
     private static void detectRefreshRate() {
         try {
             long monitor = 0L;
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client != null && client.getWindow() != null) {
-                monitor = GLFW.glfwGetWindowMonitor(client.getWindow().getHandle());
+                monitor = GLFW.glfwGetWindowMonitor(client.getWindow().handle());
             }
             if (monitor == 0L) {
                 monitor = GLFW.glfwGetPrimaryMonitor();

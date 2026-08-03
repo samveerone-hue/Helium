@@ -2,7 +2,7 @@ package com.helium.mixin.memory;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.client.Screenshot;
 import org.lwjgl.system.MemoryUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -12,48 +12,48 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.nio.ByteBuffer;
 
-@Mixin(ScreenshotRecorder.class)
+@Mixin(Screenshot.class)
 public abstract class ScreenshotLeakMixin {
 
     @Unique
     private static ByteBuffer helium$trackedBuffer = null;
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Lnet/minecraft/client/gl/Framebuffer;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "saveScreenshot(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocSaveSimple(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Lnet/minecraft/client/gl/Framebuffer;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "saveScreenshot(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferSaveSimple(CallbackInfo ci) {
         helium$freeTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lnet/minecraft/client/gl/Framebuffer;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocSaveFull(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lnet/minecraft/client/gl/Framebuffer;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferSaveFull(CallbackInfo ci) {
         helium$freeTracker();
     }
 
-    @Inject(method = "takeScreenshot(Lnet/minecraft/client/gl/Framebuffer;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "takeScreenshot(Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocTakeScreenshot(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "takeScreenshot(Lnet/minecraft/client/gl/Framebuffer;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "takeScreenshot(Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferTakeScreenshot(CallbackInfo ci) {
         helium$freeTracker();
     }
 
-    @Inject(method = "takeScreenshot(Lnet/minecraft/client/gl/Framebuffer;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "takeScreenshot(Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocTakeScreenshotI(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "takeScreenshot(Lnet/minecraft/client/gl/Framebuffer;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "takeScreenshot(Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferTakeScreenshotI(CallbackInfo ci) {
         helium$freeTracker();
     }

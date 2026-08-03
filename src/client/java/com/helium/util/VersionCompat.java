@@ -1,8 +1,8 @@
 package com.helium.util;
 
-import net.minecraft.client.render.Camera;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Camera;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 
 import java.lang.reflect.Method;
 
@@ -14,18 +14,18 @@ public final class VersionCompat {
     private VersionCompat() {}
 
     public static Identifier createIdentifier(String namespace, String path) {
-        return Identifier.of(namespace, path);
+        return Identifier.fromNamespaceAndPath(namespace, path);
     }
 
-    public static Vec3d getCameraPosition(Camera camera) {
+    public static Vec3 getCameraPosition(Camera camera) {
         try {
-            return camera.getCameraPos();
+            return camera.position();
         } catch (NoSuchMethodError e) {
             return getCameraPositionLegacy(camera);
         }
     }
 
-    private static Vec3d getCameraPositionLegacy(Camera camera) {
+    private static Vec3 getCameraPositionLegacy(Camera camera) {
         if (!cameraFallbackResolved) {
             cameraFallbackResolved = true;
             try {
@@ -41,10 +41,10 @@ public final class VersionCompat {
 
         if (legacyCameraPos != null) {
             try {
-                return (Vec3d) legacyCameraPos.invoke(camera);
+                return (Vec3) legacyCameraPos.invoke(camera);
             } catch (Throwable ignored) {}
         }
 
-        return Vec3d.ZERO;
+        return Vec3.ZERO;
     }
 }

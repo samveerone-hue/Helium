@@ -5,10 +5,10 @@ import com.helium.config.HeliumConfig;
 import com.helium.particle.ParticleBatcher;
 import com.helium.particle.ParticleLimiter;
 import com.helium.threading.ParticleWorkerPool;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.Particle;
-import net.minecraft.client.particle.ParticleManager;
-import net.minecraft.client.render.Camera;
+import net.minecraft.client.particle.ParticleEngine;
+import net.minecraft.client.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ThreadLocalRandom;
 
-@Mixin(ParticleManager.class)
+@Mixin(ParticleEngine.class)
 public abstract class ParticleManagerMixin {
 
     @Unique
@@ -74,13 +74,13 @@ public abstract class ParticleManagerMixin {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.particleLOD) return;
 
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client.gameRenderer == null) return;
 
-            Camera camera = client.gameRenderer.getCamera();
+            Camera camera = client.gameRenderer.getMainCamera();
             if (camera == null) return;
 
-            net.minecraft.util.math.Vec3d camPos = com.helium.util.VersionCompat.getCameraPosition(camera);
+            net.minecraft.world.phys.Vec3 camPos = com.helium.util.VersionCompat.getCameraPosition(camera);
             double threshold = config.particleLODDistance;
             double thresholdSq = threshold * threshold;
 
@@ -95,7 +95,7 @@ public abstract class ParticleManagerMixin {
 
     @SuppressWarnings("unchecked")
     @Unique
-    private void helium$applylodtoparticles(net.minecraft.util.math.Vec3d camPos, double thresholdSq, double reduction) {
+    private void helium$applylodtoparticles(net.minecraft.world.phys.Vec3 camPos, double thresholdSq, double reduction) {
         Field mapField = VersionMethodResolver.particlesmapfield();
         if (mapField == null) return;
 
@@ -142,7 +142,7 @@ public abstract class ParticleManagerMixin {
             }
 
             for (Particle p : toKill) {
-                p.markDead();
+                p.remove();
             }
         } catch (Throwable t) {
             helium$lodFailed = true;
@@ -176,7 +176,7 @@ public abstract class ParticleManagerMixin {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled) return;
 
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
 
         boolean doCulling = config.particleCulling;

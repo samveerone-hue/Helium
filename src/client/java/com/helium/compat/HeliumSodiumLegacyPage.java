@@ -1,7 +1,7 @@
 package com.helium.compat;
 
 import com.helium.HeliumClient;
-import net.minecraft.text.Text;
+import net.minecraft.network.chat.Component;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
@@ -28,8 +28,8 @@ public final class HeliumSodiumLegacyPage {
             Object groupsList = immutableListClass.getMethod("of", Object.class).invoke(null, emptyGroup);
 
             Class<?> optionPageClass = Class.forName("net.caffeinemc.mods.sodium.client.gui.options.OptionPage");
-            Text heliumName = Text.literal("Helium");
-            Constructor<?> pageCtor = optionPageClass.getConstructor(Text.class, immutableListClass);
+            Component heliumName = Component.literal("Helium");
+            Constructor<?> pageCtor = optionPageClass.getConstructor(Component.class, immutableListClass);
             return pageCtor.newInstance(heliumName, groupsList);
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("helium legacy sodium: failed to create helium page - {}", t.getMessage());

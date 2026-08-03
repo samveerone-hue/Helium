@@ -3,7 +3,7 @@ package com.helium.mixin.dsa;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.gpu.GBGL;
-import net.minecraft.client.gl.Framebuffer;
+import com.mojang.blaze3d.pipeline.RenderTarget;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL45;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Framebuffer.class)
+@Mixin(RenderTarget.class)
 public abstract class FramebufferDSAMixin {
 
     @Shadow public int textureWidth;
@@ -32,7 +32,7 @@ public abstract class FramebufferDSAMixin {
         } catch (Throwable t) {
             if (!helium$dsaFboFailed) {
                 helium$dsaFboFailed = true;
-                HeliumClient.LOGGER.warn("[helium] DSA FBO caps init failed in Framebuffer.initFbo", t);
+                HeliumClient.LOGGER.warn("[helium] DSA FBO caps init failed in RenderTarget.initFbo", t);
             }
         }
     }

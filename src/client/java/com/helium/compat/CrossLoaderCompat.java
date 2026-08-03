@@ -1,8 +1,8 @@
 package com.helium.compat;
 
 import com.helium.HeliumClient;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.KeyMapping;
 import org.apache.commons.lang3.ArrayUtils;
 
 import java.lang.reflect.Method;
@@ -12,7 +12,7 @@ import java.util.List;
 public final class CrossLoaderCompat {
     
     private static final List<Runnable> tickhandlers = new ArrayList<>();
-    private static final List<KeyBinding> pendingkeybindings = new ArrayList<>();
+    private static final List<KeyMapping> pendingkeybindings = new ArrayList<>();
     private static boolean fabrickeybindingavailable = false;
     private static boolean fabrictickavailable = false;
     private static boolean keybindingsregistered = false;
@@ -33,7 +33,7 @@ public final class CrossLoaderCompat {
         }
     }
     
-    public static KeyBinding registerkeybinding(KeyBinding keybinding) {
+    public static KeyMapping registerkeybinding(KeyMapping keybinding) {
         if (fabrickeybindingavailable) {
             return registerwithfabricapi(keybinding);
         }
@@ -41,11 +41,11 @@ public final class CrossLoaderCompat {
         return keybinding;
     }
     
-    private static KeyBinding registerwithfabricapi(KeyBinding keybinding) {
+    private static KeyMapping registerwithfabricapi(KeyMapping keybinding) {
         try {
             Class<?> helper = Class.forName("net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper");
-            Method register = helper.getMethod("registerKeyBinding", KeyBinding.class);
-            return (KeyBinding) register.invoke(null, keybinding);
+            Method register = helper.getMethod("registerKeyBinding", KeyMapping.class);
+            return (KeyMapping) register.invoke(null, keybinding);
         } catch (Exception e) {
             HeliumClient.LOGGER.warn("fabric api keybinding failed, deferring: {}", e.getMessage());
             pendingkeybindings.add(keybinding);
@@ -56,15 +56,15 @@ public final class CrossLoaderCompat {
     public static void registerpendingkeybindings() {
         if (keybindingsregistered || pendingkeybindings.isEmpty()) return;
         
-        MinecraftClient client = MinecraftClient.getInstance();
+        Minecraft client = Minecraft.getInstance();
         if (client == null || client.options == null) return;
         
         try {
             com.helium.mixin.compat.GameOptionsAccessor accessor = 
                 (com.helium.mixin.compat.GameOptionsAccessor) (Object) client.options;
-            KeyBinding[] current = accessor.helium$getallkeys();
+            KeyMapping[] current = accessor.helium$getallkeys();
             
-            for (KeyBinding keybinding : pendingkeybindings) {
+            for (KeyMapping keybinding : pendingkeybindings) {
                 current = ArrayUtils.add(current, keybinding);
             }
             

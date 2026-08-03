@@ -1,13 +1,13 @@
 package com.helium.mixin.render;
 
 import com.helium.render.ShaderUniformCache;
-import net.minecraft.client.resource.ResourceReloadLogger;
+import net.minecraft.client.ResourceLoadStateTracker;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ResourceReloadLogger.class)
+@Mixin(ResourceLoadStateTracker.class)
 public class ResourceReloadCacheMixin {
 
     @Inject(method = "finish", at = @At("HEAD"), require = 0)

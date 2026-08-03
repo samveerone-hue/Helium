@@ -4,11 +4,11 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import net.caffeinemc.mods.sodium.api.blockentity.BlockEntityRenderHandler;
 import net.caffeinemc.mods.sodium.api.blockentity.BlockEntityRenderPredicate;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
 
 public final class HeliumBlockEntityCulling {
 
@@ -29,10 +29,10 @@ public final class HeliumBlockEntityCulling {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.blockEntityCulling) return true;
 
-            MinecraftClient client = MinecraftClient.getInstance();
+            Minecraft client = Minecraft.getInstance();
             if (client.player == null) return true;
 
-            double dist = client.player.getBlockPos().getSquaredDistance(pos);
+            double dist = client.player.blockPosition().distSqr(pos);
             double maxDist = config.blockEntityCullDistance * config.blockEntityCullDistance;
             return dist <= maxDist;
         };

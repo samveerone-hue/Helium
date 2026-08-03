@@ -5,11 +5,11 @@ import com.helium.config.HeliumConfig;
 import com.helium.render.Cullable;
 import com.helium.render.LeafCullingEngine;
 import com.helium.render.LeafCullingEngine.CullingMode;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.LeavesBlock;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.world.BlockView;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.BlockGetter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -47,7 +47,7 @@ public class LeavesBlockMixin implements Cullable {
     }
 
     @Override
-    public boolean helium$shouldCullSide(BlockState state, BlockView view, BlockPos pos, Direction facing) {
+    public boolean helium$shouldCullSide(BlockState state, BlockGetter view, BlockPos pos, Direction facing) {
         return false;
     }
 }

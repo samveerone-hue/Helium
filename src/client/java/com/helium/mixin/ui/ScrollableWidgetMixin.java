@@ -5,14 +5,14 @@ import com.helium.ui.ScrollableWidgetManipulator;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.client.gui.widget.ScrollableWidget;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.gui.components.AbstractScrollArea;
+import net.minecraft.util.Mth;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(ScrollableWidget.class)
+@Mixin(AbstractScrollArea.class)
 public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulator {
 
     @Shadow
@@ -64,10 +64,10 @@ public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulat
 
     @WrapOperation(
             method = "mouseScrolled",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/widget/ScrollableWidget;setScrollY(D)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollY(D)V"),
             require = 0
     )
-    private void helium$captureVelocity(ScrollableWidget instance, double targetScrollY, Operation<Void> original) {
+    private void helium$captureVelocity(AbstractScrollArea instance, double targetScrollY, Operation<Void> original) {
         if (!ScrollMath.isEnabled() || !helium$renderSmooth) {
             original.call(instance, targetScrollY);
             return;
@@ -88,11 +88,11 @@ public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulat
 
     @WrapOperation(
             method = "mouseDragged",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/widget/ScrollableWidget;setScrollY(D)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollY(D)V"),
             require = 0
     )
-    private void helium$clampDraggedScrollY(ScrollableWidget instance, double targetScrollY, Operation<Void> original) {
-        original.call(instance, MathHelper.clamp(targetScrollY, 0.0, this.getMaxScrollY()));
+    private void helium$clampDraggedScrollY(AbstractScrollArea instance, double targetScrollY, Operation<Void> original) {
+        original.call(instance, Mth.clamp(targetScrollY, 0.0, this.getMaxScrollY()));
     }
 
     @WrapMethod(method = "setScrollY", require = 0)

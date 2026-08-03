@@ -1,7 +1,7 @@
 package com.helium.math;
 
 import net.minecraft.util.Util;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.Mth;
 
 public final class GBFMath {
 
@@ -65,7 +65,7 @@ public final class GBFMath {
         }
 
         float cosAbs = t * invsqrt(t);
-        return Math.copySign(cosAbs, MathHelper.cos(halfAngle));
+        return Math.copySign(cosAbs, Mth.cos(halfAngle));
     }
 
     public static float fastlog(float x) {
