@@ -7,17 +7,16 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-final class GlContextUpgrade {
+public final class GlContextUpgrade {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Helium/GlContextUpgrade");
     private static volatile Boolean enabled = null;
 
     private GlContextUpgrade() {}
 
-    static boolean isEnabled() {
+    public static boolean isEnabled() {
         if (enabled != null) return enabled;
 
-        // Added Catalyst check here alongside threatengl
         if (FabricLoader.getInstance().isModLoaded("threatengl") || FabricLoader.getInstance().isModLoaded("catalyst")) {
             enabled = false;
             LOGGER.info("catalyst or threatengl detected - disabling gl context upgrade to avoid conflicts");
