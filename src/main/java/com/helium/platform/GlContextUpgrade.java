@@ -1,4 +1,4 @@
-package com.helium.mixin.platform;
+package com.helium.platform;
 
 import com.helium.HeliumClient;
 import net.fabricmc.loader.api.FabricLoader;
