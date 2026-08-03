@@ -8,7 +8,7 @@ import java.nio.file.Path;
 
 final class GlContextUpgrade {
 
-    private static Boolean enabled = null;
+    private static volatile Boolean enabled = null;
 
     private GlContextUpgrade() {}
 
@@ -31,7 +31,7 @@ final class GlContextUpgrade {
                     return false;
                 }
             }
-        } catch (Throwable ignored) {}
+        } catch (Exception ignored) {}
 
         enabled = true;
         return true;
