@@ -17,8 +17,8 @@ import java.lang.reflect.Field;
 @Mixin(RenderTarget.class)
 public abstract class FramebufferBlitMixin {
 
-    @Shadow public int textureWidth;
-    @Shadow public int textureHeight;
+    @Shadow public int width;
+    @Shadow public int height;
 
     @Unique
     private static boolean helium$failed = false;
@@ -43,8 +43,8 @@ public abstract class FramebufferBlitMixin {
             GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, 0);
 
             GL30.glBlitFramebuffer(
-                    0, 0, this.textureWidth, this.textureHeight,
-                    0, 0, this.textureWidth, this.textureHeight,
+                    0, 0, this.width, this.height,
+                    0, 0, this.width, this.height,
                     GL30.GL_COLOR_BUFFER_BIT,
                     GL30.GL_NEAREST
             );

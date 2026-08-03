@@ -79,23 +79,15 @@ public abstract class WindowMixin {
         DwmApi.applyWindowStyle(this.fullscreen, this.handle);
     }
 
-    @Inject(method = "toggleFullscreen", at = @At("TAIL"), require = 0)
+    @Inject(method = "toggleFullScreen", at = @At("TAIL"), require = 0)
     private void helium$onToggleFullscreen(CallbackInfo ci) {
         if (Util.getPlatform() != Util.OS.WINDOWS) return;
 
         DwmApi.applyWindowStyle(this.fullscreen, this.handle);
     }
 
-    @Inject(method = "logGlError", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "defaultErrorCallback", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$suppressGLErrorsModern(int error, long description, CallbackInfo ci) {
-        HeliumConfig config = HeliumClient.getConfig();
-        if (config != null && config.suppressOpenGLErrors) {
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "logOnGlError", at = @At("HEAD"), cancellable = true, require = 0)
-    private static void helium$suppressGLErrorsLogOn(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.suppressOpenGLErrors) {
             ci.cancel();

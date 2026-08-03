@@ -18,22 +18,22 @@ public abstract class ScreenshotLeakMixin {
     @Unique
     private static ByteBuffer helium$trackedBuffer = null;
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "grab(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocSaveSimple(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "grab(Ljava/io/File;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferSaveSimple(CallbackInfo ci) {
         helium$freeTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
+    @Inject(method = "grab(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("HEAD"), require = 0)
     private static void helium$trackBufferAllocSaveFull(CallbackInfo ci) {
         helium$resetTracker();
     }
 
-    @Inject(method = "saveScreenshot(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "grab(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("RETURN"), require = 0)
     private static void helium$freeTrackedBufferSaveFull(CallbackInfo ci) {
         helium$freeTracker();
     }

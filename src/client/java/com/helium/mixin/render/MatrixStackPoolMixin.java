@@ -132,7 +132,7 @@ public abstract class MatrixStackPoolMixin {
     }
 
     @SuppressWarnings("unchecked")
-    @Inject(method = "push", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "pushPose", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$pooledPush(CallbackInfo ci) {
         if (helium$failed) return;
 
@@ -178,7 +178,7 @@ public abstract class MatrixStackPoolMixin {
     }
 
     @SuppressWarnings("unchecked")
-    @Inject(method = "pop", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "popPose", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$pooledPop(CallbackInfo ci) {
         if (helium$failed) return;
 

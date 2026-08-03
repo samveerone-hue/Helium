@@ -40,7 +40,6 @@
     "lighting.DynamicGraphMixin",
     "render.GameRendererTemporalMixin",
     "render.WorldRendererPipelineMixin",
-    "performance.WindowDisplayMixin",
     "compat.GameOptionsAccessor",
     "compat.SodiumOptionsGUILegacyMixin",
     "compat.ReesesOptionsLegacyMixin",
@@ -87,7 +86,6 @@
     "dsa.FramebufferDSAMixin",
     "crafting.ClientPlayNetworkHandlerCraftingMixin",
     "crafting.RecipeBookWidgetCraftingMixin",
-    "crafting.StonecutterScreenCraftingMixin",
 
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",

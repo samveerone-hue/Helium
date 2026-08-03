@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Minecraft.class)
 public abstract class SkinPartsDimensionMixin {
 
-    @Inject(method = "setWorld(Lnet/minecraft/client/multiplayer/ClientLevel;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "setLevel(Lnet/minecraft/client/multiplayer/ClientLevel;)V", at = @At("RETURN"), require = 0)
     private void helium$refreshskinondimchange(ClientLevel world, CallbackInfo ci) {
         if (world == null) return;
 

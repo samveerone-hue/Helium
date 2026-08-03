@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(FramerateLimitTracker.class)
 public class InactivityFpsLimiterMixin {
 
-    @Inject(method = "update", at = @At("RETURN"), cancellable = true, require = 0)
+    @Inject(method = "getFramerateLimit", at = @At("RETURN"), cancellable = true, require = 0)
     private void helium$limitInactiveFps(CallbackInfoReturnable<Integer> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.reduceFpsWhenInactive) return;

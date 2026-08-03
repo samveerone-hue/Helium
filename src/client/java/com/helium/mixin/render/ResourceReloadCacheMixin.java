@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ResourceLoadStateTracker.class)
 public class ResourceReloadCacheMixin {
 
-    @Inject(method = "finish", at = @At("HEAD"), require = 0)
+    @Inject(method = "finishReload", at = @At("HEAD"), require = 0)
     private void helium$invalidateshadercacheonreload(CallbackInfo ci) {
         ShaderUniformCache.invalidate();
     }

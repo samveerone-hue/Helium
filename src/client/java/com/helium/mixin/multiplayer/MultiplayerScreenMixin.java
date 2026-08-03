@@ -15,18 +15,18 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class MultiplayerScreenMixin {
 
     @Shadow
-    protected ServerSelectionList serverListWidget;
+    protected ServerSelectionList serverSelectionList;
 
-    @Redirect(method = "refresh", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;setScreen(Lnet/minecraft/client/gui/screens/Screen;)V"))
+    @Redirect(method = "refreshServerList", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;setScreen(Lnet/minecraft/client/gui/screens/Screen;)V"))
     private void helium$preserveScrollOnRefresh(Minecraft client, Screen newScreen) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.preserveScrollOnRefresh
-                || !(newScreen instanceof JoinMultiplayerScreen) || this.serverListWidget == null) {
+                || !(newScreen instanceof JoinMultiplayerScreen) || this.serverSelectionList == null) {
             client.setScreen(newScreen);
             return;
         }
 
-        double scrollY = this.serverListWidget.scrollAmount();
+        double scrollY = this.serverSelectionList.scrollAmount();
         client.setScreen(newScreen);
         ServerSelectionList newWidget = ((MultiplayerScreenAccessor) newScreen).helium$getServerListWidget();
         if (newWidget != null) {

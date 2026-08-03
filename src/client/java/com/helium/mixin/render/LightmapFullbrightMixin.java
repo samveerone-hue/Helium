@@ -16,7 +16,7 @@ public abstract class LightmapFullbrightMixin {
 
     //? if >=1.21.1 {
     @Redirect(
-            method = "update",
+            method = "render",
             at = @At(value = "INVOKE", target = "Ljava/lang/Double;floatValue()F", ordinal = 1),
             require = 0
     )

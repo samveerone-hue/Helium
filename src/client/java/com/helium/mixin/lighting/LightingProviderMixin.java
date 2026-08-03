@@ -17,7 +17,7 @@ public abstract class LightingProviderMixin {
     @Unique
     private static boolean helium$failed = false;
 
-    @Inject(method = "doLightUpdates", at = @At("HEAD"), cancellable = false, require = 0)
+    @Inject(method = "runLightUpdates", at = @At("HEAD"), cancellable = false, require = 0)
     private void helium$trackLightUpdates(CallbackInfoReturnable<Integer> cir) {
         if (helium$failed) return;
         try {

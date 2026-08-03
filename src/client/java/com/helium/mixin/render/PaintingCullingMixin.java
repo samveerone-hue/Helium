@@ -25,7 +25,7 @@ public abstract class PaintingCullingMixin {
     @Unique
     private static boolean helium$failed = false;
 
-    @Inject(method = "render(Lnet/minecraft/client/renderer/entity/state/PaintingRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
+    @Inject(method = "submit(Lnet/minecraft/client/renderer/entity/state/PaintingRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V",
             at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$cullpainting(PaintingRenderState renderstate, PoseStack matrices,
                                       SubmitNodeCollector queue, CameraRenderState camerastate,

@@ -20,11 +20,11 @@ public abstract class MatrixStackEntryMixin {
 
     @Mutable
     @Shadow
-    Matrix3f normalMatrix;
+    Matrix3f normal;
 
     @Mutable
     @Shadow
-    Matrix4f positionMatrix;
+    Matrix4f pose;
 
     @Unique
     private static boolean helium$matrixReplaceFailed = false;
@@ -36,8 +36,8 @@ public abstract class MatrixStackEntryMixin {
         try {
             HeliumConfig config = HeliumClient.getConfig();
             if (config != null && config.fastMath) {
-                this.positionMatrix = new GBFMatrix4f(this.positionMatrix);
-                this.normalMatrix = new GBFMatrix3f(this.normalMatrix);
+                this.pose = new GBFMatrix4f(this.pose);
+                this.normal = new GBFMatrix3f(this.normal);
             }
         } catch (Throwable t) {
             if (!helium$matrixReplaceFailed) {

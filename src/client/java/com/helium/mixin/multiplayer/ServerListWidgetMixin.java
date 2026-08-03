@@ -23,11 +23,11 @@ public abstract class ServerListWidgetMixin {
     @Shadow
     @Mutable
     @Final
-    private static ThreadPoolExecutor SERVER_PINGER_THREAD_POOL;
+    private static ThreadPoolExecutor THREAD_POOL;
 
     @Shadow
     @Final
-    private List<ServerSelectionList.OnlineServerEntry> servers;
+    private List<ServerSelectionList.OnlineServerEntry> onlineServers;
 
     @Unique
     private static final int HELIUM_THREAD_OVERHEAD = 5;
@@ -46,12 +46,12 @@ public abstract class ServerListWidgetMixin {
         }
     }
 
-    @Inject(method = "updateEntries", at = @At("HEAD"), require = 0)
+    @Inject(method = "refreshEntries", at = @At("HEAD"), require = 0)
     private void helium$onUpdateEntries(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
-        if (SERVER_PINGER_THREAD_POOL.getActiveCount() >= HELIUM_THREAD_OVERHEAD) {
+        if (THREAD_POOL.getActiveCount() >= HELIUM_THREAD_OVERHEAD) {
             helium$rebuildThreadPool();
         }
     }
@@ -59,13 +59,13 @@ public abstract class ServerListWidgetMixin {
     @Unique
     private void helium$rebuildThreadPool() {
         try {
-            SERVER_PINGER_THREAD_POOL.shutdownNow();
+            THREAD_POOL.shutdownNow();
         } catch (Exception ignored) {}
 
-        int serverCount = servers != null ? servers.size() : 0;
+        int serverCount = onlineServers != null ? onlineServers.size() : 0;
         int poolSize = Math.max(serverCount + HELIUM_THREAD_OVERHEAD, Runtime.getRuntime().availableProcessors());
 
-        SERVER_PINGER_THREAD_POOL = new ScheduledThreadPoolExecutor(
+        THREAD_POOL = new ScheduledThreadPoolExecutor(
                 poolSize,
                 new ThreadFactoryBuilder()
                         .setNameFormat("Helium-ServerPinger-%d")

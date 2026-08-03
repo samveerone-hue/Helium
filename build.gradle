@@ -78,6 +78,10 @@ dependencies {
     compileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
     compileOnly "net.caffeinemc:sodium-fabric-api:${project.sodium_api_version}"
     compileOnly "maven.modrinth:sodium:mc26.1.2-0.9.1-fabric"
+
+    // optional deps the dev client needs on its runtime classpath
+    localRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+    localRuntime "maven.modrinth:sodium:mc26.1.2-0.9.1-fabric"
 }
 
 processResources {

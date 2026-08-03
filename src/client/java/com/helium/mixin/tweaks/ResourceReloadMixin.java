@@ -14,7 +14,7 @@ import java.util.concurrent.CompletableFuture;
 @Mixin(Minecraft.class)
 public class ResourceReloadMixin {
 
-    @Inject(method = "reloadResources()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "reloadResourcePacks()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$asyncreload(CallbackInfoReturnable<CompletableFuture<Void>> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.asyncPackReload) return;

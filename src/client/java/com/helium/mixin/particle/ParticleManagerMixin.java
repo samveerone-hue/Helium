@@ -159,7 +159,7 @@ public abstract class ParticleManagerMixin {
                 name.contains("smoke") || name.contains("dust");
     }
 
-    @Inject(method = "addParticle(Lnet/minecraft/client/particle/Particle;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "add(Lnet/minecraft/client/particle/Particle;)V", at = @At("HEAD"), cancellable = true)
     private void helium$cullDistantParticles(Particle particle, CallbackInfo ci) {
         try {
             helium$cullDistantParticlesInternal(particle, ci);

@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BlockBehaviour.class)
 public abstract class BambooLightMixin {
 
-    @Inject(method = "getAmbientOcclusionLightLevel", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "getShadeBrightness", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$skipBambooLightCalc(BlockState state, BlockGetter world, BlockPos pos,
                                             CallbackInfoReturnable<Float> cir) {
         HeliumConfig config = HeliumClient.getConfig();

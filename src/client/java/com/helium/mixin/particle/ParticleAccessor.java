@@ -10,6 +10,6 @@ public interface ParticleAccessor {
     @Accessor("age")
     int getAge();
 
-    @Accessor("maxAge")
+    @Accessor("lifetime")
     int getMaxAge();
 }

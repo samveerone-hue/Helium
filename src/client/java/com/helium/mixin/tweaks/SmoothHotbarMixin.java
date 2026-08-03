@@ -23,7 +23,7 @@ public abstract class SmoothHotbarMixin {
     @Nullable
     protected abstract Player getCameraPlayer();
 
-    @Inject(method = "renderHotbar", at = @At("HEAD"))
+    @Inject(method = "extractItemHotbar", at = @At("HEAD"))
     private void helium$onRenderHotbarHead(GuiGraphicsExtractor context, DeltaTracker counter, CallbackInfo ci) {
         if (!HeliumClient.getConfig().smoothHotbar) return;
 
@@ -50,7 +50,7 @@ public abstract class SmoothHotbarMixin {
     }
 
     @ModifyArgs(
-            method = "renderHotbar",
+            method = "extractItemHotbar",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Ljava/util/function/Function;Lnet/minecraft/resources/Identifier;IIII)V",
@@ -67,7 +67,7 @@ public abstract class SmoothHotbarMixin {
     }
 
     @ModifyArgs(
-            method = "renderHotbar",
+            method = "extractItemHotbar",
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;drawGuiTexture(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V",

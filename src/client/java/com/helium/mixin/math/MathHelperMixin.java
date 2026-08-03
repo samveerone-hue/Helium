@@ -20,7 +20,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "fastInverseSqrt(D)D", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "fastInvSqrt(D)D", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastInvSqrt(double value, CallbackInfoReturnable<Double> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && FastMath.isInitialized() && config.fastMath) {
@@ -28,7 +28,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "floorMod(II)I", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "positiveModulo(II)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorModInt(int dividend, int divisor, CallbackInfoReturnable<Integer> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
@@ -40,7 +40,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "floorMod(FF)F", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "positiveModulo(FF)F", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorModFloat(float dividend, float divisor, CallbackInfoReturnable<Float> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
@@ -48,7 +48,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "floorMod(DD)D", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "positiveModulo(DD)D", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorModDouble(double dividend, double divisor, CallbackInfoReturnable<Double> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
@@ -56,7 +56,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "ceilLog2", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "ceillog2", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastCeilLog2(int value, CallbackInfoReturnable<Integer> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
@@ -68,7 +68,7 @@ public abstract class MathHelperMixin {
         }
     }
 
-    @Inject(method = "floorLog2", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "log2", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorLog2(int value, CallbackInfoReturnable<Integer> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
