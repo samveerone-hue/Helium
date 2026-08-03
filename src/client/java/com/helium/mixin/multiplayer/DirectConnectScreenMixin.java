@@ -41,7 +41,7 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
     @Unique private static final Identifier PINGING_5 = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/pinging_5.png");
     @Unique private static final Identifier DEFAULT_ICON = Identifier.fromNamespaceAndPath("helium", "gui/serverlist/default_icon.png");
 
-    @Shadow private EditBox addressField;
+    @Shadow private EditBox ipEdit;
 
     @Unique private String helium$lastAddress = "";
     @Unique private String helium$serverName = "";
@@ -113,15 +113,15 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"), require = 0)
+    @Inject(method = "extractRenderState", at = @At("TAIL"), require = 0)
     private void helium$renderServerPreview(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.directConnectPreview) {
             return;
         }
 
-        if (addressField != null) {
-            String address = addressField.getValue();
+        if (ipEdit != null) {
+            String address = ipEdit.getValue();
             if (address != null && !address.isBlank() && !address.equals(helium$lastAddress)) {
                 helium$lastAddress = address;
                 DirectConnectPreview.onAddressChanged(address);
@@ -134,8 +134,8 @@ public abstract class DirectConnectScreenMixin extends Screen implements ServerP
         int rowWidth = Math.min(maxRowWidth, Math.max(minRowWidth, this.width - sidePadding * 2));
         int baseX = (this.width - rowWidth) / 2;
 
-        int baseY = (addressField != null)
-                ? addressField.getY() + addressField.getHeight() + 8
+        int baseY = (ipEdit != null)
+                ? ipEdit.getY() + ipEdit.getHeight() + 8
                 : this.height / 2 + 30;
 
         int iconSize = 32;

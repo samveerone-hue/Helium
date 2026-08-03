@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(RecipeBookComponent.class)
 public abstract class RecipeBookWidgetCraftingMixin {
 
-    @Inject(at = @At("TAIL"), method = "select(Lnet/minecraft/client/gui/screens/recipebook/RecipeCollection;Lnet/minecraft/world/item/crafting/display/RecipeDisplayId;Z)Z", require = 0)
+    @Inject(at = @At("TAIL"), method = "tryPlaceRecipe(Lnet/minecraft/client/gui/screens/recipebook/RecipeCollection;Lnet/minecraft/world/item/crafting/display/RecipeDisplayId;Z)Z", require = 0)
     private void helium$clickRecipeTail(RecipeCollection results, RecipeDisplayId recipeId, boolean bl, CallbackInfoReturnable<Boolean> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.oneClickCrafting) return;

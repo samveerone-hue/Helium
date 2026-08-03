@@ -18,7 +18,7 @@ public abstract class WorldRendererPipelineMixin {
     @Unique
     private static boolean helium$failed = false;
 
-    @Inject(method = "render", at = @At("HEAD"), require = 0)
+    @Inject(method = "renderLevel", at = @At("HEAD"), require = 0)
     private void helium$frameStart(CallbackInfo ci) {
         if (helium$failed) return;
         try {
@@ -44,7 +44,7 @@ public abstract class WorldRendererPipelineMixin {
         }
     }
 
-    @Inject(method = "render", at = @At("RETURN"), require = 0)
+    @Inject(method = "renderLevel", at = @At("RETURN"), require = 0)
     private void helium$frameEnd(CallbackInfo ci) {
         if (helium$failed) return;
         try {

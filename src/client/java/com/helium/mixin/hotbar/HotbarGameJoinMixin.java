@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPacketListener.class)
 public abstract class HotbarGameJoinMixin {
 
-    @Inject(method = "onGameJoin", at = @At("TAIL"), require = 0)
+    @Inject(method = "handleLogin", at = @At("TAIL"), require = 0)
     private void helium$warnhotbardisabled(ClientboundLoginPacket packet, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;

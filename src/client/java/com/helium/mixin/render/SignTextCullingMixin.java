@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.WallSignBlock;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.blockentity.AbstractSignRenderer;
 import net.minecraft.client.renderer.blockentity.state.SignRenderState;
+import net.minecraft.world.level.block.entity.SignText;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.core.BlockPos;
@@ -29,12 +30,13 @@ public abstract class SignTextCullingMixin {
     @Unique
     private static final double ONE_SIGN_ROTATION = Math.PI / 8.0;
 
-    @Inject(method = "renderText", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "submitSignText", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$cullsigntext(SignRenderState renderstate, PoseStack matrices,
                                       SubmitNodeCollector queue,
-                                      boolean front, CallbackInfo ci) {
+                                      SignText text, CallbackInfo ci) {
         if (helium$failed) return;
         try {
+            boolean front = text == renderstate.frontText;
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.signTextCulling) return;
 

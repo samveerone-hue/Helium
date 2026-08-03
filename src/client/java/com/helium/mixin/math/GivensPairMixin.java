@@ -17,7 +17,7 @@ public abstract class GivensPairMixin {
     @Unique
     private static final GivensParameters helium$IDENTITY = new GivensParameters(0.0F, 1.0F);
 
-    @Inject(method = "normalize", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "fromUnnormalized", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastNormalize(float a, float b, CallbackInfoReturnable<GivensParameters> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {
@@ -31,7 +31,7 @@ public abstract class GivensPairMixin {
         }
     }
 
-    @Inject(method = "fromAngle", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "fromPositiveAngle", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFromAngle(float radians, CallbackInfoReturnable<GivensParameters> cir) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config != null && config.fastMath) {

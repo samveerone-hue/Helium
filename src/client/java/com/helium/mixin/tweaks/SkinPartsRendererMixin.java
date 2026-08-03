@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public abstract class SkinPartsRendererMixin {
 
     @Redirect(
-            method = "updateRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
+            method = "extractRenderState(Lnet/minecraft/world/entity/Avatar;Lnet/minecraft/client/renderer/entity/state/AvatarRenderState;F)V",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/world/entity/Avatar;isModelPartVisible(Lnet/minecraft/world/entity/player/PlayerModelPart;)Z"),
             require = 0

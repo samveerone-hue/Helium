@@ -49,7 +49,7 @@ public abstract class LevelLoadingScreenMixin {
         }
     }
 
-    @Inject(method = "close", at = @At("HEAD"), require = 0)
+    @Inject(method = "onClose", at = @At("HEAD"), require = 0)
     private void helium$onLoadEnd(CallbackInfo ci) {
         if (helium$failed) return;
         try {

@@ -33,9 +33,9 @@ public abstract class LanguageReloadMixin {
 
     @Shadow
     @Nullable
-    public net.minecraft.client.gui.screens.Screen currentScreen;
+    public net.minecraft.client.gui.screens.Screen screen;
 
-    @Inject(method = "reloadResources()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "reloadResourcePacks()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$skipFullReloadForLanguage(CallbackInfoReturnable<CompletableFuture<Void>> cir) {
         helium$trySkipReload(cir);
     }
@@ -44,7 +44,7 @@ public abstract class LanguageReloadMixin {
     private void helium$cancelSplashOnLanguageChange(Overlay overlay, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.instantLanguageChange) return;
-        if (overlay instanceof LoadingOverlay && currentScreen instanceof LanguageSelectScreen) {
+        if (overlay instanceof LoadingOverlay && screen instanceof LanguageSelectScreen) {
             ci.cancel();
         }
     }

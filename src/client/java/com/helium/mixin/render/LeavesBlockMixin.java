@@ -22,7 +22,7 @@ public class LeavesBlockMixin implements Cullable {
     @Unique
     private static boolean helium$failed = false;
 
-    @Inject(method = "isSideInvisible", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "skipRendering", at = @At("HEAD"), cancellable = true, require = 0)
     protected void helium$cullLeafSide(BlockState state, BlockState stateFrom, Direction direction, CallbackInfoReturnable<Boolean> cir) {
         if (helium$failed) return;
         try {

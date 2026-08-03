@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(AbstractSelectionList.class)
 public abstract class EntryListWidgetMixin {
 
-    @Inject(method = "renderWidget", at = @At("HEAD"), require = 0)
+    @Inject(method = "extractWidgetRenderState", at = @At("HEAD"), require = 0)
     private void helium$manipulateScrollAmount(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         if (!ScrollMath.isEnabled()) return;
 

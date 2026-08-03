@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(KeyMapping.class)
 public abstract class HotbarKeybindingMixin {
 
-    @Inject(method = "setPressed", at = @At("HEAD"), require = 0)
+    @Inject(method = "setDown", at = @At("HEAD"), require = 0)
     private void helium$onhotbarkeypressed(boolean pressed, CallbackInfo ci) {
         if (!pressed) return;
 

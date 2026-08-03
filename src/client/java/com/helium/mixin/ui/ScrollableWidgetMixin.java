@@ -16,13 +16,13 @@ import org.spongepowered.asm.mixin.injection.At;
 public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulator {
 
     @Shadow
-    private double scrollY;
+    private double scrollAmount;
 
     @Shadow
-    public abstract int getMaxScrollY();
+    public abstract int maxScrollAmount();
 
     @Shadow
-    public abstract void setScrollY(double scrollY);
+    public abstract void setScrollAmount(double scrollAmount);
 
     @Unique
     private double helium$animationTimer = 0;
@@ -46,25 +46,25 @@ public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulat
 
     @Unique
     private void helium$applyMotion(float delta) {
-        setScrollY(scrollY + ScrollMath.scrollbarVelocity(helium$animationTimer, helium$scrollStartVelocity) * delta);
+        setScrollAmount(scrollAmount + ScrollMath.scrollbarVelocity(helium$animationTimer, helium$scrollStartVelocity) * delta);
         helium$animationTimer += delta * 10 / ScrollMath.getAnimationDuration();
     }
 
     @Unique
     private void helium$checkOutOfBounds(float delta) {
-        if (scrollY < 0) {
-            setScrollY(scrollY + ScrollMath.pushBackStrength(Math.abs(scrollY), delta));
-            if (scrollY > -0.2) scrollY = 0;
+        if (scrollAmount < 0) {
+            setScrollAmount(scrollAmount + ScrollMath.pushBackStrength(Math.abs(scrollAmount), delta));
+            if (scrollAmount > -0.2) scrollAmount = 0;
         }
-        if (scrollY > getMaxScrollY()) {
-            setScrollY(scrollY - ScrollMath.pushBackStrength(scrollY - getMaxScrollY(), delta));
-            if (scrollY < getMaxScrollY() + 0.2) scrollY = getMaxScrollY();
+        if (scrollAmount > maxScrollAmount()) {
+            setScrollAmount(scrollAmount - ScrollMath.pushBackStrength(scrollAmount - maxScrollAmount(), delta));
+            if (scrollAmount < maxScrollAmount() + 0.2) scrollAmount = maxScrollAmount();
         }
     }
 
     @WrapOperation(
             method = "mouseScrolled",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollY(D)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollAmount(D)V"),
             require = 0
     )
     private void helium$captureVelocity(AbstractScrollArea instance, double targetScrollY, Operation<Void> original) {
@@ -73,7 +73,7 @@ public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulat
             return;
         }
 
-        double diff = targetScrollY - this.scrollY;
+        double diff = targetScrollY - this.scrollAmount;
         diff = Math.signum(diff) * Math.min(Math.abs(diff), 10);
         diff *= ScrollMath.getScrollSpeed();
 
@@ -88,23 +88,23 @@ public abstract class ScrollableWidgetMixin implements ScrollableWidgetManipulat
 
     @WrapOperation(
             method = "mouseDragged",
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollY(D)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/AbstractScrollArea;setScrollAmount(D)V"),
             require = 0
     )
     private void helium$clampDraggedScrollY(AbstractScrollArea instance, double targetScrollY, Operation<Void> original) {
-        original.call(instance, Mth.clamp(targetScrollY, 0.0, this.getMaxScrollY()));
+        original.call(instance, Mth.clamp(targetScrollY, 0.0, this.maxScrollAmount()));
     }
 
-    @WrapMethod(method = "setScrollY", require = 0)
-    private void helium$setScrollYUnclamped(double targetScrollY, Operation<Void> original) {
+    @WrapMethod(method = "setScrollAmount", require = 0)
+    private void helium$setScrollAmountUnclamped(double targetScrollY, Operation<Void> original) {
         if (!ScrollMath.isEnabled() || !helium$renderSmooth) {
             original.call(targetScrollY);
             return;
         }
-        if (targetScrollY > getMaxScrollY() + 1e5 || targetScrollY < -1e5) {
+        if (targetScrollY > maxScrollAmount() + 1e5 || targetScrollY < -1e5) {
             original.call(targetScrollY);
         } else {
-            this.scrollY = targetScrollY;
+            this.scrollAmount = targetScrollY;
         }
     }
 }

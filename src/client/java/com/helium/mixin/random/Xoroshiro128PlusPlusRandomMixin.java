@@ -23,7 +23,7 @@ public abstract class Xoroshiro128PlusPlusRandomMixin {
     @Mutable
     @Shadow
     @Final
-    private MarsagliaPolarGaussian gaussianGenerator;
+    private MarsagliaPolarGaussian gaussianSource;
 
     @Inject(method = "<init>(J)V", at = @At("TAIL"), require = 0)
     private void helium$modifyGaussianSeed(long seed, CallbackInfo ci) {
@@ -50,7 +50,7 @@ public abstract class Xoroshiro128PlusPlusRandomMixin {
         HeliumConfig config = HeliumClient.getConfig();
         boolean enabled = config == null || config.fastRandom;
         if (enabled) {
-            this.gaussianGenerator = new TableGaussianGenerator((RandomSource) this);
+            this.gaussianSource = new TableGaussianGenerator((RandomSource) this);
         }
     }
 }

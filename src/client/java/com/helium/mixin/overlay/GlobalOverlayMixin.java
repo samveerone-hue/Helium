@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Screen.class)
 public class GlobalOverlayMixin {
 
-    @Inject(method = "renderWithTooltip", at = @At("TAIL"), require = 0)
+    @Inject(method = "extractRenderStateWithTooltipAndSubtitles", at = @At("TAIL"), require = 0)
     private void helium$renderglobaloverlay(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         if (client != null) {

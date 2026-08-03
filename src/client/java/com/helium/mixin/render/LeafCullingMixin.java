@@ -23,12 +23,12 @@ public abstract class LeafCullingMixin {
     private static boolean helium$failed = false;
 
     @Inject(
-            method = "shouldDrawFace",
+            method = "shouldRenderFace",
             at = @At("HEAD"),
             cancellable = true,
             require = 0
     )
-    private static void helium$cullLeafFace(BlockAndTintGetter world, BlockState state, boolean defaultval, Direction side, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
+    private void helium$cullLeafFace(BlockAndTintGetter world, BlockState state, Direction side, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
         if (helium$failed) return;
 
         try {

@@ -40,7 +40,6 @@
     "lighting.DynamicGraphMixin",
     "render.GameRendererTemporalMixin",
     "render.WorldRendererPipelineMixin",
-    "performance.WindowDisplayMixin",
     "compat.GameOptionsAccessor",
     "compat.SodiumOptionsGUILegacyMixin",
     "compat.ReesesOptionsLegacyMixin",

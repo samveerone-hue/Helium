@@ -16,30 +16,30 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ModelPart.class)
 public abstract class ModelPartAnimationMixin {
 
-    @Shadow public float pitch;
-    @Shadow public float yaw;
-    @Shadow public float roll;
+    @Shadow public float xRot;
+    @Shadow public float yRot;
+    @Shadow public float zRot;
     @Shadow public float xScale;
     @Shadow public float yScale;
     @Shadow public float zScale;
-    @Shadow public float originX;
-    @Shadow public float originY;
-    @Shadow public float originZ;
+    @Shadow public float x;
+    @Shadow public float y;
+    @Shadow public float z;
 
     @Unique
     private final Quaternionf helium$reusedQuat = new Quaternionf();
 
-    @Inject(method = "applyTransform", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "translateAndRotate", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$fastApplyTransform(PoseStack matrices, CallbackInfo ci) {
         try {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.fastAnimations) return;
             if (!FastAnimationOptimizer.isInitialized()) return;
 
-            matrices.translate(originX / 16.0f, originY / 16.0f, originZ / 16.0f);
+            matrices.translate(x / 16.0f, y / 16.0f, z / 16.0f);
 
-            if (pitch != 0f || yaw != 0f || roll != 0f) {
-                matrices.mulPose(helium$reusedQuat.rotationZYX(roll, yaw, pitch));
+            if (xRot != 0f || yRot != 0f || zRot != 0f) {
+                matrices.mulPose(helium$reusedQuat.rotationZYX(zRot, yRot, xRot));
             }
 
             if (xScale != 1f || yScale != 1f || zScale != 1f) {

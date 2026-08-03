@@ -17,7 +17,7 @@ import java.util.Optional;
 @Mixin(ServerNameResolver.class)
 public abstract class AllowedAddressResolverMixin {
 
-    @Inject(method = "resolve", at = @At("RETURN"), require = 0)
+    @Inject(method = "resolveAddress", at = @At("RETURN"), require = 0)
     private void helium$patchReverseDns(ServerAddress address, CallbackInfoReturnable<Optional<ResolvedServerAddress>> cir) {
         try {
             HeliumConfig config = HeliumClient.getConfig();

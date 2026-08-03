@@ -15,10 +15,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Gui.class)
 public abstract class InGameHudMixin {
 
-    @Shadow @Final private Minecraft client;
+    @Shadow @Final private Minecraft minecraft;
 
-    @Inject(method = "render", at = @At("TAIL"))
+    @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void helium$renderOverlay(GuiGraphicsExtractor context, DeltaTracker tickCounter, CallbackInfo ci) {
-        OverlayRenderer.render(context, client);
+        OverlayRenderer.render(context, minecraft);
     }
 }

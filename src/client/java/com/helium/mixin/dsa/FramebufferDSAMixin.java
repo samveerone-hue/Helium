@@ -17,13 +17,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderTarget.class)
 public abstract class FramebufferDSAMixin {
 
-    @Shadow public int textureWidth;
-    @Shadow public int textureHeight;
+    @Shadow public int width;
+    @Shadow public int height;
 
     @Unique
     private static boolean helium$dsaFboFailed = false;
 
-    @Inject(method = "initFbo", at = @At("HEAD"), require = 0)
+    @Inject(method = "createBuffers", at = @At("HEAD"), require = 0)
     private void helium$initDSACaps(int width, int height, CallbackInfo ci) {
         if (helium$dsaFboFailed) return;
 
@@ -32,7 +32,7 @@ public abstract class FramebufferDSAMixin {
         } catch (Throwable t) {
             if (!helium$dsaFboFailed) {
                 helium$dsaFboFailed = true;
-                HeliumClient.LOGGER.warn("[helium] DSA FBO caps init failed in RenderTarget.initFbo", t);
+                HeliumClient.LOGGER.warn("[helium] DSA FBO caps init failed in RenderTarget.createBuffers", t);
             }
         }
     }

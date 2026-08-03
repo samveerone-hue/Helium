@@ -17,7 +17,7 @@ public abstract class ComposterInputMixin {
     @Unique
     private static final int[] HELIUM_EMPTY = new int[0];
 
-    @Inject(method = "getAvailableSlots", at = @At("RETURN"), cancellable = true, require = 0)
+    @Inject(method = "getSlotsForFace", at = @At("RETURN"), cancellable = true, require = 0)
     private void helium$fixinputslots(Direction direction, CallbackInfoReturnable<int[]> cir) {
         if (!DeduplicationManager.isenabled()) return;
         if (direction == Direction.UP) {

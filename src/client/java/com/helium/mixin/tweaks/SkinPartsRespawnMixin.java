@@ -18,7 +18,7 @@ public abstract class SkinPartsRespawnMixin {
     @Unique
     private boolean helium$dead = false;
 
-    @Inject(method = "onPlayerRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "handleRespawn(Lnet/minecraft/network/protocol/game/ClientboundRespawnPacket;)V", at = @At("RETURN"), require = 0)
     private void helium$refreshskinonrespawn(ClientboundRespawnPacket packet, CallbackInfo ci) {
         if (!helium$dead) return;
         helium$dead = false;
@@ -32,7 +32,7 @@ public abstract class SkinPartsRespawnMixin {
         mc.options.broadcastOptions();
     }
 
-    @Inject(method = "onDeathMessage(Lnet/minecraft/network/protocol/game/ClientboundPlayerCombatKillPacket;)V", at = @At("RETURN"), require = 0)
+    @Inject(method = "handlePlayerCombatKill(Lnet/minecraft/network/protocol/game/ClientboundPlayerCombatKillPacket;)V", at = @At("RETURN"), require = 0)
     private void helium$trackdeath(ClientboundPlayerCombatKillPacket packet, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {

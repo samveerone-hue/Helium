@@ -24,10 +24,10 @@ public abstract class DynamicGraphMixin {
     @Mutable
     @Shadow
     @Final
-    private Long2ByteMap pendingUpdates;
+    private Long2ByteMap computedLevels;
 
     @Shadow
-    protected abstract void removePendingUpdate(long id);
+    protected abstract void removeFromQueue(long id);
 
     @Unique
     private static boolean helium$failed = false;
@@ -44,14 +44,14 @@ public abstract class DynamicGraphMixin {
 
             Long2ByteOpenHashMap optimized = new Long2ByteOpenHashMap(expectedTotalSize, 0.75f);
             optimized.defaultReturnValue((byte) -1);
-            this.pendingUpdates = optimized;
+            this.computedLevels = optimized;
         } catch (Throwable t) {
             helium$failed = true;
             HeliumClient.LOGGER.warn("light engine optimization failed ({})", t.getClass().getSimpleName());
         }
     }
 
-    @Inject(method = "removePendingUpdateIf", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "removeIf", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$optimizedRemoveIf(LongPredicate predicate, CallbackInfo ci) {
         if (helium$failed) return;
 
@@ -61,7 +61,7 @@ public abstract class DynamicGraphMixin {
                 return;
             }
 
-            if (!(this.pendingUpdates instanceof Long2ByteOpenHashMap optimized)) {
+            if (!(this.computedLevels instanceof Long2ByteOpenHashMap optimized)) {
                 return;
             }
 
@@ -72,7 +72,7 @@ public abstract class DynamicGraphMixin {
             while (it.hasNext()) {
                 long pos = it.nextLong();
                 if (predicate.test(pos)) {
-                    removePendingUpdate(pos);
+                    removeFromQueue(pos);
                 }
             }
         } catch (Throwable t) {

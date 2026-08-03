@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Minecraft.class)
 public abstract class HotbarRenderSyncMixin {
 
-    @Inject(method = "render", at = @At("HEAD"), require = 0)
+    @Inject(method = "renderFrame", at = @At("HEAD"), require = 0)
     private void helium$checkscrollsync(CallbackInfo ci) {
         HotbarOptimizer.checkscrollsync((Minecraft) (Object) this);
     }

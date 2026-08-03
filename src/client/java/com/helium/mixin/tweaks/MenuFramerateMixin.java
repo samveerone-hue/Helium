@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class MenuFramerateMixin {
 
     @ModifyArg(
-            method = "render",
+            method = "renderFrame",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/systems/RenderSystem;limitDisplayFPS(I)V"),
             index = 0
     )

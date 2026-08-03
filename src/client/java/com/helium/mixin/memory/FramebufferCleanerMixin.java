@@ -131,7 +131,7 @@ public abstract class FramebufferCleanerMixin {
         });
     }
 
-    @Inject(method = "delete", at = @At("HEAD"), require = 0)
+    @Inject(method = "destroyBuffers", at = @At("HEAD"), require = 0)
     private void helium$cancelCleanerOnExplicitDelete(CallbackInfo ci) {
         if (helium$cleanable != null) {
             helium$cleanable.clean();

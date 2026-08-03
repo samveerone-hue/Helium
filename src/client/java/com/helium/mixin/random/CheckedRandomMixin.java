@@ -20,14 +20,14 @@ public abstract class CheckedRandomMixin {
     @Mutable
     @Shadow
     @Final
-    private MarsagliaPolarGaussian gaussianGenerator;
+    private MarsagliaPolarGaussian gaussianSource;
 
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
     private void helium$modifyGaussian(long seed, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         boolean enabled = config == null || config.fastRandom;
         if (enabled) {
-            this.gaussianGenerator = new TableGaussianGenerator((RandomSource) this);
+            this.gaussianSource = new TableGaussianGenerator((RandomSource) this);
         }
     }
 }

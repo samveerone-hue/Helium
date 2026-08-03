@@ -17,7 +17,7 @@ public abstract class PowderSnowCullingMixin {
     @Unique
     private static boolean helium$failed = false;
 
-    @Inject(method = "isSideInvisible", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "skipRendering", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$fixpowdersnowculling(BlockState state, BlockState stateFrom, Direction direction,
                                               CallbackInfoReturnable<Boolean> cir) {
         if (helium$failed) return;
