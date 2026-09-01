@@ -5,7 +5,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.particle.ParticleManager;
 import net.minecraft.client.util.ScreenshotRecorder;
-import net.minecraft.client.util.Window;
 import net.minecraft.util.math.MathHelper;
 
 import java.lang.invoke.MethodHandle;
@@ -16,6 +15,13 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Queue;
 
+/**
+ * Small compatibility resolver for optional legacy Helium code paths.
+ *
+ * Minecraft 1.21.11's MathHelper trig methods accept doubles and return floats.
+ * Keep the public float handles expected by Helium by adapting the exact vanilla
+ * method handles instead of attempting reflection-order based discovery.
+ */
 public final class VersionMethodResolver {
 
     private static volatile boolean initialized = false;
@@ -62,37 +68,27 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            sinfloathandle = lookup.findStatic(
+            // Minecraft 1.21.11 uses sin(double)->float and cos(double)->float.
+            // Adapt those exact handles to the float signatures used by Helium.
+            MethodHandle vanillaSin = lookup.findStatic(
                     MathHelper.class,
                     "sin",
-                    MethodType.methodType(float.class, float.class)
+                    MethodType.methodType(float.class, double.class)
             );
-            cosfloathandle = lookup.findStatic(
+            MethodHandle vanillaCos = lookup.findStatic(
                     MathHelper.class,
                     "cos",
-                    MethodType.methodType(float.class, float.class)
+                    MethodType.methodType(float.class, double.class)
             );
+
+            sinfloathandle = vanillaSin.asType(MethodType.methodType(float.class, float.class));
+            cosfloathandle = vanillaCos.asType(MethodType.methodType(float.class, float.class));
+            sindoublehandle = vanillaSin;
+            cosdoublehandle = vanillaCos;
             hasfloatsincos = true;
+            hasdoublesincos = true;
 
-            try {
-                sindoublehandle = lookup.findStatic(
-                        MathHelper.class,
-                        "sin",
-                        MethodType.methodType(float.class, double.class)
-                );
-                cosdoublehandle = lookup.findStatic(
-                        MathHelper.class,
-                        "cos",
-                        MethodType.methodType(float.class, double.class)
-                );
-                hasdoublesincos = true;
-            } catch (NoSuchMethodException | IllegalAccessException ignored) {
-                hasdoublesincos = false;
-                sindoublehandle = null;
-                cosdoublehandle = null;
-            }
-
-            HeliumClient.LOGGER.info("resolved MathHelper sin/cos by exact signature");
+            HeliumClient.LOGGER.info("resolved 1.21.11 MathHelper sin/cos (double -> float)");
         } catch (Throwable t) {
             hasfloatsincos = false;
             hasdoublesincos = false;
@@ -146,18 +142,16 @@ public final class VersionMethodResolver {
     }
 
     private static void resolvewindow() {
-        try {
-            hastogglefullscreen = true;
-            haslogglerror = true;
-            haslogonglerror = true;
-        } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve Window API ({})", t.getMessage());
-        }
+        // These flags are only used as feature-presence indicators for 1.21.11.
+        // Keep the resolver side-effect free; Window does not need reflection here.
+        hastogglefullscreen = true;
+        haslogglerror = true;
+        haslogonglerror = true;
     }
 
     private static void resolveminecraftclient() {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            MethodHandles.Lookup lookup = MethodHandles.Lookup.class.equals(MethodHandles.class) ? null : MethodHandles.lookup();
             Class<?> limiterClass = Class.forName("net.minecraft.client.option.InactivityFpsLimiter");
             getinactivitylimiterhandle = lookup.findVirtual(
                     MinecraftClient.class,
