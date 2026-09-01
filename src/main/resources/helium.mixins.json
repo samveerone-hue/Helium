@@ -92,15 +92,7 @@
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",
     "dedup.BakedQuadDedupMixin",
-    "dedup.NbtCompoundDedupMixin",
-    "dedup.ModelLoaderDedupMixin",
-    "dedup.ModelIdentifierDedupMixin",
-    "dedup.BasicBakedModelDedupMixin",
-    "dedup.MultipartBakedModelDedupMixin",
-    "dedup.WeightedBakedModelDedupMixin",
-    "dedup.ComposterEmptyMixin",
-    "dedup.ComposterInputMixin",
-    "dedup.ComposterOutputMixin"
+    "dedup.NbtCompoundDedupMixin"
   ],
   "injectors": {
     "defaultRequire": 0
