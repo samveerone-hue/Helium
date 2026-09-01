@@ -61,46 +61,50 @@ public final class VersionMethodResolver {
     private static void resolvemath() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-            int sincount = 0;
-            int coscount = 0;
 
-            for (Method m : MathHelper.class.getDeclaredMethods()) {
-                if (m.getParameterCount() != 1) continue;
-                if (m.getReturnType() != float.class) continue;
-                if (!java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
+            // 1.21.11 has stable named sin/cos methods. Do not infer their identity
+            // from reflection order: reflection order is unspecified and can change
+            // between JVMs or mapping/compiler changes.
+            sinfloathandle = lookup.findStatic(
+                    MathHelper.class,
+                    "sin",
+                    MethodType.methodType(float.class, float.class)
+            );
+            cosfloathandle = lookup.findStatic(
+                    MathHelper.class,
+                    "cos",
+                    MethodType.methodType(float.class, float.class)
+            );
+            hasfloatsincos = true;
 
-                Class<?> paramType = m.getParameterTypes()[0];
-                if (paramType != float.class && paramType != double.class) continue;
-
-                m.setAccessible(true);
-                MethodHandle handle = lookup.unreflect(m);
-
-                if (paramType == float.class) {
-                    if (sinfloathandle == null) {
-                        sinfloathandle = handle;
-                        sincount++;
-                    } else if (cosfloathandle == null) {
-                        cosfloathandle = handle;
-                        coscount++;
-                    }
-                    hasfloatsincos = true;
-                } else if (paramType == double.class) {
-                    if (sindoublehandle == null) {
-                        sindoublehandle = handle;
-                        sincount++;
-                    } else if (cosdoublehandle == null) {
-                        cosdoublehandle = handle;
-                        coscount++;
-                    }
-                    hasdoublesincos = true;
-                }
+            // Keep the double-argument path optional for older/newer mappings.
+            try {
+                sindoublehandle = lookup.findStatic(
+                        MathHelper.class,
+                        "sin",
+                        MethodType.methodType(float.class, double.class)
+                );
+                cosdoublehandle = lookup.findStatic(
+                        MathHelper.class,
+                        "cos",
+                        MethodType.methodType(float.class, double.class)
+                );
+                hasdoublesincos = true;
+            } catch (NoSuchMethodException | IllegalAccessException ignored) {
+                hasdoublesincos = false;
+                sindoublehandle = null;
+                cosdoublehandle = null;
             }
 
-            if (hasfloatsincos) HeliumClient.LOGGER.info("detected legacy MathHelper API (float sin/cos)");
-            if (hasdoublesincos) HeliumClient.LOGGER.info("detected modern MathHelper API (double sin/cos)");
-            if (!hasfloatsincos && !hasdoublesincos) HeliumClient.LOGGER.warn("no MathHelper sin/cos found");
+            HeliumClient.LOGGER.info("resolved MathHelper sin/cos by exact signature");
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve MathHelper API ({})", t.getMessage());
+            hasfloatsincos = false;
+            hasdoublesincos = false;
+            sinfloathandle = null;
+            cosfloathandle = null;
+            sindoublehandle = null;
+            cosdoublehandle = null;
+            HeliumClient.LOGGER.warn("failed to resolve MathHelper sin/cos ({})", t.getMessage());
         }
     }
 
@@ -108,46 +112,27 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            for (Method m : Framebuffer.class.getDeclaredMethods()) {
-                if (m.getParameterCount() == 0 && m.getReturnType() == void.class
-                        && !java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
-                    if (blittoscreenhandle == null) {
-                        try {
-                            m.setAccessible(true);
-                            blittoscreenhandle = lookup.unreflect(m);
-                            hasblittoscreen = true;
-                        } catch (Throwable ignored) {}
-                    }
-                }
+            // 1.21.11 exposes the no-argument blitToScreen() API.
+            blittoscreenhandle = lookup.findVirtual(
+                    Framebuffer.class,
+                    "blitToScreen",
+                    MethodType.methodType(void.class)
+            );
+            hasblittoscreen = true;
 
-                if (m.getParameterCount() == 3 && m.getReturnType() == void.class
-                        && !java.lang.reflect.Modifier.isStatic(m.getModifiers())) {
-                    Class<?>[] params = m.getParameterTypes();
-                    if (params[0] == int.class && params[1] == int.class && params[2] == boolean.class) {
-                        m.setAccessible(true);
-                        legacydrawhandle = lookup.unreflect(m);
-                        haslegacydraw = true;
-                    }
-                }
-            }
+            // The old integer FBO field and legacy draw path are not part of the
+            // 1.21.11 Framebuffer API. Leave them disabled rather than guessing
+            // based on field/method order.
+            legacydrawhandle = null;
+            fbofield = null;
+            haslegacydraw = false;
+            haslegacyfbo = false;
 
-            for (Field f : Framebuffer.class.getDeclaredFields()) {
-                if (f.getType() == int.class && !java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
-                    String fname = f.getName().toLowerCase();
-                    if (fname.equals("fbo") || fname.equals("field_1042")) {
-                        f.setAccessible(true);
-                        fbofield = f;
-                        haslegacyfbo = true;
-                        break;
-                    }
-                }
-            }
-
-            if (hasblittoscreen) HeliumClient.LOGGER.info("detected Framebuffer blitToScreen");
-            if (haslegacydraw) HeliumClient.LOGGER.info("detected Framebuffer legacy draw");
-            if (haslegacyfbo) HeliumClient.LOGGER.info("detected Framebuffer fbo field");
+            HeliumClient.LOGGER.info("resolved 1.21.11 Framebuffer.blitToScreen()");
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve Framebuffer API ({})", t.getMessage());
+            hasblittoscreen = false;
+            blittoscreenhandle = null;
+            HeliumClient.LOGGER.warn("failed to resolve 1.21.11 Framebuffer API ({})", t.getMessage());
         }
     }
 
@@ -185,26 +170,21 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            for (Method m : MinecraftClient.class.getDeclaredMethods()) {
-                if (m.getParameterCount() != 0) continue;
-                if (java.lang.reflect.Modifier.isStatic(m.getModifiers())) continue;
-
-                Class<?> retType = m.getReturnType();
-                if (retType.getSimpleName().contains("InactivityFpsLimiter") ||
-                        retType.getName().contains("class_9919")) {
-                    m.setAccessible(true);
-                    getinactivitylimiterhandle = lookup.unreflect(m);
-                    hasinactivitylimiter = true;
-                    HeliumClient.LOGGER.info("detected modern MinecraftClient API (InactivityFpsLimiter)");
-                    break;
-                }
-            }
-
-            if (!hasinactivitylimiter) {
-                HeliumClient.LOGGER.info("detected legacy MinecraftClient API");
-            }
+            // 1.21.11 has a named accessor for this object. Resolve it directly
+            // instead of scanning return types or intermediary class IDs.
+            getinactivitylimiterhandle = lookup.findVirtual(
+                    MinecraftClient.class,
+                    "getInactivityFpsLimiter",
+                    MethodType.methodType(
+                            Class.forName("net.minecraft.client.option.InactivityFpsLimiter"),
+                    )
+            );
+            hasinactivitylimiter = true;
+            HeliumClient.LOGGER.info("resolved 1.21.11 MinecraftClient.getInactivityFpsLimiter()");
         } catch (Throwable t) {
-            HeliumClient.LOGGER.warn("failed to resolve MinecraftClient API ({})", t.getMessage());
+            hasinactivitylimiter = false;
+            getinactivitylimiterhandle = null;
+            HeliumClient.LOGGER.warn("failed to resolve 1.21.11 MinecraftClient API ({})", t.getMessage());
         }
     }
 
@@ -283,7 +263,7 @@ public final class VersionMethodResolver {
             if (limiter != null) {
                 MethodHandles.Lookup lookup = MethodHandles.lookup();
                 try {
-                    MethodHandle setlimit = lookup.findVirtual(limiter.getClass(), "setLimit",
+                    MethodHandle setlimit = lookup.findVirtual(limiter.getClass(), "setMaxFps",
                             MethodType.methodType(void.class, int.class));
                     setlimit.invoke(limiter, Math.max(1, limit));
                 } catch (Throwable ignored) {}
