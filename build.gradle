@@ -75,7 +75,8 @@ dependencies {
     }
 
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-    modCompileOnly "net.caffeinemc:sodium-fabric-api:${project.sodium_api_version}"
+    // Sodium 0.8.14 includes the public Sodium API classes. Keeping the
+    // separate sodium-fabric-api artifact here creates duplicate input classes.
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
 }
 
