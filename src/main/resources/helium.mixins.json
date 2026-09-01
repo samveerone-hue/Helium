@@ -43,7 +43,6 @@
     "render.WorldRendererChunkPipelineMixin",
     "render.WorldRendererInvoker",
     "render.ChunkBuilderChunkPipelineMixin",
-    "performance.WindowDisplayMixin",
     "compat.GameOptionsAccessor",
     "compat.SodiumOptionsGUILegacyMixin",
     "compat.ReesesOptionsLegacyMixin",
@@ -80,7 +79,6 @@
     "lang.LanguageReloadMixin",
     "lang.LanguageScreenMixin",
     "reflex.GameRendererReflexMixin",
-
     "math.GivensPairMixin",
     "math.MatrixStackEntryMixin",
     "random.CheckedRandomMixin",
@@ -91,7 +89,6 @@
     "crafting.ClientPlayNetworkHandlerCraftingMixin",
     "crafting.RecipeBookWidgetCraftingMixin",
     "crafting.StonecutterScreenCraftingMixin",
-
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",
     "dedup.BakedQuadDedupMixin",
