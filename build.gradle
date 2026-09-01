@@ -76,7 +76,7 @@ dependencies {
     
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
     modCompileOnly "net.caffeinemc:sodium-fabric-api:${project.sodium_api_version}"
-    modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.2-fabric"
+    modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
 }
 
 processResources {
@@ -91,7 +91,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    // Minecraft 1.21.11 runs on Java 25, but keep the mod bytecode at Java 21 for broad JVM compatibility.\n    it.options.release = 21
 }
 
 java {
