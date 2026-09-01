@@ -1,8 +1,8 @@
 package com.helium.mixin.multiplayer;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.network.FastServerPingHelper;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerServerListWidget;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,7 +14,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Mixin(MultiplayerServerListWidget.class)
@@ -30,20 +29,18 @@ public abstract class ServerListWidgetMixin {
     private List<MultiplayerServerListWidget.ServerEntry> servers;
 
     @Unique
-    private static final int HELIUM_THREAD_OVERHEAD = 5;
-
-    @Unique
     private static boolean helium$poolInitialized = false;
 
-    @Inject(method = "<init>", at = @At("TAIL"))
+    @Unique
+    private static int helium$lastServerCount = -1;
+
+    @Inject(method = "<init>", at = @At("TAIL"), require = 0)
     private void helium$initPingerPool(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
-        if (!helium$poolInitialized) {
-            helium$poolInitialized = true;
-            helium$rebuildThreadPool();
-        }
+        int serverCount = servers != null ? servers.size() : 0;
+        helium$ensurePool(serverCount);
     }
 
     @Inject(method = "updateEntries", at = @At("HEAD"), require = 0)
@@ -51,26 +48,33 @@ public abstract class ServerListWidgetMixin {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
-        if (SERVER_PINGER_THREAD_POOL.getActiveCount() >= HELIUM_THREAD_OVERHEAD) {
-            helium$rebuildThreadPool();
-        }
+        int serverCount = servers != null ? servers.size() : 0;
+        helium$ensurePool(serverCount);
     }
 
     @Unique
-    private void helium$rebuildThreadPool() {
-        try {
+    private void helium$ensurePool(int serverCount) {
+        if (helium$poolInitialized && helium$lastServerCount == serverCount
+                && SERVER_PINGER_THREAD_POOL != null
+                && !SERVER_PINGER_THREAD_POOL.isShutdown()) {
+            return;
+        }
+
+        int threads = FastServerPingHelper.threadCount(serverCount);
+        if (helium$poolInitialized
+                && SERVER_PINGER_THREAD_POOL != null
+                && !SERVER_PINGER_THREAD_POOL.isShutdown()
+                && SERVER_PINGER_THREAD_POOL.getCorePoolSize() == threads) {
+            helium$lastServerCount = serverCount;
+            return;
+        }
+
+        if (SERVER_PINGER_THREAD_POOL != null) {
             SERVER_PINGER_THREAD_POOL.shutdownNow();
-        } catch (Exception ignored) {}
+        }
 
-        int serverCount = servers != null ? servers.size() : 0;
-        int poolSize = Math.max(serverCount + HELIUM_THREAD_OVERHEAD, Runtime.getRuntime().availableProcessors());
-
-        SERVER_PINGER_THREAD_POOL = new ScheduledThreadPoolExecutor(
-                poolSize,
-                new ThreadFactoryBuilder()
-                        .setNameFormat("Helium-ServerPinger-%d")
-                        .setDaemon(true)
-                        .build()
-        );
+        SERVER_PINGER_THREAD_POOL = FastServerPingHelper.createExecutor(serverCount);
+        helium$poolInitialized = true;
+        helium$lastServerCount = serverCount;
     }
 }
