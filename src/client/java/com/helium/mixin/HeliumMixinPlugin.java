@@ -1,5 +1,6 @@
 package com.helium.mixin;
 
+import com.helium.compat.ExternalModCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
@@ -16,15 +17,20 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
     private boolean hasModernSodiumApi = false;
     private boolean hasSodium = false;
     private boolean hasIris = false;
+    private boolean hasFastServerPings = false;
+    private boolean hasOxidizium = false;
 
     @Override
     public void onLoad(String mixinPackage) {
+        FabricLoader loader = FabricLoader.getInstance();
         hasOpenGlStateManager = classExistsOnClasspath("com/mojang/blaze3d/opengl/GlStateManager.class");
         hasPlatformGlStateManager = classExistsOnClasspath("com/mojang/blaze3d/platform/GlStateManager.class");
-        hasImmediatelyFast = FabricLoader.getInstance().isModLoaded("immediatelyfast");
+        hasImmediatelyFast = loader.isModLoaded("immediatelyfast");
         hasModernSodiumApi = classExistsOnClasspath("net/caffeinemc/mods/sodium/api/config/ConfigEntryPoint.class");
-        hasSodium = FabricLoader.getInstance().isModLoaded("sodium");
-        hasIris = FabricLoader.getInstance().isModLoaded("iris");
+        hasSodium = loader.isModLoaded("sodium");
+        hasIris = loader.isModLoaded("iris");
+        hasFastServerPings = ExternalModCompat.hasFastServerPings();
+        hasOxidizium = ExternalModCompat.hasOxidizium();
     }
 
     @Override
@@ -34,6 +40,14 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
+        // FastServerPings owns the server-list ping pipeline and Fast IP Ping path.
+        if (mixinClassName.endsWith("ServerListWidgetMixin")) {
+            return !hasFastServerPings;
+        }
+        if (mixinClassName.endsWith("MathHelperMixin")) {
+            return !hasOxidizium;
+        }
+
         if (mixinClassName.endsWith("GlStateManagerMixin")) {
             return hasOpenGlStateManager && !hasImmediatelyFast;
         }
@@ -53,10 +67,10 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
             return hasIris;
         }
         if (mixinClassName.endsWith("MathHelperFloatMixin")) {
-            return !hasOpenGlStateManager;
+            return !hasOpenGlStateManager && !hasOxidizium;
         }
         if (mixinClassName.endsWith("MathHelperDoubleMixin")) {
-            return hasOpenGlStateManager;
+            return hasOpenGlStateManager && !hasOxidizium;
         }
         if (mixinClassName.endsWith("EndGatewayBeamCullingMixin")) {
             return hasOpenGlStateManager;
