@@ -57,21 +57,51 @@ public final class VersionMethodResolver {
         resolveparticle();
     }
 
+    private static Method findMethod(Class<?> owner, String intermediaryName, String namedName, Class<?>... parameterTypes)
+            throws ReflectiveOperationException {
+        String[] candidates = {intermediaryName, namedName};
+        for (String candidate : candidates) {
+            if (candidate == null || candidate.isEmpty()) continue;
+            try {
+                Method method = owner.getDeclaredMethod(candidate, parameterTypes);
+                method.setAccessible(true);
+                return method;
+            } catch (NoSuchMethodException ignored) {
+                // Try the public/inherited view below.
+            }
+            try {
+                Method method = owner.getMethod(candidate, parameterTypes);
+                method.setAccessible(true);
+                return method;
+            } catch (NoSuchMethodException ignored) {
+                // Try the next mapping name.
+            }
+        }
+        throw new NoSuchMethodException(owner.getName() + "#" + intermediaryName + "/" + namedName);
+    }
+
+    private static MethodHandle staticHandle(Class<?> owner, String intermediaryName, String namedName, Class<?>... parameterTypes)
+            throws ReflectiveOperationException {
+        return MethodHandles.lookup().unreflect(findMethod(owner, intermediaryName, namedName, parameterTypes));
+    }
+
+    private static MethodHandle virtualHandle(Class<?> owner, String intermediaryName, String namedName, Class<?>... parameterTypes)
+            throws ReflectiveOperationException {
+        return MethodHandles.lookup().unreflect(findMethod(owner, intermediaryName, namedName, parameterTypes));
+    }
+
     private static void resolvemath() {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            MethodHandle vanillaSin = lookup.findStatic(MathHelper.class, "sin",
-                    MethodType.methodType(float.class, double.class));
-            MethodHandle vanillaCos = lookup.findStatic(MathHelper.class, "cos",
-                    MethodType.methodType(float.class, double.class));
+            MethodHandle vanillaSin = staticHandle(MathHelper.class, "method_15374", "sin", double.class);
+            MethodHandle vanillaCos = staticHandle(MathHelper.class, "method_15362", "cos", double.class);
 
-            sinfloathandle = vanillaSin.asType(MethodType.methodType(float.class, float.class));
-            cosfloathandle = vanillaCos.asType(MethodType.methodType(float.class, float.class));
             sindoublehandle = vanillaSin;
             cosdoublehandle = vanillaCos;
+            sinfloathandle = vanillaSin.asType(MethodType.methodType(float.class, float.class));
+            cosfloathandle = vanillaCos.asType(MethodType.methodType(float.class, float.class));
             hasfloatsincos = true;
             hasdoublesincos = true;
-            HeliumClient.LOGGER.info("resolved 1.21.11 MathHelper sin/cos (double -> float)");
+            HeliumClient.LOGGER.info("resolved 1.21.11 MathHelper sin/cos");
         } catch (Throwable t) {
             hasfloatsincos = false;
             hasdoublesincos = false;
@@ -85,14 +115,13 @@ public final class VersionMethodResolver {
 
     private static void resolveframebuffer() {
         try {
-            blittoscreenhandle = MethodHandles.lookup().findVirtual(
-                    Framebuffer.class, "blitToScreen", MethodType.methodType(void.class));
+            blittoscreenhandle = virtualHandle(Framebuffer.class, "method_1237", "blitToScreen");
             hasblittoscreen = true;
             legacydrawhandle = null;
             fbofield = null;
             haslegacydraw = false;
             haslegacyfbo = false;
-            HeliumClient.LOGGER.info("resolved 1.21.11 Framebuffer.blitToScreen()");
+            HeliumClient.LOGGER.info("resolved 1.21.11 Framebuffer blit method");
         } catch (Throwable t) {
             hasblittoscreen = false;
             blittoscreenhandle = null;
@@ -126,14 +155,12 @@ public final class VersionMethodResolver {
 
     private static void resolveminecraftclient() {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            Class<?> limiterClass = Class.forName("net.minecraft.client.option.InactivityFpsLimiter");
-            getinactivitylimiterhandle = lookup.findVirtual(
+            getinactivitylimiterhandle = virtualHandle(
                     MinecraftClient.class,
-                    "getInactivityFpsLimiter",
-                    MethodType.methodType(limiterClass));
+                    "method_61964",
+                    "getInactivityFpsLimiter");
             hasinactivitylimiter = true;
-            HeliumClient.LOGGER.info("resolved 1.21.11 MinecraftClient.getInactivityFpsLimiter()");
+            HeliumClient.LOGGER.info("resolved 1.21.11 MinecraftClient inactivity FPS limiter");
         } catch (Throwable t) {
             hasinactivitylimiter = false;
             getinactivitylimiterhandle = null;
@@ -208,8 +235,8 @@ public final class VersionMethodResolver {
         try {
             Object limiter = getinactivitylimiterhandle.invoke(mcclient);
             if (limiter != null) {
-                MethodHandle setlimit = MethodHandles.lookup().findVirtual(
-                        limiter.getClass(), "setMaxFps", MethodType.methodType(void.class, int.class));
+                MethodHandle setlimit = virtualHandle(
+                        limiter.getClass(), "method_61938", "setMaxFps", int.class);
                 setlimit.invoke(limiter, Math.max(1, limit));
             }
         } catch (Throwable ignored) {}
