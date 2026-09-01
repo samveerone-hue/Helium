@@ -42,28 +42,28 @@ public abstract class MathHelperMixin {
         if (enabled() && divisor != 0.0D) cir.setReturnValue(FastMath.positiveModulo(dividend, divisor));
     }
 
-    @Inject(method = "floor", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "floor(F)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorFloat(float value, CallbackInfoReturnable<Integer> cir) {
         if (enabled() && value >= Integer.MIN_VALUE && value < (double) Integer.MAX_VALUE + 1.0D) {
             cir.setReturnValue(FastMath.floor(value));
         }
     }
 
-    @Inject(method = "floor", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "floor(D)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorDouble(double value, CallbackInfoReturnable<Integer> cir) {
         if (enabled() && value >= Integer.MIN_VALUE && value < (double) Integer.MAX_VALUE + 1.0D) {
             cir.setReturnValue(FastMath.floor(value));
         }
     }
 
-    @Inject(method = "ceil", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "ceil(F)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastCeilFloat(float value, CallbackInfoReturnable<Integer> cir) {
         if (enabled() && value >= Integer.MIN_VALUE - 1.0D && value <= Integer.MAX_VALUE) {
             cir.setReturnValue(FastMath.ceil(value));
         }
     }
 
-    @Inject(method = "ceil", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "ceil(D)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastCeilDouble(double value, CallbackInfoReturnable<Integer> cir) {
         if (enabled() && value >= Integer.MIN_VALUE - 1.0D && value <= Integer.MAX_VALUE) {
             cir.setReturnValue(FastMath.ceil(value));
@@ -85,12 +85,12 @@ public abstract class MathHelperMixin {
         if (enabled()) cir.setReturnValue(FastMath.clamp(value, min, max));
     }
 
-    @Inject(method = "ceilLog2", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "ceilLog2(I)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastCeilLog2(int value, CallbackInfoReturnable<Integer> cir) {
         if (enabled()) cir.setReturnValue(FastMath.ceilLog2(value));
     }
 
-    @Inject(method = "floorLog2", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "floorLog2(I)I", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$fastFloorLog2(int value, CallbackInfoReturnable<Integer> cir) {
         if (enabled()) cir.setReturnValue(FastMath.floorLog2(value));
     }
