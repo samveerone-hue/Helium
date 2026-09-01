@@ -1,6 +1,7 @@
 package com.helium.mixin.multiplayer;
 
 import com.helium.HeliumClient;
+import com.helium.compat.ExternalModCompat;
 import com.helium.config.HeliumConfig;
 import com.helium.network.FastServerPingHelper;
 import net.minecraft.client.gui.screen.multiplayer.MultiplayerServerListWidget;
@@ -36,6 +37,8 @@ public abstract class ServerListWidgetMixin {
 
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
     private void helium$initPingerPool(CallbackInfo ci) {
+        if (!ExternalModCompat.shouldUseHeliumServerPings()) return;
+
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
@@ -45,6 +48,8 @@ public abstract class ServerListWidgetMixin {
 
     @Inject(method = "updateEntries", at = @At("HEAD"), require = 0)
     private void helium$onUpdateEntries(CallbackInfo ci) {
+        if (!ExternalModCompat.shouldUseHeliumServerPings()) return;
+
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
