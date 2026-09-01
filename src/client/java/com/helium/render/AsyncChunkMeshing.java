@@ -1,6 +1,5 @@
 package com.helium.render;
 
-import com.helium.HeliumClient;
 import com.helium.util.ChunkPosUtil;
 import com.helium.util.ChunkScheduler;
 import net.minecraft.client.render.WorldRenderer;
@@ -8,6 +7,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Comparator;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
@@ -21,7 +21,7 @@ public final class AsyncChunkMeshing {
 
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(QUEUE_INITIAL_CAPACITY, Comparator.comparingDouble(ChunkTask::priority));
-    private static final java.util.Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
+    private static final Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
 
     private static volatile Vec3d cameraPos = Vec3d.ZERO;
     private static volatile ChunkPos cameraChunk = ChunkPos.ORIGIN;
@@ -32,7 +32,7 @@ public final class AsyncChunkMeshing {
     public static void updateCamera(Vec3d pos) {
         if (pos == null) return;
         cameraPos = pos;
-        cameraChunk = new ChunkPos(Math.floorDiv(pos.x, 16), Math.floorDiv(pos.z, 16));
+        cameraChunk = new ChunkPos((int) Math.floor(pos.x / 16.0D), (int) Math.floor(pos.z / 16.0D));
     }
 
     public static boolean queue(int x, int y, int z, boolean important) {
@@ -83,12 +83,13 @@ public final class AsyncChunkMeshing {
     public static void clear() {
         PENDING.clear();
         QUEUED_POSITIONS.clear();
+        bypassing = false;
     }
 
     private static double calculatePriority(int x, int y, int z, boolean important) {
         long dx = (long) x - cameraChunk.x;
         long dz = (long) z - cameraChunk.z;
-        long dy = (long) y - Math.floorDiv((int) cameraPos.y, 16);
+        long dy = (long) y - (long) Math.floor(cameraPos.y / 16.0D);
         double distSq = (double) dx * dx + (double) dy * dy + (double) dz * dz;
         return important ? distSq * 0.5D : distSq;
     }
