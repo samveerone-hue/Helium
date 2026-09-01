@@ -1,5 +1,7 @@
 package com.helium.math;
 
+import com.helium.compat.ExternalModCompat;
+
 public final class FastMath {
 
     private static float[] sinTable;
@@ -11,10 +13,16 @@ public final class FastMath {
     private FastMath() {}
 
     public static void init() {
+        if (!ExternalModCompat.shouldUseHeliumFastMath()) {
+            return;
+        }
         init(65536);
     }
 
     public static void init(int lutSize) {
+        if (!ExternalModCompat.shouldUseHeliumFastMath()) {
+            return;
+        }
         if (lutSize < 1024 || (lutSize & (lutSize - 1)) != 0) {
             throw new IllegalArgumentException("lutSize must be a power of two >= 1024");
         }
@@ -124,19 +132,19 @@ public final class FastMath {
     }
 
     public static int clamp(int value, int min, int max) {
-        return value < min ? min : (value > max ? max : value);
+        return Math.max(min, Math.min(max, value));
     }
 
     public static long clamp(long value, long min, long max) {
-        return value < min ? min : (value > max ? max : value);
+        return Math.max(min, Math.min(max, value));
     }
 
     public static float clamp(float value, float min, float max) {
-        return value < min ? min : (value > max ? max : value);
+        return Math.max(min, Math.min(max, value));
     }
 
     public static double clamp(double value, double min, double max) {
-        return value < min ? min : (value > max ? max : value);
+        return Math.max(min, Math.min(max, value));
     }
 
     public static int absMax(int a, int b) {
@@ -151,85 +159,94 @@ public final class FastMath {
         return Math.max(Math.abs(a), Math.abs(b));
     }
 
-    public static int floorDiv(int dividend, int divisor) {
-        int result = dividend / divisor;
-        if ((dividend ^ divisor) < 0 && dividend % divisor != 0) result--;
+    public static int floorDiv(int a, int b) {
+        return Math.floorDiv(a, b);
+    }
+
+    public static boolean approximatelyEquals(float a, float b) {
+        return Math.abs(b - a) < 1.0E-5F;
+    }
+
+    public static boolean approximatelyEquals(double a, double b) {
+        return Math.abs(b - a) < 1.0E-5D;
+    }
+
+    public static int positiveModulo(int value, int divisor) {
+        int result = value % divisor;
+        if (result < 0) result += Math.abs(divisor);
         return result;
     }
 
-    public static boolean approxEqual(float a, float b) {
-        return Math.abs(b - a) <= 1.0e-5F;
+    public static float positiveModulo(float value, float divisor) {
+        float result = value % divisor;
+        if (result < 0.0F) result += Math.abs(divisor);
+        return result;
     }
 
-    public static boolean approxEqual(double a, double b) {
-        return Math.abs(b - a) <= 1.0e-5D;
+    public static double positiveModulo(double value, double divisor) {
+        double result = value % divisor;
+        if (result < 0.0D) result += Math.abs(divisor);
+        return result;
     }
 
-    public static int positiveModulo(int dividend, int divisor) {
-        int mod = dividend % divisor;
-        return mod < 0 ? mod + Math.abs(divisor) : mod;
-    }
-
-    public static float positiveModulo(float dividend, float divisor) {
-        return dividend - floor(dividend / divisor) * divisor;
-    }
-
-    public static double positiveModulo(double dividend, double divisor) {
-        return dividend - Math.floor(dividend / divisor) * divisor;
-    }
-
-    public static boolean isMultipleOf(int a, int b) {
-        return b != 0 && a % b == 0;
+    public static boolean isMultipleOf(int value, int divisor) {
+        return divisor != 0 && value % divisor == 0;
     }
 
     public static int wrapDegrees(int degrees) {
-        int wrapped = degrees % 360;
-        if (wrapped >= 180) wrapped -= 360;
-        if (wrapped < -180) wrapped += 360;
-        return wrapped;
+        return wrapDegrees(degrees, 180);
+    }
+
+    public static int wrapDegrees(int degrees, int limit) {
+        int range = limit * 2;
+        int result = degrees % range;
+        if (result >= limit) result -= range;
+        if (result < -limit) result += range;
+        return result;
     }
 
     public static float wrapDegrees(float degrees) {
-        float wrapped = degrees % 360.0F;
-        if (wrapped >= 180.0F) wrapped -= 360.0F;
-        if (wrapped < -180.0F) wrapped += 360.0F;
-        return wrapped;
+        degrees %= 360.0F;
+        if (degrees >= 180.0F) degrees -= 360.0F;
+        if (degrees < -180.0F) degrees += 360.0F;
+        return degrees;
     }
 
     public static double wrapDegrees(double degrees) {
-        double wrapped = degrees % 360.0D;
-        if (wrapped >= 180.0D) wrapped -= 360.0D;
-        if (wrapped < -180.0D) wrapped += 360.0D;
-        return wrapped;
+        degrees %= 360.0D;
+        if (degrees >= 180.0D) degrees -= 360.0D;
+        if (degrees < -180.0D) degrees += 360.0D;
+        return degrees;
     }
 
-    public static float degreesDifference(float start, float end) {
-        return wrapDegrees(end - start);
+    public static float degreesDifference(float from, float to) {
+        return wrapDegrees(to - from);
     }
 
-    public static float degreesDifferenceAbs(float first, float second) {
-        return Math.abs(degreesDifference(first, second));
+    public static float degreesDifferenceAbs(float from, float to) {
+        return Math.abs(degreesDifference(from, to));
     }
 
-    public static float rotateIfNecessary(float value, float mean, float delta) {
-        float diff = degreesDifference(mean, value);
-        return mean + clamp(diff, -delta, delta);
+    public static float rotateIfNecessary(float current, float target, float maxDelta) {
+        float delta = wrapDegrees(target - current);
+        if (delta > maxDelta) delta = maxDelta;
+        if (delta < -maxDelta) delta = -maxDelta;
+        return current + delta;
     }
 
-    public static float approach(float from, float to, float step) {
-        if (from < to) return Math.min(from + step, to);
-        return Math.max(from - step, to);
+    public static float approach(float current, float target, float delta) {
+        if (current < target) return Math.min(current + delta, target);
+        return Math.max(current - delta, target);
     }
 
-    public static float approachDegrees(float from, float to, float step) {
-        float diff = degreesDifference(from, to);
-        if (diff > step) diff = step;
-        if (diff < -step) diff = -step;
-        return from + diff;
+    public static float approachDegrees(float current, float target, float delta) {
+        return current + clamp(wrapDegrees(target - current), -delta, delta);
     }
 
     public static int smallestEncompassingPowerOfTwo(int value) {
-        return value <= 1 ? 1 : Integer.highestOneBit(value - 1) << 1;
+        int result = 1;
+        while (result < value) result <<= 1;
+        return result;
     }
 
     public static boolean isPowerOfTwo(int value) {
@@ -248,81 +265,5 @@ public final class FastMath {
 
     public static boolean isInitialized() {
         return initialized;
-    }
-
-    public static void batchSin(float[] input, float[] output) {
-        if (!initialized || input == null || output == null) return;
-        int len = Math.min(input.length, output.length);
-        for (int i = 0; i < len; i++) output[i] = sin(input[i]);
-    }
-
-    public static void batchCos(float[] input, float[] output) {
-        if (!initialized || input == null || output == null) return;
-        int len = Math.min(input.length, output.length);
-        for (int i = 0; i < len; i++) output[i] = cos(input[i]);
-    }
-
-    public static void batchSinCos(float[] angles, float[] sinOut, float[] cosOut) {
-        if (!initialized || angles == null || sinOut == null || cosOut == null) return;
-        int len = Math.min(angles.length, Math.min(sinOut.length, cosOut.length));
-        for (int i = 0; i < len; i++) {
-            int index = angleIndex(angles[i]);
-            sinOut[i] = sinTable[index];
-            cosOut[i] = cosTable[index];
-        }
-    }
-
-    public static void batchTransformPositions(float[] positions, float[] matrix4x4, float[] output) {
-        if (positions == null || matrix4x4 == null || output == null) return;
-        if (matrix4x4.length < 16) return;
-
-        int vertexCount = positions.length / 3;
-        int maxVertices = Math.min(vertexCount, output.length / 3);
-        for (int i = 0; i < maxVertices; i++) {
-            int idx = i * 3;
-            float x = positions[idx];
-            float y = positions[idx + 1];
-            float z = positions[idx + 2];
-
-            output[idx] = matrix4x4[0] * x + matrix4x4[4] * y + matrix4x4[8] * z + matrix4x4[12];
-            output[idx + 1] = matrix4x4[1] * x + matrix4x4[5] * y + matrix4x4[9] * z + matrix4x4[13];
-            output[idx + 2] = matrix4x4[2] * x + matrix4x4[6] * y + matrix4x4[10] * z + matrix4x4[14];
-        }
-    }
-
-    public static void batchNormalize(float[] vectors, float[] output) {
-        if (vectors == null || output == null) return;
-        int vectorCount = Math.min(vectors.length, output.length) / 3;
-
-        for (int i = 0; i < vectorCount; i++) {
-            int idx = i * 3;
-            float x = vectors[idx];
-            float y = vectors[idx + 1];
-            float z = vectors[idx + 2];
-
-            float invLen = (float) inverseSqrt(x * x + y * y + z * z);
-            output[idx] = x * invLen;
-            output[idx + 1] = y * invLen;
-            output[idx + 2] = z * invLen;
-        }
-    }
-
-    public static void batchDot(float[] a, float[] b, float[] output) {
-        if (a == null || b == null || output == null) return;
-        int vectorCount = Math.min(a.length, b.length) / 3;
-        vectorCount = Math.min(vectorCount, output.length);
-
-        for (int i = 0; i < vectorCount; i++) {
-            int idx = i * 3;
-            output[i] = a[idx] * b[idx] + a[idx + 1] * b[idx + 1] + a[idx + 2] * b[idx + 2];
-        }
-    }
-
-    public static void batchLerp(float[] a, float[] b, float t, float[] output) {
-        if (a == null || b == null || output == null) return;
-        int len = Math.min(a.length, Math.min(b.length, output.length));
-        float oneMinusT = 1.0f - t;
-
-        for (int i = 0; i < len; i++) output[i] = a[i] * oneMinusT + b[i] * t;
     }
 }
