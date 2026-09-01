@@ -19,6 +19,7 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
     private boolean hasIris = false;
     private boolean hasFastServerPings = false;
     private boolean hasOxidizium = false;
+    private boolean hasGpuBooster = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -31,6 +32,7 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         hasIris = loader.isModLoaded("iris");
         hasFastServerPings = ExternalModCompat.hasFastServerPings();
         hasOxidizium = ExternalModCompat.hasOxidizium();
+        hasGpuBooster = loader.isModLoaded("gpu_booster");
     }
 
     @Override
@@ -40,13 +42,12 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        // FastServerPings owns the server-list ping pipeline and Fast IP Ping path.
-        if (mixinClassName.endsWith("ServerListWidgetMixin")) {
-            return !hasFastServerPings;
-        }
-        if (mixinClassName.endsWith("MathHelperMixin")) {
-            return !hasOxidizium;
-        }
+        if (mixinClassName.endsWith("ServerListWidgetMixin")) return !hasFastServerPings;
+        if (mixinClassName.endsWith("MathHelperMixin")) return !hasOxidizium;
+        if (mixinClassName.endsWith("MathHelperFloatMixin")) return !hasOpenGlStateManager && !hasOxidizium;
+        if (mixinClassName.endsWith("MathHelperDoubleMixin")) return hasOpenGlStateManager && !hasOxidizium;
+
+        if (mixinClassName.endsWith("WindowMixin")) return !hasGpuBooster;
 
         if (mixinClassName.endsWith("GlStateManagerMixin")) {
             return hasOpenGlStateManager && !hasImmediatelyFast;
@@ -65,12 +66,6 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.endsWith("IrisShaderCacheMixin")) {
             return hasIris;
-        }
-        if (mixinClassName.endsWith("MathHelperFloatMixin")) {
-            return !hasOpenGlStateManager && !hasOxidizium;
-        }
-        if (mixinClassName.endsWith("MathHelperDoubleMixin")) {
-            return hasOpenGlStateManager && !hasOxidizium;
         }
         if (mixinClassName.endsWith("EndGatewayBeamCullingMixin")) {
             return hasOpenGlStateManager;
