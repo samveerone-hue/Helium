@@ -62,9 +62,6 @@ public final class VersionMethodResolver {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
 
-            // 1.21.11 has stable named sin/cos methods. Do not infer their identity
-            // from reflection order: reflection order is unspecified and can change
-            // between JVMs or mapping/compiler changes.
             sinfloathandle = lookup.findStatic(
                     MathHelper.class,
                     "sin",
@@ -77,7 +74,6 @@ public final class VersionMethodResolver {
             );
             hasfloatsincos = true;
 
-            // Keep the double-argument path optional for older/newer mappings.
             try {
                 sindoublehandle = lookup.findStatic(
                         MathHelper.class,
@@ -111,23 +107,16 @@ public final class VersionMethodResolver {
     private static void resolveframebuffer() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-            // 1.21.11 exposes the no-argument blitToScreen() API.
             blittoscreenhandle = lookup.findVirtual(
                     Framebuffer.class,
                     "blitToScreen",
                     MethodType.methodType(void.class)
             );
             hasblittoscreen = true;
-
-            // The old integer FBO field and legacy draw path are not part of the
-            // 1.21.11 Framebuffer API. Leave them disabled rather than guessing
-            // based on field/method order.
             legacydrawhandle = null;
             fbofield = null;
             haslegacydraw = false;
             haslegacyfbo = false;
-
             HeliumClient.LOGGER.info("resolved 1.21.11 Framebuffer.blitToScreen()");
         } catch (Throwable t) {
             hasblittoscreen = false;
@@ -169,15 +158,11 @@ public final class VersionMethodResolver {
     private static void resolveminecraftclient() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-            // 1.21.11 has a named accessor for this object. Resolve it directly
-            // instead of scanning return types or intermediary class IDs.
+            Class<?> limiterClass = Class.forName("net.minecraft.client.option.InactivityFpsLimiter");
             getinactivitylimiterhandle = lookup.findVirtual(
                     MinecraftClient.class,
                     "getInactivityFpsLimiter",
-                    MethodType.methodType(
-                            Class.forName("net.minecraft.client.option.InactivityFpsLimiter"),
-                    )
+                    MethodType.methodType(limiterClass)
             );
             hasinactivitylimiter = true;
             HeliumClient.LOGGER.info("resolved 1.21.11 MinecraftClient.getInactivityFpsLimiter()");
