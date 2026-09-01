@@ -1,6 +1,7 @@
 package com.helium.network;
 
 import com.helium.HeliumClient;
+import com.helium.compat.ExternalModCompat;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -21,6 +22,11 @@ public final class FastIpPingOptimizer {
     private FastIpPingOptimizer() {}
 
     public static void init() {
+        if (!ExternalModCompat.shouldUseHeliumFastIpPing()) {
+            HeliumClient.LOGGER.info("fast server pings detected - skipping Helium FastIpPing fallback");
+            return;
+        }
+
         try {
             holderField = InetAddress.class.getDeclaredField("holder");
             holderField.setAccessible(true);
