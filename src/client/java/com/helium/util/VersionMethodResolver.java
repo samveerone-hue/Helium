@@ -15,13 +15,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Queue;
 
-/**
- * Small compatibility resolver for optional legacy Helium code paths.
- *
- * Minecraft 1.21.11's MathHelper trig methods accept doubles and return floats.
- * Keep the public float handles expected by Helium by adapting the exact vanilla
- * method handles instead of attempting reflection-order based discovery.
- */
+/** Small compatibility resolver for optional legacy Helium code paths. */
 public final class VersionMethodResolver {
 
     private static volatile boolean initialized = false;
@@ -55,7 +49,6 @@ public final class VersionMethodResolver {
     public static synchronized void init() {
         if (initialized) return;
         initialized = true;
-
         resolvemath();
         resolveframebuffer();
         resolvescreenshot();
@@ -67,19 +60,10 @@ public final class VersionMethodResolver {
     private static void resolvemath() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-
-            // Minecraft 1.21.11 uses sin(double)->float and cos(double)->float.
-            // Adapt those exact handles to the float signatures used by Helium.
-            MethodHandle vanillaSin = lookup.findStatic(
-                    MathHelper.class,
-                    "sin",
-                    MethodType.methodType(float.class, double.class)
-            );
-            MethodHandle vanillaCos = lookup.findStatic(
-                    MathHelper.class,
-                    "cos",
-                    MethodType.methodType(float.class, double.class)
-            );
+            MethodHandle vanillaSin = lookup.findStatic(MathHelper.class, "sin",
+                    MethodType.methodType(float.class, double.class));
+            MethodHandle vanillaCos = lookup.findStatic(MathHelper.class, "cos",
+                    MethodType.methodType(float.class, double.class));
 
             sinfloathandle = vanillaSin.asType(MethodType.methodType(float.class, float.class));
             cosfloathandle = vanillaCos.asType(MethodType.methodType(float.class, float.class));
@@ -87,7 +71,6 @@ public final class VersionMethodResolver {
             cosdoublehandle = vanillaCos;
             hasfloatsincos = true;
             hasdoublesincos = true;
-
             HeliumClient.LOGGER.info("resolved 1.21.11 MathHelper sin/cos (double -> float)");
         } catch (Throwable t) {
             hasfloatsincos = false;
@@ -102,12 +85,8 @@ public final class VersionMethodResolver {
 
     private static void resolveframebuffer() {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            blittoscreenhandle = lookup.findVirtual(
-                    Framebuffer.class,
-                    "blitToScreen",
-                    MethodType.methodType(void.class)
-            );
+            blittoscreenhandle = MethodHandles.lookup().findVirtual(
+                    Framebuffer.class, "blitToScreen", MethodType.methodType(void.class));
             hasblittoscreen = true;
             legacydrawhandle = null;
             fbofield = null;
@@ -133,17 +112,13 @@ public final class VersionMethodResolver {
                     }
                 }
             }
-            if (!hastakescreenshot) {
-                HeliumClient.LOGGER.info("detected legacy ScreenshotRecorder API");
-            }
+            if (!hastakescreenshot) HeliumClient.LOGGER.info("detected legacy ScreenshotRecorder API");
         } catch (Throwable t) {
             HeliumClient.LOGGER.warn("failed to resolve ScreenshotRecorder API ({})", t.getMessage());
         }
     }
 
     private static void resolvewindow() {
-        // These flags are only used as feature-presence indicators for 1.21.11.
-        // Keep the resolver side-effect free; Window does not need reflection here.
         hastogglefullscreen = true;
         haslogglerror = true;
         haslogonglerror = true;
@@ -151,13 +126,12 @@ public final class VersionMethodResolver {
 
     private static void resolveminecraftclient() {
         try {
-            MethodHandles.Lookup lookup = MethodHandles.Lookup.class.equals(MethodHandles.class) ? null : MethodHandles.lookup();
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
             Class<?> limiterClass = Class.forName("net.minecraft.client.option.InactivityFpsLimiter");
             getinactivitylimiterhandle = lookup.findVirtual(
                     MinecraftClient.class,
                     "getInactivityFpsLimiter",
-                    MethodType.methodType(limiterClass)
-            );
+                    MethodType.methodType(limiterClass));
             hasinactivitylimiter = true;
             HeliumClient.LOGGER.info("resolved 1.21.11 MinecraftClient.getInactivityFpsLimiter()");
         } catch (Throwable t) {
@@ -170,7 +144,6 @@ public final class VersionMethodResolver {
     private static void resolveparticle() {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
-
             for (Field f : ParticleManager.class.getDeclaredFields()) {
                 if (Map.class.isAssignableFrom(f.getType()) && !java.lang.reflect.Modifier.isStatic(f.getModifiers())) {
                     f.setAccessible(true);
@@ -179,7 +152,6 @@ public final class VersionMethodResolver {
                     break;
                 }
             }
-
             try {
                 for (Method m : ParticleManager.class.getDeclaredMethods()) {
                     if (m.getParameterCount() == 1 && m.getReturnType() != void.class
@@ -200,7 +172,6 @@ public final class VersionMethodResolver {
                     }
                 }
             } catch (Throwable ignored) {}
-
             if (!hasmodernparticlerenderer) {
                 HeliumClient.LOGGER.info("detected legacy ParticleManager particle storage");
             }
@@ -220,7 +191,6 @@ public final class VersionMethodResolver {
     public static boolean haslogonglerror() { init(); return haslogonglerror; }
     public static boolean hasinactivitylimiter() { init(); return hasinactivitylimiter; }
     public static boolean hasmodernparticlerenderer() { init(); return hasmodernparticlerenderer; }
-
     public static MethodHandle sinfloathandle() { init(); return sinfloathandle; }
     public static MethodHandle cosfloathandle() { init(); return cosfloathandle; }
     public static MethodHandle sindoublehandle() { init(); return sindoublehandle; }
@@ -229,23 +199,18 @@ public final class VersionMethodResolver {
     public static MethodHandle legacydrawhandle() { init(); return legacydrawhandle; }
     public static MethodHandle getinactivitylimiterhandle() { init(); return getinactivitylimiterhandle; }
     public static MethodHandle getparticlesfromrenderer() { init(); return getparticlesfromrenderer; }
-
     public static Field fbofield() { init(); return fbofield; }
     public static Field particlesmapfield() { init(); return particlesmapfield; }
 
     public static void applyinactivefpslimit(Object mcclient, int limit) {
         init();
         if (!hasinactivitylimiter || getinactivitylimiterhandle == null) return;
-
         try {
             Object limiter = getinactivitylimiterhandle.invoke(mcclient);
             if (limiter != null) {
-                MethodHandles.Lookup lookup = MethodHandles.lookup();
-                try {
-                    MethodHandle setlimit = lookup.findVirtual(limiter.getClass(), "setMaxFps",
-                            MethodType.methodType(void.class, int.class));
-                    setlimit.invoke(limiter, Math.max(1, limit));
-                } catch (Throwable ignored) {}
+                MethodHandle setlimit = MethodHandles.lookup().findVirtual(
+                        limiter.getClass(), "setMaxFps", MethodType.methodType(void.class, int.class));
+                setlimit.invoke(limiter, Math.max(1, limit));
             }
         } catch (Throwable ignored) {}
     }
