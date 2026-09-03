@@ -1,1 +1,0 @@
-Temporary branch marker for optimized 1.21.11 assembly. Safe optimizations are being applied on top of the latest 1.21.11 compatibility fixes.
