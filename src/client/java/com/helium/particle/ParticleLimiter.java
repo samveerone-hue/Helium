@@ -14,9 +14,10 @@ public final class ParticleLimiter {
     private ParticleLimiter() {}
 
     public static void init(int max) {
-        maxParticles = max;
+        maxParticles = Math.max(1, max);
+        currentParticleCount.set(0);
         initialized = true;
-        HeliumClient.LOGGER.info("particle limiter initialized with max {}", max);
+        HeliumClient.LOGGER.info("particle limiter initialized with max {}", maxParticles);
     }
 
     public static boolean isInitialized() {
@@ -41,7 +42,11 @@ public final class ParticleLimiter {
     }
 
     public static void setParticleCount(int count) {
-        currentParticleCount.set(count);
+        currentParticleCount.set(Math.max(0, count));
+    }
+
+    public static void resetCount() {
+        currentParticleCount.set(0);
     }
 
     public static int getCurrentCount() {
@@ -53,6 +58,6 @@ public final class ParticleLimiter {
     }
 
     public static void setMaxParticles(int max) {
-        maxParticles = max;
+        maxParticles = Math.max(1, max);
     }
 }

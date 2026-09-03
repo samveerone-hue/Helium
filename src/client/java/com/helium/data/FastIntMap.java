@@ -19,7 +19,7 @@ public final class FastIntMap<V> {
     }
 
     public FastIntMap(int initialCapacity) {
-        capacity = nextPowerOfTwo(initialCapacity);
+        capacity = nextPowerOfTwo(Math.max(1, initialCapacity));
         threshold = (int) (capacity * LOAD_FACTOR);
         keys = new int[capacity];
         values = new Object[capacity];

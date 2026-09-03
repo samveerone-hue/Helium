@@ -12,7 +12,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.decoration.painting.PaintingVariant;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -41,13 +40,11 @@ public abstract class PaintingCullingMixin {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.world == null) return;
 
-            Vec3d paintingpos = new Vec3d(renderstate.x, renderstate.y, renderstate.z);
-            BlockPos centerpos = BlockPos.ofFloored(paintingpos);
+            BlockPos centerpos = BlockPos.ofFloored(renderstate.x, renderstate.y, renderstate.z);
 
-            if (CullingHelper.shouldcullback(centerpos, facing)) {
-                if (!CullingHelper.isfacingcamera(facing, paintingpos)) {
-                    ci.cancel();
-                }
+            if (CullingHelper.shouldcullback(centerpos, facing)
+                    && !CullingHelper.isfacingcamera(facing, renderstate.x, renderstate.y, renderstate.z)) {
+                ci.cancel();
             }
         } catch (Throwable t) {
             if (!helium$failed) {
