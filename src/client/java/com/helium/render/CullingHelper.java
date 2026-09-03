@@ -1,7 +1,5 @@
 package com.helium.render;
 
-import com.helium.HeliumClient;
-import com.helium.config.HeliumConfig;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Frustum;
@@ -47,28 +45,36 @@ public final class CullingHelper {
     }
 
     public static boolean isfacingcamera(Direction facing, Vec3d entitypos) {
+        return isfacingcamera(facing, entitypos.x, entitypos.y, entitypos.z);
+    }
+
+    public static boolean isfacingcamera(Direction facing, double x, double y, double z) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.gameRenderer == null || client.gameRenderer.getCamera() == null) return true;
         Vec3d camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getCamera());
         return switch (facing) {
-            case DOWN -> camerapos.y <= entitypos.y;
-            case UP -> camerapos.y >= entitypos.y;
-            case NORTH -> camerapos.z <= entitypos.z;
-            case SOUTH -> camerapos.z >= entitypos.z;
-            case WEST -> camerapos.x <= entitypos.x;
-            case EAST -> camerapos.x >= entitypos.x;
+            case DOWN -> camerapos.y <= y;
+            case UP -> camerapos.y >= y;
+            case NORTH -> camerapos.z <= z;
+            case SOUTH -> camerapos.z >= z;
+            case WEST -> camerapos.x <= x;
+            case EAST -> camerapos.x >= x;
         };
     }
 
     public static boolean issignfacingcamera(Direction facing, Vec3d signpos) {
+        return issignfacingcamera(facing, signpos.x, signpos.y, signpos.z);
+    }
+
+    public static boolean issignfacingcamera(Direction facing, double x, double y, double z) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.gameRenderer == null || client.gameRenderer.getCamera() == null) return true;
         Vec3d camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getCamera());
         return switch (facing) {
-            case NORTH -> camerapos.z <= signpos.z;
-            case SOUTH -> camerapos.z >= signpos.z;
-            case WEST -> camerapos.x <= signpos.x;
-            case EAST -> camerapos.x >= signpos.x;
+            case NORTH -> camerapos.z <= z;
+            case SOUTH -> camerapos.z >= z;
+            case WEST -> camerapos.x <= x;
+            case EAST -> camerapos.x >= x;
             default -> true;
         };
     }
