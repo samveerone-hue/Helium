@@ -10,7 +10,6 @@ import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -53,11 +52,9 @@ public abstract class ItemFrameCullingMixin {
                             (int) Math.floor(renderstate.y),
                             (int) Math.floor(renderstate.z)
                     );
-                    if (CullingHelper.shouldcullback(frameblockpos, facing)) {
-                        Vec3d framepos = new Vec3d(renderstate.x, renderstate.y, renderstate.z);
-                        if (!CullingHelper.isfacingcamera(facing, framepos)) {
-                            ci.cancel();
-                        }
+                    if (CullingHelper.shouldcullback(frameblockpos, facing)
+                            && !CullingHelper.isfacingcamera(facing, renderstate.x, renderstate.y, renderstate.z)) {
+                        ci.cancel();
                     }
                 }
             }
