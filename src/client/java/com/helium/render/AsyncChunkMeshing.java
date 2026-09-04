@@ -2,6 +2,8 @@ package com.helium.render;
 
 import com.helium.util.ChunkPosUtil;
 import com.helium.util.ChunkScheduler;
+import com.helium.HeliumClient;
+import com.helium.config.HeliumConfig;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
@@ -90,7 +92,7 @@ public final class AsyncChunkMeshing {
 
         return ChunkScheduler.drainLimited(
                 renderer,
-                Math.max(1, maxPerTick),
+                getDrainBudget(maxPerTick),
                 AsyncChunkMeshing::pollEntry,
                 value -> bypassing = value
         );
@@ -100,6 +102,27 @@ public final class AsyncChunkMeshing {
         ChunkTask task = dequeue();
         return task == null ? null : new ChunkScheduler.ChunkEntry(
                 task.x(), task.y(), task.z(), task.important());
+    }
+
+    public static int getDrainBudget(int configuredMax) {
+        int max = Math.max(1, Math.min(configuredMax, 64));
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || !config.adaptiveChunkScheduling || !RenderPipeline.isInitialized()) {
+            return max;
+        }
+
+        double frameMs = RenderPipeline.getSmoothedFrameTimeMs();
+        double budgetMs = RenderPipeline.getFrameBudgetMs();
+        if (frameMs <= 0.0 || budgetMs <= 0.0) {
+            return max;
+        }
+
+        // Scale down only when the frame is already over budget. Never exceed the
+        // configured cap, and retain at least one update so the queue cannot starve.
+        if (frameMs <= budgetMs) return max;
+
+        double scale = Math.max(0.25, Math.min(1.0, budgetMs / frameMs));
+        return Math.max(1, (int) Math.floor(max * scale));
     }
 
     public static boolean isBypassing() {
