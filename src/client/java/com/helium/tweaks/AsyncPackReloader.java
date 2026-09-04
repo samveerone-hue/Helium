@@ -14,12 +14,13 @@ import net.minecraft.util.math.ChunkSectionPos;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AsyncPackReloader {
 
-    private static final Executor RELOAD_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+    private static volatile ExecutorService RELOAD_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "helium-pack-reload");
         t.setDaemon(true);
         return t;
@@ -34,16 +35,30 @@ public final class AsyncPackReloader {
         return _loading.get();
     }
 
-    public static void shutdown() {
+    public static synchronized void shutdown() {
         _loading.set(false);
         _needsrerender = false;
-        if (RELOAD_EXECUTOR instanceof java.util.concurrent.ExecutorService service) {
+        ExecutorService service = RELOAD_EXECUTOR;
+        if (service != null) {
             service.shutdownNow();
         }
     }
 
+    private static synchronized ExecutorService reloadExecutor() {
+        if (RELOAD_EXECUTOR == null || RELOAD_EXECUTOR.isShutdown()) {
+            RELOAD_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "helium-pack-reload");
+                t.setDaemon(true);
+                return t;
+            });
+        }
+        return RELOAD_EXECUTOR;
+    }
+
     public static void reloadasync() {
         if (_loading.getAndSet(true)) return;
+
+        ExecutorService reloadExecutor = reloadExecutor();
 
         MinecraftClient client = MinecraftClient.getInstance();
         if (client == null) {
@@ -67,13 +82,13 @@ public final class AsyncPackReloader {
             }
 
             ResourceReload reload = client.resourceManager.reload(
-                    RELOAD_EXECUTOR,
+                    reloadExecutor,
                     client,
                     MinecraftClient.COMPLETED_UNIT_FUTURE,
                     packs
             );
 
-            reload.whenComplete().thenRun(() -> {
+            reload.whenComplete().thenRun(() -> client.execute(() -> {
                 _needsrerender = true;
 
                 try {
@@ -86,8 +101,9 @@ public final class AsyncPackReloader {
 
                 ShaderUniformCache.invalidate();
                 TextRenderOptimizer.invalidate();
+                _loading.set(false);
                 HeliumClient.LOGGER.info("async pack reload finished");
-            });
+            }));
         } catch (Throwable t) {
             HeliumClient.LOGGER.error("async pack reload failed", t);
             _loading.set(false);
