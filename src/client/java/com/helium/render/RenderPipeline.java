@@ -14,6 +14,8 @@ public final class RenderPipeline {
 
     private static volatile long[] frameTimes = new long[60];
     private static volatile int frameIndex = 0;
+    private static volatile int frameSampleCount = 0;
+    private static volatile long frameTimeSumNs = 0;
     private static volatile double smoothedFrameTime = 16.67;
     private static volatile boolean adaptivePacing = true;
 
@@ -37,19 +39,19 @@ public final class RenderPipeline {
         long delta = now - last;
         
         if (delta > 0 && delta < 1_000_000_000L) {
-            frameTimes[frameIndex] = delta;
-            frameIndex = (frameIndex + 1) % frameTimes.length;
-            
-            long sum = 0;
-            int count = 0;
-            for (long t : frameTimes) {
-                if (t > 0) {
-                    sum += t;
-                    count++;
-                }
+            long old = frameTimes[frameIndex];
+            if (old > 0) {
+                frameTimeSumNs -= old;
+            } else if (frameSampleCount < frameTimes.length) {
+                frameSampleCount++;
             }
-            if (count > 0) {
-                smoothedFrameTime = (double) sum / count / 1_000_000.0;
+
+            frameTimes[frameIndex] = delta;
+            frameTimeSumNs += delta;
+            frameIndex = (frameIndex + 1) % frameTimes.length;
+
+            if (frameSampleCount > 0) {
+                smoothedFrameTime = (double) frameTimeSumNs / frameSampleCount / 1_000_000.0;
             }
         }
         
@@ -100,6 +102,8 @@ public final class RenderPipeline {
         lastFrameTime.set(0);
         frameTimes = new long[60];
         frameIndex = 0;
+        frameSampleCount = 0;
+        frameTimeSumNs = 0;
         smoothedFrameTime = 16.67;
         HeliumClient.LOGGER.info("render pipeline shutdown");
     }
