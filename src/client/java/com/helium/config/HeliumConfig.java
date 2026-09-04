@@ -181,7 +181,7 @@ public class HeliumConfig {
                 signTextCulling + "," + rainCulling + "," +
                 beaconBeamCulling + "," + paintingCulling + "," +
                 itemFrameCulling + "," + itemFrameLOD + "," + itemFrameLODRange + "," +
-                renderPipelining + "," + adaptiveChunkScheduling + "," + chunkScheduleMaxPerTick + "," + fastFramebufferBlit + "," +
+                renderPipelining + "," + adaptiveChunkScheduling + "," + chunkScheduleMaxPerTick + "," + particleLOD + "," + particleLODDistance + "," + particleLODReduction + "," + fastFramebufferBlit + "," +
                 poseStackPooling + "," + fastBambooLight + "," +
                 optimizedLightEngine + "," + fullbright;
     }
