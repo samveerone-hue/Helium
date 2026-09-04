@@ -296,7 +296,7 @@ public final class HeliumSharedOptions {
         )));
 
         groups.add(new OptGroup("helium.group.crafting", List.of(
-                new BoolOpt("helium.option.one_click_crafting", true, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
+                new BoolOpt("helium.option.one_click_crafting", false, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.gpu_specific", List.of(
