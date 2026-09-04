@@ -4,105 +4,55 @@ import com.helium.HeliumClient;
 import com.helium.dedup.DeduplicationManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.Identifier;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-
+/**
+ * 1.21.11-specific direct access. RegistryKey already exposes stable named
+ * fields in the target mapping, avoiding reflective field discovery per key.
+ */
 @Mixin(RegistryKey.class)
 public abstract class RegistryKeyDedupMixin {
+
+    @Mutable
+    @Shadow
+    @Final
+    private Identifier registry;
+
+    @Mutable
+    @Shadow
+    @Final
+    private Identifier value;
 
     @Unique
     private static boolean helium$failed = false;
 
-    @Unique
-    private static boolean helium$resolved = false;
-
-    @Unique
-    private static Field helium$registryField = null;
-
-    @Unique
-    private static Field helium$valueField = null;
-
-    @Unique
-    private static void helium$resolve() {
-        if (helium$resolved) return;
-        helium$resolved = true;
-
-        String[] registrynames = {"registryRef", "registry", "registryName", "field_25103"};
-        String[] valuenames = {"value", "location", "field_25104"};
-
-        for (String name : registrynames) {
-            try {
-                Field f = RegistryKey.class.getDeclaredField(name);
-                if (Identifier.class.isAssignableFrom(f.getType()) || f.getType() == Object.class) {
-                    f.setAccessible(true);
-                    helium$registryField = f;
-                    break;
-                }
-            } catch (NoSuchFieldException ignored) {}
+    @Inject(method = "<init>(Lnet/minecraft/util/Identifier;Lnet/minecraft/util/Identifier;)V",
+            at = @At("RETURN"), require = 0)
+    private void helium$dedupRegistryKey(
+            Identifier registry,
+            Identifier value,
+            CallbackInfo ci
+    ) {
+        if (helium$failed || !DeduplicationManager.isenabled()) {
+            return;
         }
-
-        for (String name : valuenames) {
-            try {
-                Field f = RegistryKey.class.getDeclaredField(name);
-                if (Identifier.class.isAssignableFrom(f.getType()) || f.getType() == Object.class) {
-                    f.setAccessible(true);
-                    helium$valueField = f;
-                    break;
-                }
-            } catch (NoSuchFieldException ignored) {}
-        }
-
-        if (helium$registryField == null || helium$valueField == null) {
-            int found = 0;
-            for (Field f : RegistryKey.class.getDeclaredFields()) {
-                if (Modifier.isStatic(f.getModifiers())) continue;
-                if (Identifier.class.isAssignableFrom(f.getType())) {
-                    f.setAccessible(true);
-                    if (found == 0) {
-                        helium$registryField = f;
-                    } else if (found == 1) {
-                        helium$valueField = f;
-                    }
-                    found++;
-                    if (found >= 2) break;
-                }
-            }
-        }
-    }
-
-    @Inject(method = "<init>", at = @At("RETURN"), require = 0)
-    private void helium$dedupregistrykey(CallbackInfo ci) {
-        if (helium$failed) return;
 
         try {
-            if (!DeduplicationManager.isenabled()) return;
-
-            helium$resolve();
-            if (helium$registryField == null || helium$valueField == null) {
-                helium$failed = true;
-                return;
-            }
-
-            Object reg = helium$registryField.get(this);
-            Object val = helium$valueField.get(this);
-
-            if (reg instanceof Identifier regId) {
-                helium$registryField.set(this, DeduplicationManager.KEY_REGISTRY.deduplicate(regId));
-            }
-            if (val instanceof Identifier valId) {
-                helium$valueField.set(this, DeduplicationManager.KEY_LOCATION.deduplicate(valId));
-            }
+            this.registry = DeduplicationManager.KEY_REGISTRY.deduplicate(this.registry);
+            this.value = DeduplicationManager.KEY_LOCATION.deduplicate(this.value);
         } catch (Throwable t) {
-            if (!helium$failed) {
-                helium$failed = true;
-                HeliumClient.LOGGER.warn("registry key dedup disabled ({})", t.getClass().getSimpleName());
-            }
+            helium$failed = true;
+            HeliumClient.LOGGER.warn(
+                    "registry key dedup disabled ({})",
+                    t.getClass().getSimpleName()
+            );
         }
     }
 }
