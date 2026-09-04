@@ -8,7 +8,6 @@ import com.helium.render.AsyncChunkMeshing;
 import com.helium.render.RenderBatch;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.WorldRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
