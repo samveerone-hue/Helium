@@ -99,11 +99,6 @@ public final class HeliumSharedOptions {
                 new IntOpt("helium.option.particle_lod_reduction", 30, 0, 100, 5, "helium.suffix.percent", () -> (int) Math.round(c.particleLODReduction * 100.0), v -> { c.particleLODReduction = v / 100.0; renderingdirty = true; }, IMPACT_MEDIUM)
         )));
 
-        groups.add(new OptGroup("helium.group.render_pipeline", List.of(("helium.option.particle_lod", false, () -> c.particleLOD, v -> { c.particleLOD = v; renderingdirty = true; }, IMPACT_MEDIUM)
-                , new IntOpt("helium.option.particle_lod_distance", 16, 4, 64, 4, "helium.suffix.blocks", () -> (int) Math.round(c.particleLODDistance), v -> { c.particleLODDistance = v; renderingdirty = true; }, IMPACT_MEDIUM)
-                , new IntOpt("helium.option.particle_lod_reduction", 30, 0, 100, 5, "helium.suffix.percent", () -> (int) Math.round(c.particleLODReduction * 100.0), v -> { c.particleLODReduction = v / 100.0; renderingdirty = true; }, IMPACT_MEDIUM)
-        )));
-
         groups.add(new OptGroup("helium.group.render_pipeline", List.of(
                 new BoolOpt("helium.option.animation_throttling", true, () -> c.animationThrottling, v -> { c.animationThrottling = v; renderingdirty = true; }, IMPACT_LOW),
                 new BoolOpt("helium.option.fast_math", false, () -> c.fastMath, v -> { c.fastMath = v; renderingdirty = true; }, IMPACT_LOW),
