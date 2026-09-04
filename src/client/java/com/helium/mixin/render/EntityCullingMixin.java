@@ -16,8 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EntityRenderer.class)
 public abstract class EntityCullingMixin<T extends Entity> {
+
+    private static volatile boolean helium$failed = false;
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$cullDistantEntities(T entity, Frustum frustum, double x, double y, double z, CallbackInfoReturnable<Boolean> cir) {
+        if (helium$failed) return;
         try {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled) return;
@@ -33,6 +36,7 @@ public abstract class EntityCullingMixin<T extends Entity> {
             if (config.temporalReprojection && TemporalReprojection.isInitialized() && !(entity instanceof HostileEntity)
                     && TemporalReprojection.shouldSkipEntity(distSq)) cir.setReturnValue(false);
         } catch (Throwable t) {
+            helium$failed = true;
             HeliumClient.LOGGER.warn("entity culling hook disabled ({})", t.getClass().getSimpleName());
         }
     }
