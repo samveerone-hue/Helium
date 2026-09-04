@@ -302,6 +302,19 @@ public class HeliumClient implements ClientModInitializer {
         }
     }
 
+    public static void setRenderPipelining(boolean enabled) {
+        if (config == null) return;
+        config.renderPipelining = enabled;
+
+        if (enabled) {
+            initFeatureSafely("RenderPipeline", RenderPipeline::init, () -> renderPipelineFailed = true);
+        } else {
+            com.helium.render.AsyncChunkMeshing.clear();
+            com.helium.render.RenderBatch.clear();
+            RenderPipeline.shutdown();
+        }
+    }
+
     public static boolean isFastMathAvailable() { return !fastMathFailed; }
     public static boolean isMemoryOptsAvailable() { return !memoryOptsFailed; }
     public static boolean isGlStateCacheAvailable() { return !glStateCacheFailed; }
