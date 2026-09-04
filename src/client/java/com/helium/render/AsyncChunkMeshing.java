@@ -55,8 +55,7 @@ public final class AsyncChunkMeshing {
                 ChunkTask upgraded = new ChunkTask(
                         existing.x(), existing.y(), existing.z(),
                         calculatePriority(existing.x(), existing.y(), existing.z(), true),
-                        true,
-                        existing.generation()
+                        true
                 );
                 if (QUEUED_TASKS.replace(key, existing, upgraded)) {
                     PENDING.remove(existing);
