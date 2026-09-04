@@ -18,13 +18,13 @@
     "render.ResourceReloadCacheMixin",
     "compat.IrisShaderCacheMixin",
     "overlay.GlobalOverlayMixin",
+    "render.FramebufferBlitMixin",
     "render.MatrixStackPoolMixin",
     "render.LeafCullingMixin",
     "render.LeavesBlockMixin",
     "compat.SodiumLeafCullingMixin",
     "particle.ParticleManagerMixin",
     "particle.ParticleLODMixin",
-    "particle.ParticleLifecycleMixin",
     "tick.ClientWorldMixin",
     "tick.ClientTickMixin",
     "network.ClientConnectionMixin",
@@ -96,6 +96,6 @@
     "dedup.NbtCompoundDedupMixin"
   ],
   "injectors": {
-    "defaultRequire": 1
+    "defaultRequire": 0
   }
 }
