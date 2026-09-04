@@ -61,6 +61,8 @@ public class HeliumConfig {
     public boolean nativeMemory = true;
     public int nativeMemoryPoolMb = 64;
     public boolean renderPipelining = false;
+    public boolean adaptiveChunkScheduling = true;
+    public int chunkScheduleMaxPerTick = 16;
 
     public boolean modelCache = false;
     public int modelCacheMaxMb = 64;
@@ -179,7 +181,7 @@ public class HeliumConfig {
                 signTextCulling + "," + rainCulling + "," +
                 beaconBeamCulling + "," + paintingCulling + "," +
                 itemFrameCulling + "," + itemFrameLOD + "," + itemFrameLODRange + "," +
-                renderPipelining + "," + fastFramebufferBlit + "," +
+                renderPipelining + "," + adaptiveChunkScheduling + "," + chunkScheduleMaxPerTick + "," + fastFramebufferBlit + "," +
                 poseStackPooling + "," + fastBambooLight + "," +
                 optimizedLightEngine + "," + fullbright;
     }
@@ -258,6 +260,8 @@ public class HeliumConfig {
         this.nativeMemory = other.nativeMemory;
         this.nativeMemoryPoolMb = other.nativeMemoryPoolMb;
         this.renderPipelining = other.renderPipelining;
+        this.adaptiveChunkScheduling = other.adaptiveChunkScheduling;
+        this.chunkScheduleMaxPerTick = other.chunkScheduleMaxPerTick;
         this.modelCache = other.modelCache;
         this.modelCacheMaxMb = other.modelCacheMaxMb;
         this.reducedAllocations = other.reducedAllocations;
