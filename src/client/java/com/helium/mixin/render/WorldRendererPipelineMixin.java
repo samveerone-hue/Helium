@@ -4,6 +4,7 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.DevModeOptimizer;
 import com.helium.render.RenderPipeline;
+import com.helium.render.RenderBatch;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,6 +28,10 @@ public abstract class WorldRendererPipelineMixin {
 
             if (config.devMode && DevModeOptimizer.isActive()) {
                 DevModeOptimizer.onFrameStart();
+            }
+
+            if (config.renderPipelining) {
+                RenderBatch.beginFrame();
             }
 
             if (!config.renderPipelining || !RenderPipeline.isInitialized()) return;
