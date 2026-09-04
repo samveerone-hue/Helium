@@ -39,21 +39,27 @@ public final class AsyncChunkMeshing {
 
     public static boolean queue(int x, int y, int z, boolean important) {
         long key = ChunkPosUtil.packPos(x, y, z);
-        if (!QUEUED_POSITIONS.add(key)) return false;
 
-        long generation = QUEUE_GENERATION.get();
-        ChunkTask task = new ChunkTask(x, y, z, calculatePriority(x, y, z, important), important);
-        PENDING.offer(task);
+        /*
+         * Queue insertion and queue clearing are a single ownership boundary.
+         * Without this lock, reload()/setWorld() can clear the queue after the
+         * duplicate check but before the task becomes durable, causing the
+         * WorldRenderer hook to cancel vanilla scheduling and silently lose the
+         * rebuild. This lock is only contended by chunk scheduling and lifecycle
+         * invalidation, never by the worker/render drain itself.
+         */
+        synchronized (AsyncChunkMeshing.class) {
+            if (!QUEUED_POSITIONS.add(key)) return false;
 
-        // A reload/world change may have cleared the queues concurrently while the
-        // task was being inserted. Remove this stale task rather than resurrecting
-        // work from the previous world.
-        if (generation != QUEUE_GENERATION.get() && PENDING.remove(task)) {
-            QUEUED_POSITIONS.remove(key);
-            return false;
+            ChunkTask task = new ChunkTask(
+                    x, y, z,
+                    calculatePriority(x, y, z, important),
+                    important,
+                    QUEUE_GENERATION.get()
+            );
+            PENDING.offer(task);
+            return true;
         }
-
-        return true;
     }
 
     public static ChunkTask dequeue() {
@@ -94,10 +100,12 @@ public final class AsyncChunkMeshing {
     }
 
     public static void clear() {
-        QUEUE_GENERATION.incrementAndGet();
-        PENDING.clear();
-        QUEUED_POSITIONS.clear();
-        bypassing = false;
+        synchronized (AsyncChunkMeshing.class) {
+            QUEUE_GENERATION.incrementAndGet();
+            PENDING.clear();
+            QUEUED_POSITIONS.clear();
+            bypassing = false;
+        }
     }
 
     private static double calculatePriority(int x, int y, int z, boolean important) {
@@ -108,5 +116,5 @@ public final class AsyncChunkMeshing {
         return important ? distSq * 0.5D : distSq;
     }
 
-    public record ChunkTask(int x, int y, int z, double priority, boolean important) {}
+    public record ChunkTask(int x, int y, int z, double priority, boolean important, long generation) {}
 }
