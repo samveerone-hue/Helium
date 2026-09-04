@@ -62,6 +62,7 @@ public final class RenderPipeline {
         if (!initialized.get() || !adaptivePacing) return;
         
         long budget = frameBudgetNs.get();
+        if (budget <= 0L) return;
         long elapsed = System.nanoTime() - lastFrameTime.get();
         long remaining = budget - elapsed;
         
@@ -75,7 +76,11 @@ public final class RenderPipeline {
     }
 
     public static void setTargetFps(int fps) {
-        if (fps > 0 && fps <= 1000) {
+        if (fps <= 0 || fps >= 260) {
+            frameBudgetNs.set(0L);
+            return;
+        }
+        if (fps <= 1000) {
             frameBudgetNs.set(1_000_000_000L / fps);
         }
     }
