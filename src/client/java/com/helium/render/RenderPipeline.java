@@ -84,6 +84,10 @@ public final class RenderPipeline {
         adaptivePacing = enabled;
     }
 
+    public static double getFrameBudgetMs() {
+        return frameBudgetNs.get() / 1_000_000.0;
+    }
+
     public static double getSmoothedFrameTimeMs() {
         return smoothedFrameTime;
     }
