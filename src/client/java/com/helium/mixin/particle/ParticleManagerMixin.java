@@ -24,7 +24,7 @@ public abstract class ParticleManagerMixin {
     private void helium$prepareParticleFrame(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null) {
-            helium$cameraReady = false;
+            ParticleLODState.prepare(null);
             return;
         }
 
