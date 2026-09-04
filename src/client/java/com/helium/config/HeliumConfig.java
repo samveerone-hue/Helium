@@ -90,7 +90,8 @@ public class HeliumConfig {
     public boolean fastBambooLight = true;
     public boolean optimizedLightEngine = true;
     public boolean screenshotLeakFix = true;
-    public boolean framebufferCleaner = true;
+    // Cleaner callbacks may run off the render thread; keep disabled until GPU resource ownership is explicit.
+    public boolean framebufferCleaner = false;
     public boolean instantLanguageChange = true;
     public boolean enableReflex = true;
     public long reflexOffsetNs = 0L;
@@ -134,7 +135,8 @@ public class HeliumConfig {
 
     public boolean glContextUpgrade = true;
     public boolean jomlFastMath = true;
-    public boolean fastRandom = true;
+    // Changes Gaussian sampling behavior; keep disabled unless distribution/sequence parity is explicitly accepted.
+    public boolean fastRandom = false;
     public boolean directStateAccess = true;
     public boolean renderbufferDepth = false;
     public boolean oneClickCrafting = false;
