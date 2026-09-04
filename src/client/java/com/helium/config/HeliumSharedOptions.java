@@ -93,8 +93,13 @@ public final class HeliumSharedOptions {
                 new IntOpt("helium.option.max_particles", 1000, 100, 5000, 100, null,
                         () -> c.maxParticles, v -> { c.maxParticles = v; renderingdirty = true; }, IMPACT_HIGH),
                 new BoolOpt("helium.option.particle_priority", true, () -> c.particlePriority, v -> { c.particlePriority = v; renderingdirty = true; }, IMPACT_LOW),
-                new BoolOpt("helium.option.particle_batching", false, () -> c.particleBatching, v -> { c.particleBatching = v; renderingdirty = true; }, IMPACT_LOW)
-                , new BoolOpt("helium.option.particle_lod", false, () -> c.particleLOD, v -> { c.particleLOD = v; renderingdirty = true; }, IMPACT_MEDIUM)
+                new BoolOpt("helium.option.particle_batching", false, () -> c.particleBatching, v -> { c.particleBatching = v; renderingdirty = true; }, IMPACT_LOW),
+                new BoolOpt("helium.option.particle_lod", false, () -> c.particleLOD, v -> { c.particleLOD = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new IntOpt("helium.option.particle_lod_distance", 16, 4, 64, 4, "helium.suffix.blocks", () -> (int) Math.round(c.particleLODDistance), v -> { c.particleLODDistance = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new IntOpt("helium.option.particle_lod_reduction", 30, 0, 100, 5, "helium.suffix.percent", () -> (int) Math.round(c.particleLODReduction * 100.0), v -> { c.particleLODReduction = v / 100.0; renderingdirty = true; }, IMPACT_MEDIUM)
+        )));
+
+        groups.add(new OptGroup("helium.group.render_pipeline", List.of(("helium.option.particle_lod", false, () -> c.particleLOD, v -> { c.particleLOD = v; renderingdirty = true; }, IMPACT_MEDIUM)
                 , new IntOpt("helium.option.particle_lod_distance", 16, 4, 64, 4, "helium.suffix.blocks", () -> (int) Math.round(c.particleLODDistance), v -> { c.particleLODDistance = v; renderingdirty = true; }, IMPACT_MEDIUM)
                 , new IntOpt("helium.option.particle_lod_reduction", 30, 0, 100, 5, "helium.suffix.percent", () -> (int) Math.round(c.particleLODReduction * 100.0), v -> { c.particleLODReduction = v / 100.0; renderingdirty = true; }, IMPACT_MEDIUM)
         )));
