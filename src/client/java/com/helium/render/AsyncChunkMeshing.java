@@ -51,7 +51,7 @@ public final class AsyncChunkMeshing {
             ChunkTask existing = QUEUED_TASKS.get(key);
             if (existing != null) {
                 if (!important || existing.important()) {
-                    return false;
+                    return true;
                 }
 
                 ChunkTask upgraded = new ChunkTask(
