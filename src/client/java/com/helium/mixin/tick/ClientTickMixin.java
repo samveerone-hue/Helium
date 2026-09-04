@@ -4,7 +4,6 @@ import com.helium.HeliumClient;
 import com.helium.compat.CrossLoaderCompat;
 import com.helium.config.HeliumConfig;
 import com.helium.render.AsyncChunkMeshing;
-import com.helium.render.RenderBatch;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,8 +19,7 @@ public class ClientTickMixin {
         HeliumConfig config = HeliumClient.getConfig();
 
         if (config != null && config.modEnabled && config.renderPipelining && client.worldRenderer != null) {
-            AsyncChunkMeshing.drainQueue(client.worldRenderer, AsyncChunkMeshing.DEFAULT_MAX_PER_TICK);
-            RenderBatch.beginFrame();
+            AsyncChunkMeshing.drainQueue(client.worldRenderer, config.chunkScheduleMaxPerTick);
         }
 
         if (!CrossLoaderCompat.isfabrictickavailable()) {
