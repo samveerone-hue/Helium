@@ -88,7 +88,7 @@ public final class AsyncPackReloader {
                     packs
             );
 
-            reload.whenComplete((result, failure) -> client.execute(() -> {
+            reload.whenComplete().whenComplete((result, failure) -> client.execute(() -> {
                 _loading.set(false);
 
                 if (failure != null) {
