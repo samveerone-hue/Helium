@@ -282,6 +282,8 @@ public final class HeliumSharedOptions {
                 new IntOpt("helium.option.native_memory_pool_size", 64, 16, 256, 16, "helium.suffix.mb",
                         () -> c.nativeMemoryPoolMb, v -> c.nativeMemoryPoolMb = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.render_pipelining", false, () -> c.renderPipelining, v -> c.renderPipelining = v, IMPACT_HIGH),
+                new BoolOpt("helium.option.adaptive_chunk_scheduling", true, () -> c.adaptiveChunkScheduling, v -> { c.adaptiveChunkScheduling = v; renderingdirty = true; }, IMPACT_HIGH, () -> c.renderPipelining),
+                new IntOpt("helium.option.chunk_schedule_max_per_tick", 16, 1, 64, 1, null, () -> c.chunkScheduleMaxPerTick, v -> { c.chunkScheduleMaxPerTick = v; renderingdirty = true; }, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.simd_math", false, () -> c.simdMath, v -> c.simdMath = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.async_light_updates", false, () -> c.asyncLightUpdates, v -> c.asyncLightUpdates = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.packet_batching", false, () -> c.packetBatching, v -> c.packetBatching = v, IMPACT_LOW),
