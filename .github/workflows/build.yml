@@ -9,6 +9,7 @@ on:
     branches:
       - "1.21.11"
       - "optimized-1.21.11"
+      - "perf-next-1.21.11"
 
 jobs:
   build:
