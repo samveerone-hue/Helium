@@ -52,6 +52,12 @@
   "helium.option.particle_priority.tooltip": "When limiting, keep important particles (damage, crits) over ambient ones.",
   "helium.option.particle_batching": "Particle Batching",
   "helium.option.particle_batching.tooltip": "Batch similar particles for more efficient rendering.",
+  "helium.option.particle_lod": "Particle LOD",
+  "helium.option.particle_lod.tooltip": "Reduce distant particle simulation cost by probabilistically removing eligible ambient particles.",
+  "helium.option.particle_lod_distance": "Particle LOD Distance",
+  "helium.option.particle_lod_distance.tooltip": "Distance after which eligible ambient particles may be reduced.",
+  "helium.option.particle_lod_reduction": "Particle LOD Reduction",
+  "helium.option.particle_lod_reduction.tooltip": "Percentage of eligible distant particles to discard.",
 
   "helium.option.animation_throttling": "Animation Throttling",
   "helium.option.animation_throttling.tooltip": "Reduce texture animation updates for off-screen or distant blocks. Saves GPU time.",
