@@ -11,13 +11,11 @@ import com.helium.gpu.NvidiaOptimizer;
 import com.helium.idle.IdleManager;
 import com.helium.lighting.AsyncLightEngine;
 import com.helium.math.FastMath;
-import com.helium.math.SimdMath;
 import com.helium.memory.AllocationReducer;
 import com.helium.memory.BufferPool;
 import com.helium.memory.NativeMemoryManager;
 import com.helium.memory.ObjectPool;
 import com.helium.network.FastIpPingOptimizer;
-import com.helium.network.PacketBatcher;
 import com.helium.platform.DeviceDetector;
 import com.helium.render.DevModeOptimizer;
 import com.helium.render.EnumValueCache;
@@ -25,12 +23,9 @@ import com.helium.render.FastAnimationOptimizer;
 import com.helium.render.FastWorldLoadingOptimizer;
 import com.helium.render.GLStateCache;
 import com.helium.render.HeliumBlockEntityCulling;
-import com.helium.render.ModelCache;
 import com.helium.render.RenderPipeline;
 import com.helium.render.TemporalReprojection;
 import com.helium.feature.FullbrightManager;
-import com.helium.resource.BackgroundResourceProcessor;
-import com.helium.startup.FastStartup;
 import com.helium.threading.EventPoller;
 import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
@@ -115,10 +110,9 @@ public class HeliumClient implements ClientModInitializer {
         }, () -> memoryOptsFailed = true);
 
         initFeatureSafely("GLStateCache", () -> {
-            if (config.glStateCache && !hasImmediatelyFast) {
-                GLStateCache.init();
-            } else if (hasImmediatelyFast) {
-                LOGGER.info("gl state cache disabled - ImmediatelyFast handles this");
+            if (config.glStateCache) {
+                glStateCacheFailed = true;
+                LOGGER.warn("global GL state cache is disabled until renderer-owned invalidation is available");
             }
         }, () -> glStateCacheFailed = true);
 
@@ -128,16 +122,6 @@ public class HeliumClient implements ClientModInitializer {
                 EventPoller.init(1000);
             }
         }, () -> threadOptsFailed = true);
-
-        initFeatureSafely("NetworkOptimizations", () -> {
-            if (config.networkOptimizations) {
-                BackgroundResourceProcessor.init();
-            }
-        }, () -> networkOptsFailed = true);
-
-        initFeatureSafely("FastStartup", () -> {
-            if (config.fastStartup) FastStartup.init();
-        }, () -> startupOptsFailed = true);
 
         initFeatureSafely("NativeMemory", () -> {
             if (config.nativeMemory) NativeMemoryManager.init(config.nativeMemoryPoolMb);
@@ -153,25 +137,9 @@ public class HeliumClient implements ClientModInitializer {
             }
         }, () -> LOGGER.warn("block entity culling fallback failed, will rely on mixin"));
 
-        initFeatureSafely("ModelCache", () -> {
-            if (config.modelCache) ModelCache.init(config.modelCacheMaxMb);
-        }, () -> modelCacheFailed = true);
-
         initFeatureSafely("AllocationReducer", () -> {
             if (config.reducedAllocations) AllocationReducer.init();
         }, () -> allocationReducerFailed = true);
-
-        initFeatureSafely("SimdMath", () -> {
-            if (config.simdMath) SimdMath.init();
-        }, () -> simdMathFailed = true);
-
-        initFeatureSafely("AsyncLightEngine", () -> {
-            if (config.asyncLightUpdates) AsyncLightEngine.init();
-        }, () -> asyncLightFailed = true);
-
-        initFeatureSafely("PacketBatcher", () -> {
-            if (config.packetBatching) PacketBatcher.init();
-        }, () -> packetBatcherFailed = true);
 
         initFeatureSafely("IdleManager", () -> {
             IdleManager.init();
@@ -335,15 +303,15 @@ public class HeliumClient implements ClientModInitializer {
     public static boolean isMemoryOptsAvailable() { return !memoryOptsFailed; }
     public static boolean isGlStateCacheAvailable() { return !glStateCacheFailed; }
     public static boolean isThreadOptsAvailable() { return !threadOptsFailed; }
-    public static boolean isNetworkOptsAvailable() { return !networkOptsFailed; }
-    public static boolean isStartupOptsAvailable() { return !startupOptsFailed; }
+    public static boolean isNetworkOptsAvailable() { return false; }
+    public static boolean isStartupOptsAvailable() { return false; }
     public static boolean isNativeMemoryAvailable() { return !nativeMemoryFailed; }
     public static boolean isRenderPipelineAvailable() { return !renderPipelineFailed; }
-    public static boolean isModelCacheAvailable() { return !modelCacheFailed; }
+    public static boolean isModelCacheAvailable() { return false; }
     public static boolean isAllocationReducerAvailable() { return !allocationReducerFailed; }
-    public static boolean isSimdMathAvailable() { return !simdMathFailed; }
-    public static boolean isAsyncLightAvailable() { return !asyncLightFailed; }
-    public static boolean isPacketBatcherAvailable() { return !packetBatcherFailed; }
+    public static boolean isSimdMathAvailable() { return false; }
+    public static boolean isAsyncLightAvailable() { return false; }
+    public static boolean isPacketBatcherAvailable() { return false; }
     public static boolean isIdleManagerAvailable() { return !idleManagerFailed; }
     public static boolean isGpuDetectorAvailable() { return !gpuDetectorFailed; }
     public static boolean isGpuOptsAvailable() { return !gpuOptsFailed; }
