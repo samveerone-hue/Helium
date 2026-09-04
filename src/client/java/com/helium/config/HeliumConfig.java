@@ -24,7 +24,7 @@ public class HeliumConfig {
     public boolean networkOptimizations = false;
     public boolean fastStartup = false;
 
-    public boolean entityCulling = false;
+    public boolean entityCulling = true;
     public int entityCullDistance = 64;
     public boolean blockEntityCulling = true;
     public int blockEntityCullDistance = 48;
@@ -126,8 +126,8 @@ public class HeliumConfig {
     public boolean shaderUniformCache = false;
 
     public boolean signTextCulling = true;
-    public boolean rainCulling = false;
-    public boolean beaconBeamCulling = false;
+    public boolean rainCulling = true;
+    public boolean beaconBeamCulling = true;
     public boolean paintingCulling = true;
     public boolean itemFrameCulling = true;
     public boolean itemFrameLOD = false;
