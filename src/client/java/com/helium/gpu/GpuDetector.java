@@ -3,6 +3,8 @@ package com.helium.gpu;
 import com.helium.HeliumClient;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Locale;
+
 public final class GpuDetector {
 
     public enum GpuVendor {
@@ -27,7 +29,7 @@ public final class GpuDetector {
             rendererString = GL11.glGetString(GL11.GL_RENDERER);
             if (rendererString == null) rendererString = "";
 
-            String vendorLower = vendorString.toLowerCase();
+            String vendorLower = vendorString.toLowerCase(Locale.ROOT);
             String lower = rendererString.toLowerCase();
             if (vendorLower.contains("nvidia") || lower.contains("nvidia") || lower.contains("geforce") || lower.contains("quadro") || lower.contains("rtx") || lower.contains("gtx")) {
                 vendor = GpuVendor.NVIDIA;
