@@ -51,6 +51,7 @@
     "render.LevelLoadingScreenMixin",
     "render.WorldRendererFrustumMixin",
     "render.LightmapFullbrightMixin",
+    "render.LightmapCacheMixin",
     "render.SignTextCullingMixin",
     "render.RainCullingMixin",
     "render.BeaconBeamCullingMixin",
