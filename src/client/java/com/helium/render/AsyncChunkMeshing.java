@@ -23,6 +23,7 @@ public final class AsyncChunkMeshing {
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(QUEUE_INITIAL_CAPACITY, Comparator.comparingDouble(ChunkTask::priority));
     private static final Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentHashMap<Long, ChunkTask> QUEUED_TASKS = new ConcurrentHashMap<>();
     private static final AtomicLong QUEUE_GENERATION = new AtomicLong();
 
     private static volatile Vec3d cameraPos = Vec3d.ZERO;
@@ -49,6 +50,26 @@ public final class AsyncChunkMeshing {
          * invalidation, never by the worker/render drain itself.
          */
         synchronized (AsyncChunkMeshing.class) {
+            ChunkTask existing = QUEUED_TASKS.get(key);
+            if (existing != null) {
+                if (!important || existing.important()) {
+                    return false;
+                }
+
+                ChunkTask upgraded = new ChunkTask(
+                        existing.x(), existing.y(), existing.z(),
+                        calculatePriority(existing.x(), existing.y(), existing.z(), true),
+                        true,
+                        existing.generation()
+                );
+                if (QUEUED_TASKS.replace(key, existing, upgraded)) {
+                    PENDING.remove(existing);
+                    PENDING.offer(upgraded);
+                    return true;
+                }
+                return false;
+            }
+
             if (!QUEUED_POSITIONS.add(key)) return false;
 
             ChunkTask task = new ChunkTask(
@@ -57,6 +78,7 @@ public final class AsyncChunkMeshing {
                     important,
                     QUEUE_GENERATION.get()
             );
+            QUEUED_TASKS.put(key, task);
             PENDING.offer(task);
             return true;
         }
@@ -65,7 +87,9 @@ public final class AsyncChunkMeshing {
     public static ChunkTask dequeue() {
         ChunkTask task = PENDING.poll();
         if (task != null) {
-            QUEUED_POSITIONS.remove(ChunkPosUtil.packPos(task.x(), task.y(), task.z()));
+            long key = ChunkPosUtil.packPos(task.x(), task.y(), task.z());
+            QUEUED_POSITIONS.remove(key);
+            QUEUED_TASKS.remove(key, task);
         }
         return task;
     }
@@ -104,6 +128,7 @@ public final class AsyncChunkMeshing {
             QUEUE_GENERATION.incrementAndGet();
             PENDING.clear();
             QUEUED_POSITIONS.clear();
+            QUEUED_TASKS.clear();
             bypassing = false;
         }
     }
