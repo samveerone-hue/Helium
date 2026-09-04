@@ -45,6 +45,7 @@
     "render.ChunkBuilderChunkPipelineMixin",
     "compat.GameOptionsAccessor",
     "compat.SodiumOptionsGUILegacyMixin",
+    "compat.SodiumOptionsGUIFallbackMixin",
     "compat.ReesesOptionsLegacyMixin",
     "render.ModelPartAnimationMixin",
     "render.DirectionValuesMixin",
