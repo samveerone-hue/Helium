@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 1.21.11 port of Catalyst's AsyncMeshing queue.
@@ -22,6 +23,7 @@ public final class AsyncChunkMeshing {
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(QUEUE_INITIAL_CAPACITY, Comparator.comparingDouble(ChunkTask::priority));
     private static final Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
+    private static final AtomicLong QUEUE_GENERATION = new AtomicLong();
 
     private static volatile Vec3d cameraPos = Vec3d.ZERO;
     private static volatile ChunkPos cameraChunk = ChunkPos.ORIGIN;
@@ -39,7 +41,18 @@ public final class AsyncChunkMeshing {
         long key = ChunkPosUtil.packPos(x, y, z);
         if (!QUEUED_POSITIONS.add(key)) return false;
 
-        PENDING.offer(new ChunkTask(x, y, z, calculatePriority(x, y, z, important), important));
+        long generation = QUEUE_GENERATION.get();
+        ChunkTask task = new ChunkTask(x, y, z, calculatePriority(x, y, z, important), important);
+        PENDING.offer(task);
+
+        // A reload/world change may have cleared the queues concurrently while the
+        // task was being inserted. Remove this stale task rather than resurrecting
+        // work from the previous world.
+        if (generation != QUEUE_GENERATION.get() && PENDING.remove(task)) {
+            QUEUED_POSITIONS.remove(key);
+            return false;
+        }
+
         return true;
     }
 
@@ -81,6 +94,7 @@ public final class AsyncChunkMeshing {
     }
 
     public static void clear() {
+        QUEUE_GENERATION.incrementAndGet();
         PENDING.clear();
         QUEUED_POSITIONS.clear();
         bypassing = false;
