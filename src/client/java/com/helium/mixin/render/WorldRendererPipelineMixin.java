@@ -38,9 +38,9 @@ public abstract class WorldRendererPipelineMixin {
 
             MinecraftClient client = MinecraftClient.getInstance();
             int maxFps = client.options.getMaxFps().getValue();
-            if (maxFps > 0 && maxFps < 260) {
-                RenderPipeline.setTargetFps(maxFps);
-            }
+            // Minecraft uses 260 as its unlimited sentinel. Never leave our internal
+            // 60 FPS default active when the user requests an unlimited/high cap.
+            RenderPipeline.setTargetFps(maxFps);
 
             RenderPipeline.onFrameStart();
         } catch (Throwable t) {
