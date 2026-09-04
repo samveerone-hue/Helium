@@ -67,12 +67,6 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("IrisShaderCacheMixin")) {
             return hasIris;
         }
-        if (mixinClassName.endsWith("EndGatewayBeamCullingMixin")) {
-            return hasOpenGlStateManager;
-        }
-        if (mixinClassName.endsWith("BeaconBeamCullingMixin")) {
-            return hasOpenGlStateManager;
-        }
         if (mixinClassName.endsWith("PaintingCullingMixin")) {
             return hasOpenGlStateManager;
         }
