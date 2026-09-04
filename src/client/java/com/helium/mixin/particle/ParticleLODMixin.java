@@ -2,6 +2,7 @@ package com.helium.mixin.particle;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.particle.ParticleLODState;
 import net.minecraft.client.particle.Particle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -19,7 +20,7 @@ public abstract class ParticleLODMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$applyParticleLODModern(CallbackInfo ci) {
-        if (helium$lodFailed || !com.helium.mixin.particle.ParticleManagerMixin.helium$isLodEnabled()) {
+        if (helium$lodFailed || !ParticleLODState.isEnabled()) {
             return;
         }
 
@@ -32,11 +33,11 @@ public abstract class ParticleLODMixin {
             }
 
             double dx = self.getBoundingBox().getCenter().x
-                    - ParticleManagerMixin.helium$getCameraX();
+                    - ParticleLODState.cameraX();
             double dy = self.getBoundingBox().getCenter().y
-                    - ParticleManagerMixin.helium$getCameraY();
+                    - ParticleLODState.cameraY();
             double dz = self.getBoundingBox().getCenter().z
-                    - ParticleManagerMixin.helium$getCameraZ();
+                    - ParticleLODState.cameraZ();
 
             double threshold = Math.max(0.0, config.particleLODDistance);
             double thresholdSq = threshold * threshold;
