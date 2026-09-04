@@ -307,7 +307,13 @@ public class HeliumClient implements ClientModInitializer {
         config.renderPipelining = enabled;
 
         if (enabled) {
-            initFeatureSafely("RenderPipeline", RenderPipeline::init, () -> renderPipelineFailed = true);
+            try {
+                RenderPipeline.init();
+                renderPipelineFailed = false;
+            } catch (Throwable t) {
+                renderPipelineFailed = true;
+                LOGGER.error("RenderPipeline failed to initialize from live config toggle", t);
+            }
         } else {
             com.helium.render.AsyncChunkMeshing.clear();
             com.helium.render.RenderBatch.clear();
