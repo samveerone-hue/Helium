@@ -61,6 +61,9 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("SodiumOptionsGUILegacyMixin")) {
             return !hasModernSodiumApi;
         }
+        if (mixinClassName.endsWith("SodiumOptionsGUIFallbackMixin")) {
+            return hasModernSodiumApi;
+        }
         if (mixinClassName.endsWith("SodiumLeafCullingMixin")) {
             return hasSodium;
         }
