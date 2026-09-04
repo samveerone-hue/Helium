@@ -29,6 +29,7 @@ import com.helium.feature.FullbrightManager;
 import com.helium.threading.EventPoller;
 import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import com.helium.compat.CrossLoaderCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
@@ -228,6 +229,8 @@ public class HeliumClient implements ClientModInitializer {
                 initDeferredGpuFeatures();
             }
         });
+
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> AsyncPackReloader.shutdown());
 
         long elapsed = (System.nanoTime() - start) / 1_000_000;
         LOGGER.info("initialized in {}ms", elapsed);
