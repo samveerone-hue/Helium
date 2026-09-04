@@ -119,7 +119,8 @@ public class HeliumConfig {
 
     public boolean acceleratedText = false;
 
-    public boolean shaderUniformCache = true;
+    // Disabled until shader-program deletion/relink invalidation is renderer-owned and proven safe.
+    public boolean shaderUniformCache = false;
 
     public boolean signTextCulling = true;
     public boolean rainCulling = true;
