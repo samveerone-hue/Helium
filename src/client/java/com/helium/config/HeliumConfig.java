@@ -66,7 +66,8 @@ public class HeliumConfig {
     public int modelCacheMaxMb = 64;
     public boolean reducedAllocations = true;
     public boolean simdMath = true;
-    public boolean asyncLightUpdates = true;
+    // No safe worker/result path is currently wired; avoid per-tick tracking overhead by default.
+    public boolean asyncLightUpdates = false;
     public boolean packetBatching = true;
     public boolean autoPauseOnIdle = false;
     public int idleTimeoutSeconds = 60;
@@ -87,7 +88,8 @@ public class HeliumConfig {
     public boolean suppressOpenGLErrors = true;
     public boolean fastFramebufferBlit = true;
     public boolean poseStackPooling = true;
-    public boolean fastBambooLight = true;
+    // Changes bamboo ambient-occlusion semantics; keep opt-in until parity is verified.
+    public boolean fastBambooLight = false;
     public boolean optimizedLightEngine = true;
     public boolean screenshotLeakFix = true;
     // Cleaner callbacks may run off the render thread; keep disabled until GPU resource ownership is explicit.
