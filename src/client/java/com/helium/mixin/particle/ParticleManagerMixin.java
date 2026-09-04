@@ -3,6 +3,7 @@ package com.helium.mixin.particle;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.particle.ParticleLimiter;
+import com.helium.particle.ParticleLODState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
@@ -19,18 +20,6 @@ public abstract class ParticleManagerMixin {
     @Unique
     private static boolean helium$particleCullFailed = false;
 
-    @Unique
-    private static volatile double helium$cameraX;
-
-    @Unique
-    private static volatile double helium$cameraY;
-
-    @Unique
-    private static volatile double helium$cameraZ;
-
-    @Unique
-    private static volatile boolean helium$cameraReady;
-
     @Inject(method = "tick", at = @At("HEAD"))
     private void helium$prepareParticleFrame(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
@@ -40,19 +29,9 @@ public abstract class ParticleManagerMixin {
         }
 
         if (config.particleLOD) {
-            MinecraftClient client = MinecraftClient.getInstance();
-            Camera camera = client.gameRenderer == null ? null : client.gameRenderer.getCamera();
-            if (camera != null) {
-                var pos = com.helium.util.VersionCompat.getCameraPosition(camera);
-                helium$cameraX = pos.x;
-                helium$cameraY = pos.y;
-                helium$cameraZ = pos.z;
-                helium$cameraReady = true;
-            } else {
-                helium$cameraReady = false;
-            }
+            ParticleLODState.prepare(config);
         } else {
-            helium$cameraReady = false;
+            ParticleLODState.prepare(null);
         }
 
         if (config.particleLimiting && !ParticleLimiter.isInitialized()) {
@@ -110,24 +89,4 @@ public abstract class ParticleManagerMixin {
         }
     }
 
-    @Unique
-    public static boolean helium$isLodEnabled() {
-        HeliumConfig config = HeliumClient.getConfig();
-        return config != null && config.modEnabled && config.particleLOD && helium$cameraReady;
-    }
-
-    @Unique
-    public static double helium$getCameraX() {
-        return helium$cameraX;
-    }
-
-    @Unique
-    public static double helium$getCameraY() {
-        return helium$cameraY;
-    }
-
-    @Unique
-    public static double helium$getCameraZ() {
-        return helium$cameraZ;
-    }
 }
