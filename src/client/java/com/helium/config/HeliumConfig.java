@@ -17,12 +17,12 @@ public class HeliumConfig {
 
     public boolean modEnabled = true;
 
-    public boolean fastMath = true;
+    public boolean fastMath = false;
     public boolean glStateCache = false;
     public boolean memoryOptimizations = true;
     public boolean threadOptimizations = true;
-    public boolean networkOptimizations = true;
-    public boolean fastStartup = true;
+    public boolean networkOptimizations = false;
+    public boolean fastStartup = false;
 
     public boolean entityCulling = true;
     public int entityCullDistance = 64;
@@ -33,7 +33,7 @@ public class HeliumConfig {
     public boolean particleLimiting = true;
     public int maxParticles = 1000;
     public boolean particlePriority = true;
-    public boolean particleBatching = true;
+    public boolean particleBatching = false;
     public boolean animationThrottling = true;
 
     public boolean smoothScrolling = true;
@@ -61,13 +61,16 @@ public class HeliumConfig {
     public boolean nativeMemory = true;
     public int nativeMemoryPoolMb = 64;
     public boolean renderPipelining = false;
+    public boolean adaptiveChunkScheduling = true;
+    public int chunkScheduleMaxPerTick = 16;
 
-    public boolean modelCache = true;
+    public boolean modelCache = false;
     public int modelCacheMaxMb = 64;
     public boolean reducedAllocations = true;
-    public boolean simdMath = true;
-    public boolean asyncLightUpdates = true;
-    public boolean packetBatching = true;
+    public boolean simdMath = false;
+    // No safe worker/result path is currently wired; avoid per-tick tracking overhead by default.
+    public boolean asyncLightUpdates = false;
+    public boolean packetBatching = false;
     public boolean autoPauseOnIdle = false;
     public int idleTimeoutSeconds = 60;
     public int idleFpsLimit = 5;
@@ -85,12 +88,14 @@ public class HeliumConfig {
     public boolean fastIpPing = true;
 
     public boolean suppressOpenGLErrors = true;
-    public boolean fastFramebufferBlit = true;
+    public boolean fastFramebufferBlit = false;
     public boolean poseStackPooling = true;
-    public boolean fastBambooLight = true;
+    // Changes bamboo ambient-occlusion semantics; keep opt-in until parity is verified.
+    public boolean fastBambooLight = false;
     public boolean optimizedLightEngine = true;
-    public boolean screenshotLeakFix = true;
-    public boolean framebufferCleaner = true;
+    public boolean screenshotLeakFix = false;
+    // Cleaner callbacks may run off the render thread; keep disabled until GPU resource ownership is explicit.
+    public boolean framebufferCleaner = false;
     public boolean instantLanguageChange = true;
     public boolean enableReflex = true;
     public long reflexOffsetNs = 0L;
@@ -119,7 +124,8 @@ public class HeliumConfig {
 
     public boolean acceleratedText = false;
 
-    public boolean shaderUniformCache = true;
+    // Disabled until shader-program deletion/relink invalidation is renderer-owned and proven safe.
+    public boolean shaderUniformCache = false;
 
     public boolean signTextCulling = true;
     public boolean rainCulling = true;
@@ -132,8 +138,9 @@ public class HeliumConfig {
     public boolean objectDeduplication = true;
 
     public boolean glContextUpgrade = true;
-    public boolean jomlFastMath = true;
-    public boolean fastRandom = true;
+    public boolean jomlFastMath = false;
+    // Changes Gaussian sampling behavior; keep disabled unless distribution/sequence parity is explicitly accepted.
+    public boolean fastRandom = false;
     public boolean directStateAccess = true;
     public boolean renderbufferDepth = false;
     public boolean oneClickCrafting = false;
@@ -174,7 +181,7 @@ public class HeliumConfig {
                 signTextCulling + "," + rainCulling + "," +
                 beaconBeamCulling + "," + paintingCulling + "," +
                 itemFrameCulling + "," + itemFrameLOD + "," + itemFrameLODRange + "," +
-                renderPipelining + "," + fastFramebufferBlit + "," +
+                renderPipelining + "," + adaptiveChunkScheduling + "," + chunkScheduleMaxPerTick + "," + particleLOD + "," + particleLODDistance + "," + particleLODReduction + "," + fastFramebufferBlit + "," +
                 poseStackPooling + "," + fastBambooLight + "," +
                 optimizedLightEngine + "," + fullbright;
     }
@@ -253,6 +260,8 @@ public class HeliumConfig {
         this.nativeMemory = other.nativeMemory;
         this.nativeMemoryPoolMb = other.nativeMemoryPoolMb;
         this.renderPipelining = other.renderPipelining;
+        this.adaptiveChunkScheduling = other.adaptiveChunkScheduling;
+        this.chunkScheduleMaxPerTick = other.chunkScheduleMaxPerTick;
         this.modelCache = other.modelCache;
         this.modelCacheMaxMb = other.modelCacheMaxMb;
         this.reducedAllocations = other.reducedAllocations;

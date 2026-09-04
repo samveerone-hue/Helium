@@ -2,12 +2,13 @@ package com.helium.render;
 
 import com.helium.util.ChunkPosUtil;
 import com.helium.util.ChunkScheduler;
+import com.helium.HeliumClient;
+import com.helium.config.HeliumConfig;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Comparator;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
@@ -21,7 +22,7 @@ public final class AsyncChunkMeshing {
 
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(QUEUE_INITIAL_CAPACITY, Comparator.comparingDouble(ChunkTask::priority));
-    private static final Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentHashMap<Long, ChunkTask> QUEUED_TASKS = new ConcurrentHashMap<>();
 
     private static volatile Vec3d cameraPos = Vec3d.ZERO;
     private static volatile ChunkPos cameraChunk = ChunkPos.ORIGIN;
@@ -37,16 +38,51 @@ public final class AsyncChunkMeshing {
 
     public static boolean queue(int x, int y, int z, boolean important) {
         long key = ChunkPosUtil.packPos(x, y, z);
-        if (!QUEUED_POSITIONS.add(key)) return false;
 
-        PENDING.offer(new ChunkTask(x, y, z, calculatePriority(x, y, z, important), important));
-        return true;
+        /*
+         * Queue insertion and queue clearing are a single ownership boundary.
+         * Without this lock, reload()/setWorld() can clear the queue after the
+         * duplicate check but before the task becomes durable, causing the
+         * WorldRenderer hook to cancel vanilla scheduling and silently lose the
+         * rebuild. This lock is only contended by chunk scheduling and lifecycle
+         * invalidation, never by the worker/render drain itself.
+         */
+        synchronized (AsyncChunkMeshing.class) {
+            ChunkTask existing = QUEUED_TASKS.get(key);
+            if (existing != null) {
+                if (!important || existing.important()) {
+                    return true;
+                }
+
+                ChunkTask upgraded = new ChunkTask(
+                        existing.x(), existing.y(), existing.z(),
+                        calculatePriority(existing.x(), existing.y(), existing.z(), true),
+                        true
+                );
+                if (QUEUED_TASKS.replace(key, existing, upgraded)) {
+                    PENDING.remove(existing);
+                    PENDING.offer(upgraded);
+                    return true;
+                }
+                return false;
+            }
+
+            ChunkTask task = new ChunkTask(
+                    x, y, z,
+                    calculatePriority(x, y, z, important),
+                    important
+            );
+            QUEUED_TASKS.put(key, task);
+            PENDING.offer(task);
+            return true;
+        }
     }
 
     public static ChunkTask dequeue() {
         ChunkTask task = PENDING.poll();
         if (task != null) {
-            QUEUED_POSITIONS.remove(ChunkPosUtil.packPos(task.x(), task.y(), task.z()));
+            long key = ChunkPosUtil.packPos(task.x(), task.y(), task.z());
+            QUEUED_TASKS.remove(key, task);
         }
         return task;
     }
@@ -56,7 +92,7 @@ public final class AsyncChunkMeshing {
 
         return ChunkScheduler.drainLimited(
                 renderer,
-                Math.max(1, maxPerTick),
+                getDrainBudget(maxPerTick),
                 AsyncChunkMeshing::pollEntry,
                 value -> bypassing = value
         );
@@ -66,6 +102,27 @@ public final class AsyncChunkMeshing {
         ChunkTask task = dequeue();
         return task == null ? null : new ChunkScheduler.ChunkEntry(
                 task.x(), task.y(), task.z(), task.important());
+    }
+
+    public static int getDrainBudget(int configuredMax) {
+        int max = Math.max(1, Math.min(configuredMax, 64));
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || !config.adaptiveChunkScheduling || !RenderPipeline.isInitialized()) {
+            return max;
+        }
+
+        double frameMs = RenderPipeline.getSmoothedFrameTimeMs();
+        double budgetMs = RenderPipeline.getFrameBudgetMs();
+        if (frameMs <= 0.0 || budgetMs <= 0.0) {
+            return max;
+        }
+
+        // Scale down only when the frame is already over budget. Never exceed the
+        // configured cap, and retain at least one update so the queue cannot starve.
+        if (frameMs <= budgetMs) return max;
+
+        double scale = Math.max(0.25, Math.min(1.0, budgetMs / frameMs));
+        return Math.max(1, (int) Math.floor(max * scale));
     }
 
     public static boolean isBypassing() {
@@ -81,9 +138,11 @@ public final class AsyncChunkMeshing {
     }
 
     public static void clear() {
-        PENDING.clear();
-        QUEUED_POSITIONS.clear();
-        bypassing = false;
+        synchronized (AsyncChunkMeshing.class) {
+            PENDING.clear();
+            QUEUED_TASKS.clear();
+            bypassing = false;
+        }
     }
 
     private static double calculatePriority(int x, int y, int z, boolean important) {

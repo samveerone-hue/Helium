@@ -17,31 +17,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(WeatherRendering.class)
 public abstract class RainCullingMixin {
-
-    @Unique
-    private static boolean helium$failed = false;
+    @Unique private static boolean helium$failed = false;
 
     @Inject(method = "getPrecipitationAt", at = @At("HEAD"), cancellable = true, require = 0)
-    private void helium$cullrain(World world, BlockPos pos, CallbackInfoReturnable<Biome.Precipitation> cir) {
+    private void helium$cullRain(World world, BlockPos pos, CallbackInfoReturnable<Biome.Precipitation> cir) {
         if (helium$failed) return;
         try {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.rainCulling) return;
-
-            int surfacey = world.getTopY(Heightmap.Type.MOTION_BLOCKING, pos.getX(), pos.getZ());
-            Box column = new Box(
-                    pos.getX(), surfacey, pos.getZ(),
-                    pos.getX() + 1, world.getHeight(), pos.getZ() + 1
-            );
-
-            if (!CullingHelper.isvisible(column)) {
-                cir.setReturnValue(Biome.Precipitation.NONE);
-            }
+            int surfaceY = world.getTopY(Heightmap.Type.MOTION_BLOCKING, pos.getX(), pos.getZ());
+            Box column = new Box(pos.getX(), surfaceY, pos.getZ(),
+                    pos.getX() + 1, world.getHeight(), pos.getZ() + 1);
+            if (!CullingHelper.isvisible(column)) cir.setReturnValue(Biome.Precipitation.NONE);
         } catch (Throwable t) {
-            if (!helium$failed) {
-                helium$failed = true;
-                HeliumClient.LOGGER.warn("rain culling failed ({})", t.getClass().getSimpleName());
-            }
+            helium$failed = true;
+            HeliumClient.LOGGER.warn("rain culling disabled ({})", t.getClass().getSimpleName());
         }
     }
 }

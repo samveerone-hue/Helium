@@ -4,8 +4,9 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.DevModeOptimizer;
 import com.helium.render.RenderPipeline;
-import net.minecraft.client.MinecraftClient;
+import com.helium.render.RenderBatch;
 import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,13 +30,17 @@ public abstract class WorldRendererPipelineMixin {
                 DevModeOptimizer.onFrameStart();
             }
 
+            if (config.renderPipelining) {
+                RenderBatch.beginFrame();
+            }
+
             if (!config.renderPipelining || !RenderPipeline.isInitialized()) return;
 
             MinecraftClient client = MinecraftClient.getInstance();
             int maxFps = client.options.getMaxFps().getValue();
-            if (maxFps > 0 && maxFps < 260) {
-                RenderPipeline.setTargetFps(maxFps);
-            }
+            // Minecraft uses 260 as its unlimited sentinel. Never leave our internal
+            // 60 FPS default active when the user requests an unlimited/high cap.
+            RenderPipeline.setTargetFps(maxFps);
 
             RenderPipeline.onFrameStart();
         } catch (Throwable t) {

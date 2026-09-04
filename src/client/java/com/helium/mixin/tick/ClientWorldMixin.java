@@ -1,9 +1,9 @@
 package com.helium.mixin.tick;
 
 import com.helium.HeliumClient;
+import com.helium.config.HeliumConfig;
 import com.helium.lighting.AsyncLightEngine;
 import com.helium.memory.MemoryCompactor;
-import com.helium.tick.ClientTickCache;
 import net.minecraft.client.world.ClientWorld;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,14 +18,22 @@ public abstract class ClientWorldMixin {
     private long helium$tickCounter = 0;
 
     @Inject(method = "tick", at = @At("HEAD"))
-    private void helium$tickCache(CallbackInfo ci) {
-        if (HeliumClient.getConfig() == null || !HeliumClient.getConfig().modEnabled) return;
+    private void helium$tickMaintenance(CallbackInfo ci) {
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || !config.modEnabled) {
+            return;
+        }
+
         long time = helium$tickCounter++;
-        ClientTickCache.tick(time);
-        if (HeliumClient.getConfig().memoryOptimizations) {
+
+        // ClientTickCache.tick() is intentionally absent: its current implementation
+        // performs no work, so keeping a per-world-tick call only adds overhead.
+
+        if (config.memoryOptimizations) {
             MemoryCompactor.tick(time);
         }
-        if (HeliumClient.getConfig().asyncLightUpdates && AsyncLightEngine.isInitialized()) {
+
+        if (config.asyncLightUpdates && AsyncLightEngine.isInitialized()) {
             AsyncLightEngine.applyCompleted();
         }
     }

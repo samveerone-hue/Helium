@@ -111,7 +111,7 @@ jar {
 
 // ─── Publish Jar ───────────────────────────────────────────────────────────────
 // ./gradlew publish - creates a clean, professional release jar
-// Output: build/publish/Helium-1.6.1+mc1.21.11.jar
+// Output: build/publish/Helium-${project.mod_version}+mc${mcVersion}.jar
 
 tasks.register('publishJar', Copy) {
     dependsOn remapJar
@@ -137,7 +137,7 @@ tasks.register('release') {
 
 // ─── Dev Build ─────────────────────────────────────────────────────────────────
 // ./gradlew buildDev - creates a dev jar with auto-incrementing build number
-// Output: build/dev/Helium-1.6.1+mc1.21.11-dev.42.jar
+// Output uses the current project.mod_version and build number.
 
 tasks.register('buildDev') {
     dependsOn remapJar

@@ -10,7 +10,8 @@ public class IntArrayDeque {
     private int size;
 
     public IntArrayDeque(int capacity) {
-        this.data = new int[capacity];
+        if (capacity < 0) throw new IllegalArgumentException("capacity must be >= 0");
+        this.data = new int[Math.max(1, capacity)];
         this.head = 0;
         this.tail = 0;
         this.size = 0;

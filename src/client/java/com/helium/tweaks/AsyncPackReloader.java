@@ -34,6 +34,14 @@ public final class AsyncPackReloader {
         return _loading.get();
     }
 
+    public static void shutdown() {
+        _loading.set(false);
+        _needsrerender = false;
+        if (RELOAD_EXECUTOR instanceof java.util.concurrent.ExecutorService service) {
+            service.shutdownNow();
+        }
+    }
+
     public static void reloadasync() {
         if (_loading.getAndSet(true)) return;
 

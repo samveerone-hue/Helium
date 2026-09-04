@@ -20,6 +20,7 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
     private boolean hasFastServerPings = false;
     private boolean hasOxidizium = false;
     private boolean hasGpuBooster = false;
+    private boolean hasMatrixStackDepth = false;
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -33,6 +34,7 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         hasFastServerPings = ExternalModCompat.hasFastServerPings();
         hasOxidizium = ExternalModCompat.hasOxidizium();
         hasGpuBooster = loader.isModLoaded("gpu_booster");
+        hasMatrixStackDepth = classFieldExists("net.minecraft.client.util.math.MatrixStack", "stackDepth");
     }
 
     @Override
@@ -48,6 +50,7 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("MathHelperDoubleMixin")) return hasOpenGlStateManager && !hasOxidizium;
 
         if (mixinClassName.endsWith("WindowMixin")) return !hasGpuBooster;
+        if (mixinClassName.endsWith("MatrixStackPoolMixin")) return !hasMatrixStackDepth;
 
         if (mixinClassName.endsWith("GlStateManagerMixin")) {
             return hasOpenGlStateManager && !hasImmediatelyFast;
@@ -58,6 +61,9 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("SodiumOptionsGUILegacyMixin")) {
             return !hasModernSodiumApi;
         }
+        if (mixinClassName.endsWith("SodiumOptionsGUIFallbackMixin")) {
+            return hasModernSodiumApi;
+        }
         if (mixinClassName.endsWith("SodiumLeafCullingMixin")) {
             return hasSodium;
         }
@@ -66,12 +72,6 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.endsWith("IrisShaderCacheMixin")) {
             return hasIris;
-        }
-        if (mixinClassName.endsWith("EndGatewayBeamCullingMixin")) {
-            return hasOpenGlStateManager;
-        }
-        if (mixinClassName.endsWith("BeaconBeamCullingMixin")) {
-            return hasOpenGlStateManager;
         }
         if (mixinClassName.endsWith("PaintingCullingMixin")) {
             return hasOpenGlStateManager;
@@ -98,5 +98,15 @@ public class HeliumMixinPlugin implements IMixinConfigPlugin {
 
     private boolean classExistsOnClasspath(String resourcePath) {
         return getClass().getClassLoader().getResource(resourcePath) != null;
+    }
+
+    private boolean classFieldExists(String className, String fieldName) {
+        try {
+            Class<?> type = Class.forName(className, false, getClass().getClassLoader());
+            type.getDeclaredField(fieldName);
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 }

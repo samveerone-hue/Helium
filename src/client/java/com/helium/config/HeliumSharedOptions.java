@@ -93,22 +93,25 @@ public final class HeliumSharedOptions {
                 new IntOpt("helium.option.max_particles", 1000, 100, 5000, 100, null,
                         () -> c.maxParticles, v -> { c.maxParticles = v; renderingdirty = true; }, IMPACT_HIGH),
                 new BoolOpt("helium.option.particle_priority", true, () -> c.particlePriority, v -> { c.particlePriority = v; renderingdirty = true; }, IMPACT_LOW),
-                new BoolOpt("helium.option.particle_batching", true, () -> c.particleBatching, v -> { c.particleBatching = v; renderingdirty = true; }, IMPACT_LOW)
+                new BoolOpt("helium.option.particle_batching", false, () -> c.particleBatching, v -> { c.particleBatching = v; renderingdirty = true; }, IMPACT_LOW),
+                new BoolOpt("helium.option.particle_lod", false, () -> c.particleLOD, v -> { c.particleLOD = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new IntOpt("helium.option.particle_lod_distance", 16, 4, 64, 4, "helium.suffix.blocks", () -> (int) Math.round(c.particleLODDistance), v -> { c.particleLODDistance = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new IntOpt("helium.option.particle_lod_reduction", 30, 0, 100, 5, "helium.suffix.percent", () -> (int) Math.round(c.particleLODReduction * 100.0), v -> { c.particleLODReduction = v / 100.0; renderingdirty = true; }, IMPACT_MEDIUM)
         )));
 
         groups.add(new OptGroup("helium.group.render_pipeline", List.of(
                 new BoolOpt("helium.option.animation_throttling", true, () -> c.animationThrottling, v -> { c.animationThrottling = v; renderingdirty = true; }, IMPACT_LOW),
-                new BoolOpt("helium.option.fast_math", true, () -> c.fastMath, v -> { c.fastMath = v; renderingdirty = true; }, IMPACT_LOW),
+                new BoolOpt("helium.option.fast_math", false, () -> c.fastMath, v -> { c.fastMath = v; renderingdirty = true; }, IMPACT_LOW),
                 new BoolOpt("helium.option.gl_state_cache", false, () -> c.glStateCache, v -> { c.glStateCache = v; renderingdirty = true; }, IMPACT_VARIES,
                         () -> !HeliumClient.isAndroid()),
                 new BoolOpt("helium.option.fast_animations", false, () -> c.fastAnimations, v -> { c.fastAnimations = v; renderingdirty = true; }, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.cached_enum_values", true, () -> c.cachedEnumValues, v -> { c.cachedEnumValues = v; renderingdirty = true; }, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.accelerated_text", true, () -> c.acceleratedText, v -> c.acceleratedText = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.shader_uniform_cache", true, () -> c.shaderUniformCache, v -> c.shaderUniformCache = v, IMPACT_MEDIUM)
+                new BoolOpt("helium.option.cached_enum_values", false, () -> c.cachedEnumValues, v -> { c.cachedEnumValues = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.accelerated_text", false, () -> c.acceleratedText, v -> c.acceleratedText = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.shader_uniform_cache", false, () -> c.shaderUniformCache, v -> c.shaderUniformCache = v, IMPACT_MEDIUM)
         )));
 
         groups.add(new OptGroup("helium.group.caching", List.of(
-                new BoolOpt("helium.option.model_cache", true, () -> c.modelCache, v -> { c.modelCache = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.model_cache", false, () -> c.modelCache, v -> { c.modelCache = v; renderingdirty = true; }, IMPACT_MEDIUM),
                 new IntOpt("helium.option.model_cache_size", 64, 16, 256, 16, "helium.suffix.mb",
                         () -> c.modelCacheMaxMb, v -> { c.modelCacheMaxMb = v; renderingdirty = true; }, IMPACT_MEDIUM)
         )));
@@ -140,7 +143,7 @@ public final class HeliumSharedOptions {
                 () -> c.paintingCulling, v -> { c.paintingCulling = v; renderingdirty = true; }, IMPACT_LOW));
         cullingopts.add(new BoolOpt("helium.option.item_frame_culling", true,
                 () -> c.itemFrameCulling, v -> { c.itemFrameCulling = v; renderingdirty = true; }, IMPACT_MEDIUM));
-        cullingopts.add(new BoolOpt("helium.option.item_frame_lod", true,
+        cullingopts.add(new BoolOpt("helium.option.item_frame_lod", false,
                 () -> c.itemFrameLOD, v -> { c.itemFrameLOD = v; renderingdirty = true; }, IMPACT_MEDIUM));
         cullingopts.add(new IntOpt("helium.option.item_frame_lod_range", 128, 32, 256, 16, "helium.suffix.blocks",
                 () -> c.itemFrameLODRange, v -> { c.itemFrameLODRange = v; renderingdirty = true; }, IMPACT_MEDIUM));
@@ -157,14 +160,14 @@ public final class HeliumSharedOptions {
         groups.add(new OptGroup("helium.group.engine", List.of(
                 new BoolOpt("helium.option.memory_optimizations", true, () -> c.memoryOptimizations, v -> c.memoryOptimizations = v, IMPACT_LOW),
                 new BoolOpt("helium.option.thread_optimizations", true, () -> c.threadOptimizations, v -> c.threadOptimizations = v, IMPACT_LOW),
-                new BoolOpt("helium.option.fast_startup", true, () -> c.fastStartup, v -> c.fastStartup = v, IMPACT_LOW),
-                new BoolOpt("helium.option.fast_world_loading", false, () -> c.fastWorldLoading, v -> {
+                new BoolOpt("helium.option.fast_startup", false, () -> c.fastStartup, v -> c.fastStartup = v, IMPACT_LOW),
+                new BoolOpt("helium.option.fast_world_loading", true, () -> c.fastWorldLoading, v -> {
                     c.fastWorldLoading = v;
                     if (v && FastWorldLoadingOptimizer.isInitialized()) FastWorldLoadingOptimizer.enable();
                     else FastWorldLoadingOptimizer.disable();
                 }, IMPACT_LOW),
                 new BoolOpt("helium.option.reduced_allocations", true, () -> c.reducedAllocations, v -> c.reducedAllocations = v, IMPACT_LOW),
-                new BoolOpt("helium.option.network_optimizations", true, () -> c.networkOptimizations, v -> c.networkOptimizations = v, IMPACT_LOW),
+                new BoolOpt("helium.option.network_optimizations", false, () -> c.networkOptimizations, v -> c.networkOptimizations = v, IMPACT_LOW),
                 new BoolOpt("helium.option.object_deduplication", true, () -> c.objectDeduplication, v -> c.objectDeduplication = v, IMPACT_MEDIUM)
         )));
 
@@ -278,20 +281,22 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.native_memory", true, () -> c.nativeMemory, v -> c.nativeMemory = v, IMPACT_MEDIUM),
                 new IntOpt("helium.option.native_memory_pool_size", 64, 16, 256, 16, "helium.suffix.mb",
                         () -> c.nativeMemoryPoolMb, v -> c.nativeMemoryPoolMb = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.render_pipelining", false, () -> c.renderPipelining, v -> c.renderPipelining = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.simd_math", true, () -> c.simdMath, v -> c.simdMath = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.async_light_updates", true, () -> c.asyncLightUpdates, v -> c.asyncLightUpdates = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.packet_batching", true, () -> c.packetBatching, v -> c.packetBatching = v, IMPACT_LOW),
+                new BoolOpt("helium.option.render_pipelining", false, () -> c.renderPipelining, v -> { com.helium.HeliumClient.setRenderPipelining(v); renderingdirty = true; }, IMPACT_HIGH),
+                new BoolOpt("helium.option.adaptive_chunk_scheduling", true, () -> c.adaptiveChunkScheduling, v -> { c.adaptiveChunkScheduling = v; renderingdirty = true; }, IMPACT_HIGH, () -> c.renderPipelining),
+                new IntOpt("helium.option.chunk_schedule_max_per_tick", 16, 1, 64, 1, null, () -> c.chunkScheduleMaxPerTick, v -> { c.chunkScheduleMaxPerTick = v; renderingdirty = true; }, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.simd_math", false, () -> c.simdMath, v -> c.simdMath = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.async_light_updates", false, () -> c.asyncLightUpdates, v -> c.asyncLightUpdates = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.packet_batching", false, () -> c.packetBatching, v -> c.packetBatching = v, IMPACT_LOW),
                 new BoolOpt("helium.option.temporal_reprojection", false, () -> c.temporalReprojection, v -> c.temporalReprojection = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.joml_fast_math", true, () -> c.jomlFastMath, v -> c.jomlFastMath = v, IMPACT_HIGH),
+                new BoolOpt("helium.option.joml_fast_math", false, () -> c.jomlFastMath, v -> c.jomlFastMath = v, IMPACT_HIGH),
                 new BoolOpt("helium.option.gl_context_upgrade", true, () -> c.glContextUpgrade, v -> c.glContextUpgrade = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.fast_random", true, () -> c.fastRandom, v -> c.fastRandom = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.fast_random", false, () -> c.fastRandom, v -> c.fastRandom = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.direct_state_access", true, () -> c.directStateAccess, v -> c.directStateAccess = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.renderbuffer_depth", true, () -> c.renderbufferDepth, v -> c.renderbufferDepth = v, IMPACT_LOW)
+                new BoolOpt("helium.option.renderbuffer_depth", false, () -> c.renderbufferDepth, v -> c.renderbufferDepth = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.crafting", List.of(
-                new BoolOpt("helium.option.one_click_crafting", true, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
+                new BoolOpt("helium.option.one_click_crafting", false, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.gpu_specific", List.of(
@@ -318,10 +323,10 @@ public final class HeliumSharedOptions {
 
         groups.add(new OptGroup("helium.group.performance", List.of(
                 new BoolOpt("helium.option.reflex", true, () -> c.enableReflex, v -> c.enableReflex = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.fast_blit", true, () -> c.fastFramebufferBlit, v -> c.fastFramebufferBlit = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.fast_blit", false, () -> c.fastFramebufferBlit, v -> c.fastFramebufferBlit = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.suppress_gl_errors", true, () -> c.suppressOpenGLErrors, v -> c.suppressOpenGLErrors = v, IMPACT_LOW),
                 new BoolOpt("helium.option.pose_pooling", true, () -> c.poseStackPooling, v -> c.poseStackPooling = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.fast_bamboo", true, () -> c.fastBambooLight, v -> c.fastBambooLight = v, IMPACT_LOW),
+                new BoolOpt("helium.option.fast_bamboo", false, () -> c.fastBambooLight, v -> c.fastBambooLight = v, IMPACT_LOW),
                 new BoolOpt("helium.option.optimized_light", true, () -> c.optimizedLightEngine, v -> c.optimizedLightEngine = v, IMPACT_MEDIUM)
         )));
 

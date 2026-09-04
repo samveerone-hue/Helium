@@ -10,9 +10,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(WorldRenderer.class)
 public abstract class WorldRendererFrustumMixin {
-
     @Inject(method = "applyFrustum", at = @At("HEAD"), require = 0)
-    private void helium$capturefrustumatapply(Frustum frustum, CallbackInfo ci) {
+    private void helium$captureFrustumAtApply(Frustum frustum, CallbackInfo ci) {
         CullingHelper.setfrustum(frustum);
     }
 }

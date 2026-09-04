@@ -23,8 +23,6 @@ public final class HeliumBlockEntityCulling {
     @SuppressWarnings("unchecked")
     public static void register() {
         if (registered) return;
-        registered = true;
-
         BlockEntityRenderPredicate<BlockEntity> predicate = (world, pos, entity) -> {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.blockEntityCulling) return true;
@@ -53,6 +51,7 @@ public final class HeliumBlockEntityCulling {
             handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.SHULKER_BOX, predicate);
             handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.SKULL, predicate);
             handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.CONDUIT, predicate);
+            registered = true;
             HeliumClient.LOGGER.info("block entity culling registered via sodium api");
         } catch (Exception e) {
             HeliumClient.LOGGER.warn("failed to register block entity culling", e);

@@ -33,38 +33,6 @@ public final class RenderBatch {
         return lastSections;
     }
 
-    public static void queue(int x, int y, int z, boolean important) {
-        long key = ChunkPosUtil.packPos(x, y, z);
-        PENDING.merge(key, important, Boolean::logicalOr);
-    }
-
-    public static void drain(WorldRenderer renderer) {
-        if (renderer == null || PENDING.isEmpty()) return;
-
-        Iterator<Map.Entry<Long, Boolean>> iterator = PENDING.entrySet().iterator();
-        Iterator<ChunkScheduler.ChunkEntry> entries = new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                return iterator.hasNext();
-            }
-
-            @Override
-            public ChunkScheduler.ChunkEntry next() {
-                Map.Entry<Long, Boolean> entry = iterator.next();
-                iterator.remove();
-                long key = entry.getKey();
-                return new ChunkScheduler.ChunkEntry(
-                        ChunkPosUtil.unpackX(key),
-                        ChunkPosUtil.unpackY(key),
-                        ChunkPosUtil.unpackZ(key),
-                        Boolean.TRUE.equals(entry.getValue())
-                );
-            }
-        };
-
-        ChunkScheduler.drain(renderer, entries, value -> bypassing = value);
-    }
-
     public static boolean isBypassing() {
         return bypassing;
     }

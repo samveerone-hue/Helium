@@ -28,7 +28,13 @@ public abstract class WorldRendererChunkPipelineMixin {
         if (!helium$enabled()) return;
         if (AsyncChunkMeshing.isBypassing() || RenderBatch.isBypassing()) return;
 
-        AsyncChunkMeshing.queue(x, y, z, important);
+        boolean accepted = AsyncChunkMeshing.queue(x, y, z, important);
+        if (!accepted) {
+            // Preserve vanilla/Sodium scheduling when Helium's bounded queue is full
+            // or otherwise cannot accept the request.
+            return;
+        }
+
         RenderBatch.trackSection();
         ci.cancel();
     }
