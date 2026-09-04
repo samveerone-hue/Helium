@@ -5,88 +5,54 @@ import com.helium.dedup.DeduplicationManager;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+
+import java.util.Map;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.Map;
-
 @Mixin(NbtCompound.class)
 public abstract class NbtCompoundDedupMixin {
+
+    @Mutable
+    @Shadow
+    @Final
+    private Map<String, NbtElement> entries;
 
     @Unique
     private static boolean helium$failed = false;
 
-    @Unique
-    private static boolean helium$resolved = false;
-
-    @Unique
-    private static Field helium$entriesField = null;
-
-    @Unique
-    private static void helium$resolve() {
-        if (helium$resolved) return;
-        helium$resolved = true;
-
-        String[] names = {"entries", "tags", "field_5765"};
-        for (String name : names) {
-            try {
-                Field f = NbtCompound.class.getDeclaredField(name);
-                if (Map.class.isAssignableFrom(f.getType())) {
-                    f.setAccessible(true);
-                    helium$entriesField = f;
-                    return;
-                }
-            } catch (NoSuchFieldException ignored) {}
-        }
-
-        for (Field f : NbtCompound.class.getDeclaredFields()) {
-            if (Modifier.isStatic(f.getModifiers())) continue;
-            if (Map.class.isAssignableFrom(f.getType())) {
-                f.setAccessible(true);
-                helium$entriesField = f;
-                return;
-            }
-        }
-    }
-
     @Inject(method = "<init>(Ljava/util/Map;)V", at = @At("RETURN"), require = 0)
-    private void helium$replacemapimpl(Map<String, NbtElement> entries, CallbackInfo ci) {
-        helium$replacewitho2o();
+    private void helium$replaceMapImplementation(Map<String, NbtElement> entries, CallbackInfo ci) {
+        helium$replaceWithObjectMap();
     }
 
     @Inject(method = "<init>()V", at = @At("RETURN"), require = 0)
-    private void helium$replacemapimpldefault(CallbackInfo ci) {
-        helium$replacewitho2o();
+    private void helium$replaceDefaultMapImplementation(CallbackInfo ci) {
+        helium$replaceWithObjectMap();
     }
 
     @Unique
-    @SuppressWarnings("unchecked")
-    private void helium$replacewitho2o() {
-        if (helium$failed) return;
+    private void helium$replaceWithObjectMap() {
+        if (helium$failed || !DeduplicationManager.isenabled()) {
+            return;
+        }
 
         try {
-            if (!DeduplicationManager.isenabled()) return;
-
-            helium$resolve();
-            if (helium$entriesField == null) {
-                helium$failed = true;
-                return;
-            }
-
-            Object current = helium$entriesField.get(this);
-            if (current instanceof Map<?, ?> map && !(current instanceof Object2ObjectOpenHashMap)) {
-                helium$entriesField.set(this, new Object2ObjectOpenHashMap<>((Map<String, NbtElement>) map));
+            if (!(this.entries instanceof Object2ObjectOpenHashMap)) {
+                this.entries = new Object2ObjectOpenHashMap<>(this.entries);
             }
         } catch (Throwable t) {
-            if (!helium$failed) {
-                helium$failed = true;
-                HeliumClient.LOGGER.warn("nbt compound dedup disabled ({})", t.getClass().getSimpleName());
-            }
+            helium$failed = true;
+            HeliumClient.LOGGER.warn(
+                    "nbt compound map optimization disabled ({})",
+                    t.getClass().getSimpleName()
+            );
         }
     }
 }
