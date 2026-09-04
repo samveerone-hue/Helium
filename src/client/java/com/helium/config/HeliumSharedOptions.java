@@ -140,7 +140,7 @@ public final class HeliumSharedOptions {
                 () -> c.paintingCulling, v -> { c.paintingCulling = v; renderingdirty = true; }, IMPACT_LOW));
         cullingopts.add(new BoolOpt("helium.option.item_frame_culling", true,
                 () -> c.itemFrameCulling, v -> { c.itemFrameCulling = v; renderingdirty = true; }, IMPACT_MEDIUM));
-        cullingopts.add(new BoolOpt("helium.option.item_frame_lod", true,
+        cullingopts.add(new BoolOpt("helium.option.item_frame_lod", false,
                 () -> c.itemFrameLOD, v -> { c.itemFrameLOD = v; renderingdirty = true; }, IMPACT_MEDIUM));
         cullingopts.add(new IntOpt("helium.option.item_frame_lod_range", 128, 32, 256, 16, "helium.suffix.blocks",
                 () -> c.itemFrameLODRange, v -> { c.itemFrameLODRange = v; renderingdirty = true; }, IMPACT_MEDIUM));
@@ -158,7 +158,7 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.memory_optimizations", true, () -> c.memoryOptimizations, v -> c.memoryOptimizations = v, IMPACT_LOW),
                 new BoolOpt("helium.option.thread_optimizations", true, () -> c.threadOptimizations, v -> c.threadOptimizations = v, IMPACT_LOW),
                 new BoolOpt("helium.option.fast_startup", false, () -> c.fastStartup, v -> c.fastStartup = v, IMPACT_LOW),
-                new BoolOpt("helium.option.fast_world_loading", false, () -> c.fastWorldLoading, v -> {
+                new BoolOpt("helium.option.fast_world_loading", true, () -> c.fastWorldLoading, v -> {
                     c.fastWorldLoading = v;
                     if (v && FastWorldLoadingOptimizer.isInitialized()) FastWorldLoadingOptimizer.enable();
                     else FastWorldLoadingOptimizer.disable();
