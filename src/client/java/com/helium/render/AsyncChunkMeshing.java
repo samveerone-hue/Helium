@@ -7,10 +7,8 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Comparator;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 1.21.11 port of Catalyst's AsyncMeshing queue.
@@ -22,9 +20,7 @@ public final class AsyncChunkMeshing {
 
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(QUEUE_INITIAL_CAPACITY, Comparator.comparingDouble(ChunkTask::priority));
-    private static final Set<Long> QUEUED_POSITIONS = ConcurrentHashMap.newKeySet();
     private static final ConcurrentHashMap<Long, ChunkTask> QUEUED_TASKS = new ConcurrentHashMap<>();
-    private static final AtomicLong QUEUE_GENERATION = new AtomicLong();
 
     private static volatile Vec3d cameraPos = Vec3d.ZERO;
     private static volatile ChunkPos cameraChunk = ChunkPos.ORIGIN;
@@ -70,13 +66,10 @@ public final class AsyncChunkMeshing {
                 return false;
             }
 
-            if (!QUEUED_POSITIONS.add(key)) return false;
-
             ChunkTask task = new ChunkTask(
                     x, y, z,
                     calculatePriority(x, y, z, important),
-                    important,
-                    QUEUE_GENERATION.get()
+                    important
             );
             QUEUED_TASKS.put(key, task);
             PENDING.offer(task);
@@ -88,7 +81,6 @@ public final class AsyncChunkMeshing {
         ChunkTask task = PENDING.poll();
         if (task != null) {
             long key = ChunkPosUtil.packPos(task.x(), task.y(), task.z());
-            QUEUED_POSITIONS.remove(key);
             QUEUED_TASKS.remove(key, task);
         }
         return task;
@@ -125,9 +117,7 @@ public final class AsyncChunkMeshing {
 
     public static void clear() {
         synchronized (AsyncChunkMeshing.class) {
-            QUEUE_GENERATION.incrementAndGet();
             PENDING.clear();
-            QUEUED_POSITIONS.clear();
             QUEUED_TASKS.clear();
             bypassing = false;
         }
@@ -141,5 +131,5 @@ public final class AsyncChunkMeshing {
         return important ? distSq * 0.5D : distSq;
     }
 
-    public record ChunkTask(int x, int y, int z, double priority, boolean important, long generation) {}
+    public record ChunkTask(int x, int y, int z, double priority, boolean important) {}
 }
