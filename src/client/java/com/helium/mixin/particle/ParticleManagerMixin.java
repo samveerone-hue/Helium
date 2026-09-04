@@ -39,14 +39,18 @@ public abstract class ParticleManagerMixin {
             return;
         }
 
-        MinecraftClient client = MinecraftClient.getInstance();
-        Camera camera = client.gameRenderer == null ? null : client.gameRenderer.getCamera();
-        if (camera != null) {
-            var pos = com.helium.util.VersionCompat.getCameraPosition(camera);
-            helium$cameraX = pos.x;
-            helium$cameraY = pos.y;
-            helium$cameraZ = pos.z;
-            helium$cameraReady = true;
+        if (config.particleLOD) {
+            MinecraftClient client = MinecraftClient.getInstance();
+            Camera camera = client.gameRenderer == null ? null : client.gameRenderer.getCamera();
+            if (camera != null) {
+                var pos = com.helium.util.VersionCompat.getCameraPosition(camera);
+                helium$cameraX = pos.x;
+                helium$cameraY = pos.y;
+                helium$cameraZ = pos.z;
+                helium$cameraReady = true;
+            } else {
+                helium$cameraReady = false;
+            }
         } else {
             helium$cameraReady = false;
         }
@@ -75,9 +79,10 @@ public abstract class ParticleManagerMixin {
             MinecraftClient client = MinecraftClient.getInstance();
             if (config.particleCulling && client.player != null) {
                 int cullDist = Math.max(0, config.particleCullDistance);
-                double dx = particle.getBoundingBox().getCenter().x - client.player.getX();
-                double dy = particle.getBoundingBox().getCenter().y - client.player.getY();
-                double dz = particle.getBoundingBox().getCenter().z - client.player.getZ();
+                var box = particle.getBoundingBox();
+                double dx = ((box.minX + box.maxX) * 0.5) - client.player.getX();
+                double dy = ((box.minY + box.maxY) * 0.5) - client.player.getY();
+                double dz = ((box.minZ + box.maxZ) * 0.5) - client.player.getZ();
                 double maxDistSq = (double) cullDist * cullDist;
 
                 if (dx * dx + dy * dy + dz * dz > maxDistSq) {
