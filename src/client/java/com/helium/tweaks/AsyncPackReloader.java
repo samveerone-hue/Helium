@@ -88,7 +88,14 @@ public final class AsyncPackReloader {
                     packs
             );
 
-            reload.whenComplete().thenRun(() -> client.execute(() -> {
+            reload.whenComplete((result, failure) -> client.execute(() -> {
+                _loading.set(false);
+
+                if (failure != null) {
+                    HeliumClient.LOGGER.error("async pack reload completed exceptionally", failure);
+                    return;
+                }
+
                 _needsrerender = true;
 
                 try {
@@ -101,7 +108,6 @@ public final class AsyncPackReloader {
 
                 ShaderUniformCache.invalidate();
                 TextRenderOptimizer.invalidate();
-                _loading.set(false);
                 HeliumClient.LOGGER.info("async pack reload finished");
             }));
         } catch (Throwable t) {
