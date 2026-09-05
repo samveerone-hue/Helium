@@ -57,7 +57,7 @@ public class EntityMeshCapturingConsumer implements VertexConsumer {
     }
 
     @Override
-    public VertexConsumer addVertex(float x, float y, float z) { //[cite: 1]
+    public VertexConsumer vertex(float x, float y, float z) { //[cite: 1]
         this.vx = x; //[cite: 1]
         this.vy = y; //[cite: 1]
         this.vz = z; //[cite: 1]
@@ -78,39 +78,39 @@ public class EntityMeshCapturingConsumer implements VertexConsumer {
     private org.joml.Matrix3f lastNormalMatrix = new org.joml.Matrix3f(); //[cite: 1]
 
     @Override
-    public VertexConsumer setColor(int r, int g, int b, int a) { //[cite: 1]
+    public VertexConsumer color(int r, int g, int b, int a) { //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setColor(int packedArgb) { //[cite: 1]
+    public VertexConsumer color(int packedArgb) { //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setUv(float u, float v) { //[cite: 1]
+    public VertexConsumer texture(float u, float v) { //[cite: 1]
         this.vu = u; //[cite: 1]
         this.vv = v; //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setUv1(int u, int v) { //[cite: 1]
+    public VertexConsumer overlay(int u, int v) { //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setUv2(int u, int v) { //[cite: 1]
+    public VertexConsumer light(int u, int v) { //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setLineWidth(float width) { //[cite: 1]
+    public VertexConsumer lineWidth(float width) { //[cite: 1]
         return this; //[cite: 1]
     }
 
     @Override
-    public VertexConsumer setNormal(float nx, float ny, float nz) { //[cite: 1]
+    public VertexConsumer normal(float nx, float ny, float nz) { //[cite: 1]
         org.joml.Vector3f norm = new org.joml.Vector3f(nx, ny, nz).mul(lastNormalMatrix); //[cite: 1]
         this.vnx = norm.x; //[cite: 1]
         this.vny = norm.y; //[cite: 1]
