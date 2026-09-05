@@ -170,7 +170,7 @@ public class EntityBatchRenderer {
     private boolean lightMapResolveFailed = false;
 
     private final EntityMeshBaker meshBaker;
-    private final EntityErrorRenderer errorRenderer;
+    private final com.helium.rentities.EntityErrorRenderer errorRenderer;
 
     private static final Map<Class<?>, Map<String, Field>> fieldCache = new ConcurrentHashMap<>();
 
@@ -192,7 +192,7 @@ public class EntityBatchRenderer {
         this.asyncPreparation = new AsyncRenderPreparation();
         this.asyncVisibility = new AsyncVisibilityManager();
         this.meshBaker = new EntityMeshBaker();
-        this.errorRenderer = new EntityErrorRenderer();
+        this.errorRenderer = new com.helium.rentities.EntityErrorRenderer();
 
         // Prefer persistent mapping, but retain a standard SSBO upload backend so GPU
         // batching can survive on drivers that expose the required GL 4.3 path without
@@ -219,6 +219,7 @@ public class EntityBatchRenderer {
                     selected.getClass().getSimpleName());
         }
         EntityCullingPipeline culling = null;
+        HeliumConfig config = HeliumClient.getConfig();
         if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(config)) {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
@@ -451,21 +452,21 @@ public class EntityBatchRenderer {
             glUniformMatrix4fv(uViewProjection, false, vp);
             
             MinecraftClient mc = MinecraftClient.getInstance();
-            float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
-            float gameTime = mc.level != null
+            float partialTick = mc.getRenderTickCounter().getTickProgress(true);
+            float gameTime = mc.world != null
                     ? (float)(mc.level.getGameTime() % 100000L) + partialTick
                     : partialTick;
             glUniform1f(uGameTime, gameTime);
             if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
             if (uCameraPos >= 0) {
-                var cam = mc.gameRenderer.getMainCamera().position();
+                var cam = mc.gameRenderer.getCamera().getPos();
                 glUniform3f(uCameraPos, (float) cam.x, (float) cam.y, (float) cam.z);
             }
 
             boolean lightMapBound = false;
             if (uLightMap >= 0 && uHasLightMap >= 0 && !lightMapResolveFailed) {
                 try {
-                    int lightTexId = EntityGlTextureResolver.resolveLightMapGlId(mc.gameRenderer.lightTexture());
+                    int lightTexId = EntityGlTextureResolver.resolveLightMapGlId(mc.gameRenderer.getLightmapTextureManager());
                     if (lightTexId > 0 && glIsTexture(lightTexId)) {
                         glActiveTexture(org.lwjgl.opengl.GL13C.GL_TEXTURE1);
                         glBindTexture(GL_TEXTURE_2D, lightTexId);
@@ -1015,7 +1016,7 @@ public class EntityBatchRenderer {
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_POSITION_Y, (float) ry);
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_POSITION_Z, (float) rz);
 
-            float partialTick = MinecraftClient.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
+            float partialTick = MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(true);
 
             EntityType<?> type = acc.type != null ? (EntityType<?>) invokeAccessor(acc.type, state) : null;
             boolean isArmorStand = (type == EntityType.ARMOR_STAND);
@@ -1025,14 +1026,14 @@ public class EntityBatchRenderer {
                 headYawDeg = (float) invokeAccessor(acc.headYaw, state);
                 if (acc.headYawO != null) {
                     float headYawO = (float) invokeAccessor(acc.headYawO, state);
-                    headYawDeg = net.minecraft.util.Mth.rotLerp(partialTick, headYawO, headYawDeg);
+                    headYawDeg = net.minecraft.util.math.MathHelper.lerpAngleDegrees(partialTick, headYawO, headYawDeg);
                 }
             }
 
             float bodyYawDeg = acc.yaw != null ? (float) invokeAccessor(acc.yaw, state) : 0f;
             if (acc.yawO != null) {
                 float yawODeg = (float) invokeAccessor(acc.yawO, state);
-                bodyYawDeg = net.minecraft.util.Mth.rotLerp(partialTick, yawODeg, bodyYawDeg);
+                bodyYawDeg = net.minecraft.util.math.MathHelper.lerpAngleDegrees(partialTick, yawODeg, bodyYawDeg);
             }
             if (!isArmorStand) bodyYawDeg = clampBodyYaw(bodyYawDeg, headYawDeg);
 
@@ -1047,7 +1048,7 @@ public class EntityBatchRenderer {
                     float pitchDeg = (float) invokeAccessor(acc.headPitch, state);
                     if (acc.headPitchO != null) {
                         float pitchODeg = (float) invokeAccessor(acc.headPitchO, state);
-                        pitchDeg = net.minecraft.util.Mth.lerp(partialTick, pitchODeg, pitchDeg);
+                        pitchDeg = net.minecraft.util.math.MathHelper.lerp(partialTick, pitchODeg, pitchDeg);
                     }
                     headPitchRel = (float) Math.toRadians(pitchDeg);
                 }
