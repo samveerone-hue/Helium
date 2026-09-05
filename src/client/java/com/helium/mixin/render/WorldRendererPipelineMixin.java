@@ -6,6 +6,12 @@ import com.helium.render.DevModeOptimizer;
 import com.helium.render.RenderPipeline;
 import com.helium.render.RenderBatch;
 import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.client.util.ObjectAllocator;
+import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,6 +24,29 @@ public abstract class WorldRendererPipelineMixin {
 
     @Unique
     private static boolean helium$failed = false;
+
+    @Inject(
+            method = "render(Lnet/minecraft/client/util/ObjectAllocator;Lnet/minecraft/client/render/RenderTickCounter;ZLnet/minecraft/client/render/Camera;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
+            at = @At("HEAD"),
+            require = 0)
+    private void helium$captureRentitiesMatrices(
+            ObjectAllocator allocator,
+            RenderTickCounter tickCounter,
+            boolean renderBlockOutline,
+            Camera camera,
+            Matrix4f positionMatrix,
+            Matrix4f basicProjectionMatrix,
+            Matrix4f projectionMatrix,
+            GpuBufferSlice fogBuffer,
+            Vector4f fogColor,
+            boolean renderSky,
+            CallbackInfo ci) {
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || !config.modEnabled || !config.entityGpuBatching || camera == null) return;
+        var pos = camera.getPos();
+        com.helium.rentities.entities.EntityBatchRenderer.captureWorldRenderMatrices(
+                positionMatrix, projectionMatrix, pos.x, pos.y, pos.z);
+    }
 
     @Inject(method = "render", at = @At("HEAD"), require = 0)
     private void helium$frameStart(CallbackInfo ci) {
