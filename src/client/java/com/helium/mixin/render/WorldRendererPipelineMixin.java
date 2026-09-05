@@ -43,7 +43,7 @@ public abstract class WorldRendererPipelineMixin {
             CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.entityGpuBatching || camera == null) return;
-        var pos = camera.getPos();
+        var pos = camera.getCameraPos();
         com.helium.rentities.entities.EntityBatchRenderer.captureWorldRenderMatrices(
                 positionMatrix, projectionMatrix, pos.x, pos.y, pos.z);
     }
