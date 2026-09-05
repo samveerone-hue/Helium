@@ -48,7 +48,7 @@ public abstract class Xoroshiro128PlusPlusRandomMixin {
     @Unique
     private void helium$replacegaussian() {
         HeliumConfig config = HeliumClient.getConfig();
-        boolean enabled = config == null || config.fastRandom;
+        boolean enabled = config != null && config.fastRandom;
         if (enabled) {
             this.gaussianSource = new TableGaussianGenerator((RandomSource) this);
         }
