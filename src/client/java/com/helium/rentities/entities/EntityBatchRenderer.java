@@ -175,7 +175,7 @@ public class EntityBatchRenderer {
                     selected.getClass().getSimpleName());
         }
         EntityCullingPipeline culling = null;
-        if (null == null || null.indirectAllowed(HeliumClient.getConfig())) {
+        if (RendererCapabilityState.current() == null || null.indirectAllowed(HeliumClient.getConfig())) {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
             } catch (Throwable t) {
