@@ -1,6 +1,8 @@
 package com.helium.rentities;
 
 
+import com.helium.HeliumClient;
+import com.helium.config.HeliumConfig;
 import net.fabricmc.loader.api.FabricLoader;
 
 import static org.lwjgl.opengl.GL11C.GL_VERSION;
@@ -61,10 +63,10 @@ public final class RendererCapabilityState {
             // Buffer storage / persistent mapping became core in 4.4.
             s.persistentMapping = isAtLeast(4, 4, version) || hasExtension("GL_ARB_buffer_storage");
 
-            s.irisLoaded = !shaderBackend.allowsCustomRentitiesShader();
+             s.irisLoaded = FabricLoader.getInstance().isModLoaded("iris");
             s.customShader = s.gl43
                     && glGetInteger(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS) > 0
-                    && shaderBackend.allowsCustomRentitiesShader();
+                    && !s.irisLoaded;
 
             HeliumClient.LOGGER.info(
                     "[Rentities] Capabilities: GL={}, vendor={}, SSBO={}, compute={}, indirect={}, persistent={}, iris={}",
