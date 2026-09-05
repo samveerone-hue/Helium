@@ -455,7 +455,7 @@ public class EntityMeshBaker {
                 int boneIdx = boneMap.getOrDefault(name, inheritedBone);
                 consumer.setBone(boneIdx);
                 poseStack.push();
-                child.rotate(poseStack);
+                child.applyTransform(poseStack);
 
                 // translateAndRotate() with reset pose (rotation=0) only applies the
                 // pivot translation.  After the root scale(16,-16,16)+translate(0,-1.5,0)
