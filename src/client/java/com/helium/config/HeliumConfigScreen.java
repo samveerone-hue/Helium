@@ -72,6 +72,83 @@ public final class HeliumConfigScreen {
 
                 if (page.key().equals("helium.page.rendering") && group.key().equals("helium.group.entity_culling")) {
                     groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_entity_batch_debug"),
+                                    config.rentitiesEntityBatchingDebug)
+                            .setDefaultValue(defaults.rentitiesEntityBatchingDebug)
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_debug.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchingDebug = v)
+                            .build());
+                    groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_entity_batch_debug_solid"),
+                                    config.rentitiesEntityBatchingDebugSolid)
+                            .setDefaultValue(defaults.rentitiesEntityBatchingDebugSolid)
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_debug_solid.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchingDebugSolid = v)
+                            .build());
+                    groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_async_render_preparation"),
+                                    config.rentitiesAsyncRenderPreparationEnabled)
+                            .setDefaultValue(defaults.rentitiesAsyncRenderPreparationEnabled)
+                            .setTooltip(Text.translatable("helium.option.rentities_async_render_preparation.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesAsyncRenderPreparationEnabled = v)
+                            .build());
+                    groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_async_visibility"),
+                                    config.rentitiesAsyncVisibilityEnabled)
+                            .setDefaultValue(defaults.rentitiesAsyncVisibilityEnabled)
+                            .setTooltip(Text.translatable("helium.option.rentities_async_visibility.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesAsyncVisibilityEnabled = v)
+                            .build());
+                    groupentries.add(eb.startIntSlider(
+                                    Text.translatable("helium.option.rentities_visibility_refresh"),
+                                    config.rentitiesAsyncVisibilityRefreshFrames, 1, 16)
+                            .setDefaultValue(defaults.rentitiesAsyncVisibilityRefreshFrames)
+                            .setTooltip(Text.translatable("helium.option.rentities_visibility_refresh.tooltip"))
+                            .setTextGetter(v -> Text.translatable("helium.suffix.frames", v))
+                            .setSaveConsumer(v -> config.rentitiesAsyncVisibilityRefreshFrames = v)
+                            .build());
+                    groupentries.add(eb.startIntSlider(
+                                    Text.translatable("helium.option.rentities_visibility_age"),
+                                    config.rentitiesAsyncVisibilityMaxAgeFrames, 1, 60)
+                            .setDefaultValue(defaults.rentitiesAsyncVisibilityMaxAgeFrames)
+                            .setTooltip(Text.translatable("helium.option.rentities_visibility_age.tooltip"))
+                            .setTextGetter(v -> Text.translatable("helium.suffix.frames", v))
+                            .setSaveConsumer(v -> config.rentitiesAsyncVisibilityMaxAgeFrames = v)
+                            .build());
+                    groupentries.add(eb.startIntSlider(
+                                    Text.translatable("helium.option.rentities_visibility_distance"),
+                                    (int) Math.round(config.rentitiesAsyncVisibilityMaxDistance), 0, 256)
+                            .setDefaultValue((int) Math.round(defaults.rentitiesAsyncVisibilityMaxDistance))
+                            .setTooltip(Text.translatable("helium.option.rentities_visibility_distance.tooltip"))
+                            .setTextGetter(v -> Text.translatable("helium.suffix.blocks", v))
+                            .setSaveConsumer(v -> config.rentitiesAsyncVisibilityMaxDistance = v)
+                            .build());
+
+                    groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_entity_batch_whitelist_only"),
+                                    config.rentitiesEntityBatchWhitelistOnly)
+                            .setDefaultValue(defaults.rentitiesEntityBatchWhitelistOnly)
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_whitelist_only.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchWhitelistOnly = v)
+                            .build());
+                    groupentries.add(eb.startStrField(
+                                    Text.translatable("helium.option.rentities_entity_batch_whitelist"),
+                                    String.join(", ", config.rentitiesEntityBatchWhitelist))
+                            .setDefaultValue(String.join(", ", defaults.rentitiesEntityBatchWhitelist))
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_whitelist.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchWhitelist = parseEntityTypeList(v))
+                            .build());
+                    groupentries.add(eb.startStrField(
+                                    Text.translatable("helium.option.rentities_entity_batch_blacklist"),
+                                    String.join(", ", config.rentitiesEntityBatchBlacklist))
+                            .setDefaultValue(String.join(", ", defaults.rentitiesEntityBatchBlacklist))
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_blacklist.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchBlacklist = parseEntityTypeList(v))
+                            .build());
+                }
+
+                if (page.key().equals("helium.page.rendering") && group.key().equals("helium.group.entity_culling")) {
+                    groupentries.add(eb.startBooleanToggle(
                                     Text.translatable("helium.option.rentities_entity_batch_whitelist_only"),
                                     config.rentitiesEntityBatchWhitelistOnly)
                             .setDefaultValue(defaults.rentitiesEntityBatchWhitelistOnly)
