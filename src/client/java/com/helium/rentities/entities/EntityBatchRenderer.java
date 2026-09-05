@@ -340,6 +340,10 @@ public class EntityBatchRenderer {
         }
     }
 
+    private static double cameraX;
+    private static double cameraY;
+    private static double cameraZ;
+
     private static org.joml.Matrix4f capturedPositionMatrix;
     private static org.joml.Matrix4f capturedProjectionMatrix;
     public static void captureWorldRenderMatrices(Matrix4f positionMatrix, Matrix4f projectionMatrix,
