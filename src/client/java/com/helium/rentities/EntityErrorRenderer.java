@@ -1,5 +1,7 @@
 package com.helium.rentities;
 
+import com.helium.rentities.entities.EntityInstance;
+
 import com.helium.HeliumClient;
 import org.lwjgl.system.MemoryUtil;
 
