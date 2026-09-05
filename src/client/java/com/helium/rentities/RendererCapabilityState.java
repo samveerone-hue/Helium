@@ -83,10 +83,10 @@ public final class RendererCapabilityState {
                 s.customShaderHealthy = false;
                 s.customShaderReason = "Iris detected; custom Rentities shader backend is disabled for compatibility";
             }
-            s.meshGpu = s.gl43;
+            s.meshGpu = isAtLeast(4, 5, version);
             if (!s.meshGpu) {
                 s.meshHealthy = false;
-                s.meshReason = "OpenGL 4.3+ DSA unavailable";
+                s.meshReason = "OpenGL 4.5+ DSA unavailable";
             }
         } catch (Throwable t) {
             s.gpuBatchingHealthy = false;
