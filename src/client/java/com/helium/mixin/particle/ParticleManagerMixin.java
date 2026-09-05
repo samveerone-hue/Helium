@@ -2,6 +2,7 @@ package com.helium.mixin.particle;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.compat.ExternalModCompat;
 import com.helium.particle.ParticleLimiter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
@@ -25,7 +26,7 @@ public abstract class ParticleManagerMixin {
             return;
         }
 
-        if (config.particleLimiting && !ParticleLimiter.isInitialized()) {
+        if (config.particleLimiting && !ExternalModCompat.hasAsyncParticles() && !ParticleLimiter.isInitialized()) {
             ParticleLimiter.init(config.maxParticles);
         }
     }
@@ -42,7 +43,7 @@ public abstract class ParticleManagerMixin {
 
         try {
             HeliumConfig config = HeliumClient.getConfig();
-            if (config == null || !config.modEnabled) {
+            if (config == null || !config.modEnabled || ExternalModCompat.hasAsyncParticles()) {
                 return;
             }
 
