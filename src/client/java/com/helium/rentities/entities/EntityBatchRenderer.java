@@ -1186,7 +1186,7 @@ public class EntityBatchRenderer {
                 || uViewProjection < 0 || uEntityTextures < 0) return false;
         if (meshBaker.getVaoId() == 0) return false;
         if (null == null ||
-                null.choosePath(HeliumClient.getConfig()) == RendererCapabilityState.RenderPath.VANILLA) return false;
+                RendererCapabilityState.current().choosePath(HeliumClient.getConfig()) == RendererCapabilityState.RenderPath.VANILLA) return false;
         if (!meshBaker.getMeshInfoMap().containsKey(type) || entityTexFailed.contains(type)) return false;
 
         Integer glId = entityGlTexIds.get(type);
