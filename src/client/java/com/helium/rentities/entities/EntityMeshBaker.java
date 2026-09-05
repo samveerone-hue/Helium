@@ -248,7 +248,7 @@ public class EntityMeshBaker {
                                 livingRenderer,
                                 category,
                                 new EntityMeshCapturingConsumer(),
-                                new PoseStack());
+                                new MatrixStack());
                     }
                 } catch (Throwable t) {
                     if (false) {
@@ -347,7 +347,7 @@ public class EntityMeshBaker {
     private float[] extractFromLivingRenderer(LivingEntityRenderer renderer,
                                                EntityAnimationCategory category,
                                                EntityMeshCapturingConsumer consumer,
-                                               PoseStack poseStack) {
+                                               MatrixStack poseStack) {
         if (false) HeliumClient.LOGGER.info("Extracting from renderer: {}", renderer.getClass().getName());
         @SuppressWarnings("rawtypes") EntityModel model = getModelFromRenderer(renderer);
         if (model == null) {
@@ -398,7 +398,7 @@ public class EntityMeshBaker {
         //           feet (−,12/16+12/16,−) = (−,1.5,−) → shader space y=0 ✓
         //           head top (−,−8/16−0,−) = (−,−0.5,−) → shader space y=32 ✓
         //
-        // In PoseStack (post-multiply): scale first, then translate in scaled space
+        // In MatrixStack (post-multiply): scale first, then translate in scaled space
         poseStack.pushPose();
         poseStack.scale(16.0f, -16.0f, 16.0f);   // scale up + flip Y
         poseStack.translate(0.0f, -1.5f, 0.0f);   // shift so feet land at y=0
@@ -433,7 +433,7 @@ public class EntityMeshBaker {
      */
     private void renderPartTree(ModelPart part, Map<String, Integer> boneMap,
                                  int inheritedBone, EntityMeshCapturingConsumer consumer,
-                                 PoseStack poseStack, boolean isRoot) {
+                                 MatrixStack poseStack, boolean isRoot) {
         try {
             Field childrenField = getChildrenField();
             if (childrenField == null) return;
@@ -507,7 +507,7 @@ public class EntityMeshBaker {
      * Avoids ModelPart.render() recursion and double-transform issues.
      */
     private void renderPartCubesDirectly(ModelPart part, EntityMeshCapturingConsumer consumer,
-                                   PoseStack poseStack) {
+                                   MatrixStack poseStack) {
         try {
             if (cachedCubesField == null) {
                 for (String name : new String[]{"field_3663", "cubes", "m"}) {
@@ -914,7 +914,7 @@ public class EntityMeshBaker {
                     livingRenderer,
                     category,
                     new EntityMeshCapturingConsumer(),
-                    new PoseStack());
+                    new MatrixStack());
 
             if (vertices == null || vertices.length == 0) {
                 bonePivotData = previousPivots;
