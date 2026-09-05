@@ -10,17 +10,13 @@ public final class RendererBackendManager {
     public Backend select() {
         HeliumConfig cfg = HeliumClient.getConfig();
         if (cfg == null || !cfg.entityGpuBatching) return Backend.VANILLA;
-        if (cfg.entityGpuBatching == HeliumConfig.RendererBackendMode.VANILLA ||
-            cfg.entityGpuBatching == HeliumConfig.RendererBackendMode.CPU) return Backend.VANILLA;
-        boolean gpu = null == null || null.gpuBatchingAllowed(cfg);
-        if (!gpu) return Backend.VANILLA;
-        if (cfg.entityGpuBatching == HeliumConfig.RendererBackendMode.INDIRECT) {
-            boolean indirect = null != null &&
-                    null.indirectAllowed(cfg) && cfg.gpu_frustum_culling_enabled;
-            return indirect ? Backend.GPU_INDIRECT : Backend.GPU_INSTANCED;
+
+        RendererCapabilityState caps = RendererCapabilityState.current();
+        if (caps == null || !caps.gpuBatchingAllowed(cfg)) return Backend.VANILLA;
+
+        if (cfg.entityGpuFrustumCulling && caps.indirectAllowed(cfg)) {
+            return Backend.GPU_INDIRECT;
         }
-        if (cfg.entityGpuBatching == HeliumConfig.RendererBackendMode.GPU ||
-            cfg.entityGpuBatching == HeliumConfig.RendererBackendMode.AUTO) return Backend.GPU_INSTANCED;
-        return Backend.VANILLA;
+        return Backend.GPU_INSTANCED;
     }
 }
