@@ -26,7 +26,7 @@ public abstract class ThreadSafeRandomMixin {
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
     private void helium$modifyGaussian(long seed, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
-        boolean enabled = config == null || config.fastRandom;
+        boolean enabled = config != null && config.fastRandom;
         if (enabled) {
             this.gaussianGenerator = new TableGaussianGenerator((Random) this);
         }
