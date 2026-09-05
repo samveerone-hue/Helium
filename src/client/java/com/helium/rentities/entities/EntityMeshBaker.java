@@ -213,7 +213,7 @@ public class EntityMeshBaker {
         try {
             if (loadFromCache()) {
                 HeliumClient.LOGGER.info("[EntityCache] Using cached mesh data — skipping bake");
-                bootstrapTextures(MinecraftClient.getInstance().getEntityRenderDispatcher());
+                bootstrapTextures(MinecraftClient.getInstance().getEntityRenderManager());
                 return;
             }
 
@@ -226,14 +226,14 @@ public class EntityMeshBaker {
             int vertexCount = 0;
             int indexCount = 0;
 
-            var dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
+            var dispatcher = MinecraftClient.getInstance().getEntityRenderManager();
             if (dispatcher == null) {
-                throw new IllegalStateException("EntityRenderDispatcher is NULL");
+                throw new IllegalStateException("EntityRenderManager is NULL");
             }
 
             var rendererMap = getRendererMap(dispatcher);
             if (rendererMap == null) {
-                throw new IllegalStateException("Unable to access EntityRenderDispatcher renderer map");
+                throw new IllegalStateException("Unable to access EntityRenderManager renderer map");
             }
 
             for (EntityType<?> type : EntityBatchRegistry.REGISTRY_TYPES()) {
@@ -306,17 +306,17 @@ public class EntityMeshBaker {
     @SuppressWarnings("rawtypes")
     public void ensureTexturesBootstrapped() {
         if (texturesBootstrapped) return;
-        bootstrapTextures(MinecraftClient.getInstance().getEntityRenderDispatcher());
+        bootstrapTextures(MinecraftClient.getInstance().getEntityRenderManager());
         texturesBootstrapped = true;
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>> getRendererMap(
-            net.minecraft.client.render.entity.EntityRenderDispatcher dispatcher) {
+            net.minecraft.client.render.entity.EntityRenderManager dispatcher) {
         if (cachedRendererMap != null) return cachedRendererMap;
         if (dispatcher == null) return null;
         try {
-            Field f = net.minecraft.client.renderer.entity.EntityRenderDispatcher.class.getDeclaredField("field_4696");
+            Field f = net.minecraft.client.renderer.entity.EntityRenderManager.class.getDeclaredField("field_4696");
             f.setAccessible(true);
             cachedRendererMap = (Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>>) f.get(dispatcher);
             return cachedRendererMap;
@@ -330,13 +330,13 @@ public class EntityMeshBaker {
 
     private boolean texturesBootstrapped = false;
 
-    private static void bootstrapTextures(net.minecraft.client.renderer.entity.EntityRenderDispatcher dispatcher) {
+    private static void bootstrapTextures(net.minecraft.client.renderer.entity.EntityRenderManager dispatcher) {
         bootstrapTextures(dispatcher, getRendererMap(dispatcher));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void bootstrapTextures(
-            net.minecraft.client.renderer.entity.EntityRenderDispatcher dispatcher,
+            net.minecraft.client.renderer.entity.EntityRenderManager dispatcher,
             Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>> rendererMap) {
         if (dispatcher == null || rendererMap == null) return;
         EntityBatchRenderer renderer = EntityBatchRenderer.INSTANCE;
@@ -404,13 +404,13 @@ public class EntityMeshBaker {
         //           head top (−,−8/16−0,−) = (−,−0.5,−) → shader space y=32 ✓
         //
         // In MatrixStack (post-multiply): scale first, then translate in scaled space
-        poseStack.pushPose();
+        poseStack.push();
         poseStack.scale(16.0f, -16.0f, 16.0f);   // scale up + flip Y
         poseStack.translate(0.0f, -1.5f, 0.0f);   // shift so feet land at y=0
 
         renderPartTree(root, boneMap, 0, consumer, poseStack, true);
         
-        poseStack.popPose();
+        poseStack.pop();
 
         float[] captured = consumer.bakeAndReset();
         if (isDebugLogging()) {
@@ -454,15 +454,15 @@ public class EntityMeshBaker {
                 ModelPart child = entry.getValue();
                 int boneIdx = boneMap.getOrDefault(name, inheritedBone);
                 consumer.setBone(boneIdx);
-                poseStack.pushPose();
-                child.translateAndRotate(poseStack);
+                poseStack.push();
+                child.rotate(poseStack);
 
                 // translateAndRotate() with reset pose (rotation=0) only applies the
                 // pivot translation.  After the root scale(16,-16,16)+translate(0,-1.5,0)
                 // the matrix's translation column gives the pivot in shader pixel space.
                 if (currentBakingTypeIdx >= 0
                         && boneIdx >= 0 && boneIdx < MAX_BONES) {
-                    Matrix4f m = poseStack.last().pose();
+                    Matrix4f m = poseStack.peek().pose();
                     int base = (currentBakingTypeIdx * MAX_BONES + boneIdx) * 4;
                     int pivotIndex = currentBakingTypeIdx * MAX_BONES + boneIdx;
                     // A zero pivot is valid. Use an explicit written bit instead of treating
@@ -478,7 +478,7 @@ public class EntityMeshBaker {
 
                 renderPartCubesDirectly(child, consumer, poseStack);
                 renderPartTree(child, boneMap, boneIdx, consumer, poseStack, false);
-                poseStack.popPose();
+                poseStack.pop();
             }
         } catch (Exception e) {
             if (isDebugLogging()) HeliumClient.LOGGER.error("renderPartTree error: {}", e.getMessage());
@@ -547,7 +547,7 @@ public class EntityMeshBaker {
                 if (cachedCubeRenderMethod != null) {
                     cachedCubeRenderMethod.invoke(
                             cube,
-                            poseStack.last(),
+                            poseStack.peek(),
                             consumer,
                             0xF000F0,
                             0,
@@ -671,7 +671,7 @@ public class EntityMeshBaker {
             }
             
             // Manually zero rotations if method not found
-            part.xRot = 0; part.yRot = 0; part.zRot = 0;
+            part.setAngles(0.0f, 0.0f, 0.0f)
             // Search for children field by name/type
             Field childrenField = null;
             for (String name : new String[]{"children", "field_3661", "d"}) {
@@ -875,7 +875,7 @@ public class EntityMeshBaker {
         MeshStatus known = meshStatus.get(type);
         if (known == MeshStatus.BUILDING) return MeshStatus.BUILDING;
 
-        var dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
+        var dispatcher = MinecraftClient.getInstance().getEntityRenderManager();
         if (dispatcher == null) {
             recordExtractionFailure(type, now);
             return MeshStatus.UNKNOWN;
@@ -1195,7 +1195,7 @@ public class EntityMeshBaker {
 
             Map<String, EntityType<?>> typesById = new HashMap<>();
             for (EntityType<?> candidate : EntityBatchRegistry.REGISTRY_TYPES()) {
-                Object key = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(candidate);
+                Object key = net.minecraft.registry.Registries.ENTITY_TYPE.getKey(candidate);
                 if (key != null) typesById.put(key.toString(), candidate);
             }
 
