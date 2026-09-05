@@ -2,8 +2,8 @@ package com.helium.rentities.entities;
 
 import com.helium.HeliumClient;
 import com.helium.rentities.gl.GlShader;
-import me.balancinglight.rentities.gl.GpuRingBuffer;
-import me.balancinglight.rentities.gl.GpuSync;
+import com.helium.rentities.gl.GpuRingBuffer;
+import com.helium.rentities.gl.GpuSync;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.system.MemoryUtil;
