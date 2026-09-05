@@ -671,7 +671,7 @@ public class EntityMeshBaker {
             }
             
             // Manually zero rotations if method not found
-            part.setAngles(0.0f, 0.0f, 0.0f)
+            part.setAngles(0.0f, 0.0f, 0.0f);
             // Search for children field by name/type
             Field childrenField = null;
             for (String name : new String[]{"children", "field_3661", "d"}) {
