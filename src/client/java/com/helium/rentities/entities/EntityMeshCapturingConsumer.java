@@ -115,7 +115,7 @@ public class EntityMeshCapturingConsumer implements VertexConsumer {
     }
 
     @Override
-    public void addVertex(float x, float y, float z, int color, float u, float v, int overlay, int light, float nx, float ny, float nz) {
+    public void vertex(float x, float y, float z, int color, float u, float v, int overlay, int light, float nx, float ny, float nz) {
         float fx = hasPivot ? x - pivotX : x;
         float fy = hasPivot ? y - pivotY : y;
         float fz = hasPivot ? z - pivotZ : z;
