@@ -1,6 +1,7 @@
 package com.helium.rentities;
 
-import me.balancinglight.rentities.compat.ClientShaderCompatibilityBackend;
+
+import net.fabricmc.loader.api.FabricLoader;
 
 import static org.lwjgl.opengl.GL11C.GL_VERSION;
 import static org.lwjgl.opengl.GL11C.GL_VENDOR;
@@ -14,6 +15,8 @@ import static org.lwjgl.opengl.GL30C.glGetStringi;
 
 /** Central capability/health state for Rentities rendering backends. */
 public final class RendererCapabilityState {
+    private static volatile RendererCapabilityState CURRENT;
+    public static RendererCapabilityState current() { return CURRENT; }
     public enum RenderPath { GPU_BATCHING, CPU_INSTANCED, VANILLA }
     public enum Feature { GPU_BATCHING, INDIRECT_CULLING, PERSISTENT_MAPPING, CUSTOM_SHADER, MESH_GPU, STATE_CACHE }
 
@@ -43,6 +46,7 @@ public final class RendererCapabilityState {
 
     public static RendererCapabilityState probe() {
         RendererCapabilityState s = new RendererCapabilityState();
+        CURRENT = s;
         s.probed = true;
         try {
             String version = glGetString(GL_VERSION);
@@ -57,7 +61,6 @@ public final class RendererCapabilityState {
             // Buffer storage / persistent mapping became core in 4.4.
             s.persistentMapping = isAtLeast(4, 4, version) || hasExtension("GL_ARB_buffer_storage");
 
-            ClientShaderCompatibilityBackend shaderBackend = new ClientShaderCompatibilityBackend();
             s.irisLoaded = !shaderBackend.allowsCustomRentitiesShader();
             s.customShader = s.gl43
                     && glGetInteger(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS) > 0
