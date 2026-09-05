@@ -115,7 +115,7 @@ public final class EntityInstance {
     public static final int NO_ARMOR = -1;
 
     // Max instances in SSBO
-    public static final int MAX_INSTANCES = 50_000;
+    public static final int MAX_INSTANCES = 16_384;
     public static final long SSBO_SIZE = (long) MAX_INSTANCES * STRIDE;
 
     private EntityInstance() {}
