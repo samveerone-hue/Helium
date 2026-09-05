@@ -27,6 +27,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * We resolve the GL name without mutating Minecraft's currently bound texture.
  */
 public final class EntityGlTextureResolver {
+    private static boolean isDebugLogging() {
+        var cfg = HeliumClient.getConfig();
+        return cfg != null && cfg.rentitiesEntityBatchingDebug;
+    }
+
 
     private static volatile Object textureManager;
     private static volatile Method getTexMethod;
@@ -98,7 +103,7 @@ public final class EntityGlTextureResolver {
             int id = readGpuTexId(gpuTex);
             return (id > 0 && GL11.glIsTexture(id)) ? id : 0;
         } catch (Throwable t) {
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn(
                         "[Rentities] GL id resolution failed for {}: {}",
                         abstractTextureLike, t.toString());
@@ -151,7 +156,7 @@ try {
                 return glId;
             }
         } catch (Throwable t) {
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn(
                         "[Rentities] Texture ID resolution failed for {}: {}",
                         loc, t.toString());
