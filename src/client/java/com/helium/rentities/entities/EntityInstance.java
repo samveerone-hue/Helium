@@ -7,7 +7,7 @@ public final class EntityInstance {
      * Base instance payload: 160 bytes, including the 16-byte head-pivot slot.
      * Armor-stand pose payload: 6 x 16 bytes = 96 bytes.
      *
-     * Total SSBO instance stride: 256 bytes.
+     * Total SSBO instance stride: 272 bytes.
      */
     public static final int STRIDE = 272;
 
