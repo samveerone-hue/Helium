@@ -1,6 +1,7 @@
 package com.helium.mixin.particle;
 
 import com.helium.particle.ParticleLimiter;
+import com.helium.compat.ExternalModCompat;
 import net.minecraft.client.particle.Particle;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -25,7 +26,7 @@ public abstract class ParticleLifecycleMixin {
         }
 
         helium$limiterRemovalRecorded = true;
-        if (ParticleLimiter.isInitialized()) {
+        if (ParticleLimiter.isInitialized() && !ExternalModCompat.hasAsyncParticles()) {
             ParticleLimiter.onParticleRemoved();
         }
     }
