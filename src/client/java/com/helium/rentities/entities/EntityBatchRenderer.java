@@ -5,13 +5,13 @@ import com.helium.rentities.render.RendererBackendManager;
 import com.helium.HeliumClient;
 import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.gl.GlShader;
-import me.balancinglight.rentities.gl.GlStateGuard;
-import me.balancinglight.rentities.gl.GpuFenceRing;
-import me.balancinglight.rentities.gl.InstanceBufferBackend;
-import me.balancinglight.rentities.gl.PersistentMappedInstanceBufferBackend;
-import me.balancinglight.rentities.gl.StandardInstanceBufferBackend;
-import me.balancinglight.rentities.gl.GpuSync;
-import me.balancinglight.rentities.gl.GlStateCache;
+import com.helium.rentities.gl.GlStateGuard;
+import com.helium.rentities.gl.GpuFenceRing;
+import com.helium.rentities.gl.InstanceBufferBackend;
+import com.helium.rentities.gl.PersistentMappedInstanceBufferBackend;
+import com.helium.rentities.gl.StandardInstanceBufferBackend;
+import com.helium.rentities.gl.GpuSync;
+import com.helium.rentities.gl.GlStateCache;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -179,7 +179,7 @@ public class EntityBatchRenderer {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
             } catch (Throwable t) {
-                Rentities.disableFeature(RendererCapabilityState.Feature.INDIRECT_CULLING, t);
+                HeliumClient.LOGGER.warn("[Rentities] indirect culling disabled after runtime failure: {}", t.toString());
             }
         }
         this.cullPipeline = culling;
@@ -404,7 +404,7 @@ public class EntityBatchRenderer {
             if (storedViewProjection != null) storedViewProjection.get(vp);
             glUniformMatrix4fv(uViewProjection, false, vp);
             
-            Minecraft mc = MinecraftClient.getInstance();
+            MinecraftClient mc = MinecraftClient.getInstance();
             float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
             float gameTime = mc.level != null
                     ? (float)(mc.level.getGameTime() % 100000L) + partialTick
@@ -466,7 +466,7 @@ public class EntityBatchRenderer {
                     "Entity pivot SSBO is not available; using zero pivots");
         }
 
-            if (HeliumClient.getConfig().entity_batching_debug && count > 0 && (System.currentTimeMillis() % 2000 < 50)) {
+            if (HeliumClient.getConfig().rentitiesEntityBatchingDebug && count > 0 && (System.currentTimeMillis() % 2000 < 50)) {
                  float px = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_X);
                  float py = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Y);
                  float pz = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Z);
@@ -498,7 +498,7 @@ public class EntityBatchRenderer {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             
-                if (HeliumClient.getConfig().entity_batching_debug_solid) {
+                if (HeliumClient.getConfig().rentitiesEntityBatchingDebug_solid) {
                     glDisable(GL_BLEND);
                 }
 
@@ -521,7 +521,7 @@ public class EntityBatchRenderer {
                         indirect = renderIndirect(count, bufIdx);
                     } catch (Throwable t) {
                         indirect = false;
-                        Rentities.disableFeature(RendererCapabilityState.Feature.INDIRECT_CULLING, t);
+                        HeliumClient.LOGGER.warn("[Rentities] indirect culling disabled after runtime failure: {}", t.toString());
                     }
                 }
                 if (!indirect) {
@@ -1165,23 +1165,23 @@ public class EntityBatchRenderer {
     }
 
     public boolean asyncAllowsBatch(EntityType<?> type) {
-        if (HeliumClient.getConfig().async_render_preparation_enabled) {
+        if (HeliumClient.getConfig().rentitiesAsyncRenderPreparationEnabled) {
             return asyncPreparation.allowsBatch(type,
-                    HeliumClient.getConfig().entity_batching_whitelist_only,
-                    new java.util.HashSet<>(HeliumClient.getConfig().entity_batching_whitelist),
-                    new java.util.HashSet<>(HeliumClient.getConfig().entity_batching_blacklist));
+                    HeliumClient.getConfig().rentitiesEntityBatchWhitelistOnly,
+                    new java.util.HashSet<>(HeliumClient.getConfig().rentitiesEntityBatchWhitelist),
+                    new java.util.HashSet<>(HeliumClient.getConfig().rentitiesEntityBatchBlacklist));
         }
-        return !HeliumClient.getConfig().entity_batching_blacklist.contains(type.toString())
-                && (!HeliumClient.getConfig().entity_batching_whitelist_only
-                    || HeliumClient.getConfig().entity_batching_whitelist.contains(type.toString()));
+        return !HeliumClient.getConfig().rentitiesEntityBatchBlacklist.contains(type.toString())
+                && (!HeliumClient.getConfig().rentitiesEntityBatchWhitelistOnly
+                    || HeliumClient.getConfig().rentitiesEntityBatchWhitelist.contains(type.toString()));
     }
 
     public boolean asyncVisibilityAllows(Entity entity) {
         return asyncVisibility.shouldBatch(entity, cameraX, cameraY, cameraZ,
-                HeliumClient.getConfig().async_visibility_enabled,
-                HeliumClient.getConfig().async_visibility_refresh_frames,
-                HeliumClient.getConfig().async_visibility_max_age_frames,
-                HeliumClient.getConfig().async_visibility_max_distance);
+                HeliumClient.getConfig().rentitiesAsyncVisibilityEnabled,
+                HeliumClient.getConfig().rentitiesAsyncVisibilityRefreshFrames,
+                HeliumClient.getConfig().rentitiesAsyncVisibilityMaxAgeFrames,
+                HeliumClient.getConfig().rentitiesAsyncVisibilityMaxDistance);
     }
 
     public boolean canBatchEntity(EntityType<?> type) {
