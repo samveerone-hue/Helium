@@ -1,4 +1,4 @@
-package me.balancinglight.rentities.entities;
+package com.helium.rentities;
 
 import com.helium.HeliumClient;
 import org.lwjgl.system.MemoryUtil;
@@ -191,7 +191,7 @@ public class EntityErrorRenderer {
 
     private static String loadShaderSource(String path) {
         try (var stream = EntityErrorRenderer.class.getClassLoader()
-                .getResourceAsStream("assets/rentities/shaders/" + path)) {
+                .getResourceAsStream("assets/helium/shaders/rentities/" + path)) {
             if (stream == null) return null;
             return new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) { return null; }
