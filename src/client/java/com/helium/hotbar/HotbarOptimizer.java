@@ -13,8 +13,6 @@ public final class HotbarOptimizer {
 
     private static final AtomicBoolean sent = new AtomicBoolean(false);
     private static final AtomicInteger lastslot = new AtomicInteger(-1);
-    private static volatile boolean serverdisabled = false;
-
     private HotbarOptimizer() {}
 
     public static void resettick() {
@@ -25,19 +23,9 @@ public final class HotbarOptimizer {
         lastslot.set(-1);
     }
 
-    public static void setserverdisabled(boolean disabled) {
-        serverdisabled = disabled;
-    }
-
-    public static boolean isserverdisabled() {
-        return serverdisabled;
-    }
-
     public static void syncslot(MinecraftClient client, int slot) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
-        if (serverdisabled) return;
-
         if (sent.get() && !config.hotbarMultiSwitch) return;
 
         ClientPlayerEntity player = client.player;
@@ -77,7 +65,6 @@ public final class HotbarOptimizer {
     public static void checkscrollsync(MinecraftClient client) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.hotbarOptimizer) return;
-        if (serverdisabled) return;
         if (client.isInSingleplayer()) return;
 
         ClientPlayerEntity player = client.player;
