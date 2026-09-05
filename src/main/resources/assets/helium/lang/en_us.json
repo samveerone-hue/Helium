@@ -277,5 +277,11 @@
   "helium.option.entity_gpu_batching": "GPU Entity Batching (Rentities)",
   "helium.option.entity_gpu_batching.tooltip": "Use Rentities-style GPU instancing for supported entities. Disabled by default until the renderer path is fully available.",
   "helium.option.entity_gpu_frustum_culling": "GPU Entity Frustum Culling",
-  "helium.option.entity_gpu_frustum_culling.tooltip": "Run supported entity visibility tests on the GPU. Requires GPU entity batching."
+  "helium.option.entity_gpu_frustum_culling.tooltip": "Run supported entity visibility tests on the GPU. Requires GPU entity batching.",
+  "helium.option.rentities_entity_batch_whitelist_only": "Rentities Batch Whitelist Only",
+  "helium.option.rentities_entity_batch_whitelist_only.tooltip": "Only batch entity types listed in the whitelist. Non-listed entities continue to use vanilla rendering.",
+  "helium.option.rentities_entity_batch_whitelist": "Rentities Batch Whitelist",
+  "helium.option.rentities_entity_batch_whitelist.tooltip": "Comma-separated entity IDs to allow in GPU batching, for example minecraft:zombie, minecraft:cow.",
+  "helium.option.rentities_entity_batch_blacklist": "Rentities Batch Blacklist",
+  "helium.option.rentities_entity_batch_blacklist.tooltip": "Comma-separated entity IDs to exclude from GPU batching. Excluded entities continue to use vanilla rendering."
 }
