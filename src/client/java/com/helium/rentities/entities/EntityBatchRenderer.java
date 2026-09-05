@@ -11,7 +11,7 @@ import com.helium.rentities.gl.InstanceBufferBackend;
 import com.helium.rentities.gl.PersistentMappedInstanceBufferBackend;
 import com.helium.rentities.gl.StandardInstanceBufferBackend;
 import com.helium.rentities.gl.GpuSync;
-import com.helium.rentities.gl.GlStateCache;
+import com.helium.render.GLStateCache;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -44,6 +44,11 @@ import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 import static org.lwjgl.opengl.GL31C.glDrawElementsInstanced;
 
 public class EntityBatchRenderer {
+    private static boolean isDebugLogging() {
+        var cfg = HeliumClient.getConfig();
+        return cfg != null && cfg.rentitiesEntityBatchingDebug;
+    }
+
     private final RendererBackendManager backendManager = new RendererBackendManager();
 
 
@@ -166,7 +171,7 @@ public class EntityBatchRenderer {
             throw standardError;
         }
         this.instanceBuffer = selected;
-        if (false) {
+        if (isDebugLogging()) {
             HeliumClient.LOGGER.info(
                     "[Rentities] GPU batching SSBO backend: {}",
                     selected.getClass().getSimpleName());
@@ -495,7 +500,7 @@ public class EntityBatchRenderer {
                 glEnable(GL_BLEND);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             
-                if (HeliumClient.getConfig().rentitiesEntityBatchingDebug_solid) {
+                if (HeliumClient.getConfig().rentitiesEntityBatchingDebugSolid) {
                     glDisable(GL_BLEND);
                 }
 
@@ -703,7 +708,7 @@ public class EntityBatchRenderer {
                         glUniform1i(uBaseInstance, instanceOffset);
                         if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
                         glDepthMask(true);
-                        if (false && (System.currentTimeMillis() % 2000 < 50)) {
+                        if (isDebugLogging() && (System.currentTimeMillis() % 2000 < 50)) {
                             HeliumClient.LOGGER.info("DRAW: type={}, count={}, indexCount={}, indexOffset={}, baseInstance={}",
                                 currentType, currentCount, meshInfo.indexCount, meshInfo.indexOffset, instanceOffset);
                         }
@@ -1128,8 +1133,8 @@ public class EntityBatchRenderer {
 
     private void compileShader() {
         try {
-            String vertSrc = loadShader("assets/rentities/shaders/entity/entity_vert.glsl");
-            String fragSrc = loadShader("assets/rentities/shaders/entity/entity_frag.glsl");
+            String vertSrc = loadShader("assets/helium/shaders/rentities/entity/entity_vert.glsl");
+            String fragSrc = loadShader("assets/helium/shaders/rentities/entity/entity_frag.glsl");
             entityShader = GlShader.builder()
                     .vert(vertSrc)
                     .frag(fragSrc)
