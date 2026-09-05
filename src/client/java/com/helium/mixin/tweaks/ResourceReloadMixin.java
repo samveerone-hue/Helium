@@ -3,6 +3,7 @@ package com.helium.mixin.tweaks;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.tweaks.AsyncPackReloader;
+import com.helium.render.TextRenderOptimizer;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,6 +17,7 @@ public class ResourceReloadMixin {
 
     @Inject(method = "reloadResources()Ljava/util/concurrent/CompletableFuture;", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$asyncreload(CallbackInfoReturnable<CompletableFuture<Void>> cir) {
+        TextRenderOptimizer.invalidate();
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.asyncPackReload) return;
 
