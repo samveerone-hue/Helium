@@ -340,6 +340,26 @@ public class EntityBatchRenderer {
         }
     }
 
+    private static org.joml.Matrix4f capturedPositionMatrix;
+    private static org.joml.Matrix4f capturedProjectionMatrix;
+    public static double cameraX;
+    public static double cameraY;
+    public static double cameraZ;
+
+    public static void captureWorldRenderMatrices(Matrix4f positionMatrix, Matrix4f projectionMatrix,
+                                                   double x, double y, double z) {
+        capturedPositionMatrix = positionMatrix == null ? null : new Matrix4f(positionMatrix);
+        capturedProjectionMatrix = projectionMatrix == null ? null : new Matrix4f(projectionMatrix);
+        cameraX = x;
+        cameraY = y;
+        cameraZ = z;
+    }
+
+    public static void beginCapturedWorldRender() {
+        if (capturedPositionMatrix == null || capturedProjectionMatrix == null) return;
+        beginWorldRender(capturedPositionMatrix, capturedProjectionMatrix);
+    }
+
     public static void beginWorldRender(Matrix4f positionMatrix, Matrix4f projectionMatrix) {
         if (INSTANCE != null) {
             INSTANCE.refreshEntityFilterCache(HeliumClient.getConfig());
