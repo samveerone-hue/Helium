@@ -17,6 +17,10 @@ public final class ExternalModCompat {
         return LOADER.isModLoaded("oxidizium");
     }
 
+    public static boolean hasAsyncParticles() {
+        return LOADER.isModLoaded("asyncparticles");
+    }
+
     public static boolean hasFastServerPings() {
         return LOADER.isModLoaded("fastserverpings");
     }
