@@ -25,6 +25,8 @@ public class HeliumConfig {
     public boolean fastStartup = false;
 
     public boolean entityCulling = true;
+    public boolean entityGpuBatching = false;
+    public boolean entityGpuFrustumCulling = true;
     public int entityCullDistance = 64;
     public boolean blockEntityCulling = true;
     public int blockEntityCullDistance = 48;
@@ -235,6 +237,8 @@ public class HeliumConfig {
         this.networkOptimizations = other.networkOptimizations;
         this.fastStartup = other.fastStartup;
         this.entityCulling = other.entityCulling;
+        this.entityGpuBatching = other.entityGpuBatching;
+        this.entityGpuFrustumCulling = other.entityGpuFrustumCulling;
         this.entityCullDistance = other.entityCullDistance;
         this.blockEntityCulling = other.blockEntityCulling;
         this.blockEntityCullDistance = other.blockEntityCullDistance;
