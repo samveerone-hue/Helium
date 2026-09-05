@@ -316,9 +316,9 @@ public class EntityMeshBaker {
         if (cachedRendererMap != null) return cachedRendererMap;
         if (dispatcher == null) return null;
         try {
-            Field f = net.minecraft.client.renderer.entity.EntityRenderManager.class.getDeclaredField("field_4696");
+            Field f = net.minecraft.client.render.entity.EntityRenderManager.class.getDeclaredField("field_4696");
             f.setAccessible(true);
-            cachedRendererMap = (Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>>) f.get(dispatcher);
+            cachedRendererMap = (Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>>) f.get(dispatcher);
             return cachedRendererMap;
         } catch (Exception e) {
             if (isDebugLogging()) HeliumClient.LOGGER.error("Failed to access renderer map: {}", e.getMessage());
@@ -326,18 +326,18 @@ public class EntityMeshBaker {
         }
     }
 
-    private static volatile Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>> cachedRendererMap = null;
+    private static volatile Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>> cachedRendererMap = null;
 
     private boolean texturesBootstrapped = false;
 
-    private static void bootstrapTextures(net.minecraft.client.renderer.entity.EntityRenderManager dispatcher) {
+    private static void bootstrapTextures(net.minecraft.client.render.entity.EntityRenderManager dispatcher) {
         bootstrapTextures(dispatcher, getRendererMap(dispatcher));
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void bootstrapTextures(
-            net.minecraft.client.renderer.entity.EntityRenderManager dispatcher,
-            Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>> rendererMap) {
+            net.minecraft.client.render.entity.EntityRenderManager dispatcher,
+            Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>> rendererMap) {
         if (dispatcher == null || rendererMap == null) return;
         EntityBatchRenderer renderer = EntityBatchRenderer.INSTANCE;
         if (renderer == null) return;
@@ -881,7 +881,7 @@ public class EntityMeshBaker {
             return MeshStatus.UNKNOWN;
         }
 
-        Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>> rendererMap =
+        Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>> rendererMap =
                 getRendererMap(dispatcher);
         if (rendererMap == null) {
             recordExtractionFailure(type, now);
