@@ -72,7 +72,7 @@ public final class HeliumSharedOptions {
 
         groups.add(new OptGroup("helium.group.entity_culling", List.of(
                 new BoolOpt("helium.option.entity_culling", true, () -> c.entityCulling, v -> { c.entityCulling = v; renderingdirty = true; }, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.entity_gpu_batching", false, () -> c.entityGpuBatching, v -> { c.entityGpuBatching = v; renderingdirty = true; }, IMPACT_HIGH),
+                new BoolOpt("helium.option.entity_gpu_batching", false, () -> c.entityGpuBatching, v -> { HeliumClient.setEntityGpuBatching(v); renderingdirty = true; }, IMPACT_HIGH),
                 new BoolOpt("helium.option.entity_gpu_frustum_culling", true, () -> c.entityGpuFrustumCulling, v -> { c.entityGpuFrustumCulling = v; renderingdirty = true; }, IMPACT_MEDIUM, () -> c.entityGpuBatching),
                 new IntOpt("helium.option.entity_cull_distance", 64, 16, 128, 8, "helium.suffix.blocks",
                         () -> c.entityCullDistance, v -> { c.entityCullDistance = v; renderingdirty = true; }, IMPACT_MEDIUM)
