@@ -3,6 +3,7 @@ package com.helium.rentities.entities;
 import com.helium.rentities.render.RendererBackendManager;
 
 import com.helium.HeliumClient;
+import com.helium.config.HeliumConfig;
 import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.gl.GlShader;
 import com.helium.rentities.gl.GlStateGuard;
@@ -44,6 +45,33 @@ import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
 import static org.lwjgl.opengl.GL31C.glDrawElementsInstanced;
 
 public class EntityBatchRenderer {
+    private static final class BatchGlStateCache {
+        void reset() { GLStateCache.reset(); }
+        void useProgram(int id) { if (GLStateCache.shouldUseProgram(id)) glUseProgram(id); }
+        void bindVertexArray(int id) { if (GLStateCache.shouldBindVao(id)) glBindVertexArray(id); }
+        void depthTest(boolean enabled) {
+            if (GLStateCache.shouldEnableDepthTest(enabled)) {
+                if (enabled) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
+            }
+        }
+        void cullFace(boolean enabled) {
+            if (GLStateCache.shouldEnableCullFace(enabled)) {
+                if (enabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
+            }
+        }
+        void blend(boolean enabled) {
+            if (GLStateCache.shouldEnableBlend(enabled)) {
+                if (enabled) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+            }
+        }
+        void depthFunc(int func) {
+            if (GLStateCache.shouldSetDepthFunc(func)) glDepthFunc(func);
+        }
+        void blendFunc(int src, int dst) {
+            if (GLStateCache.shouldSetBlendFunc(src, dst, src, dst)) glBlendFunc(src, dst);
+        }
+    }
+
     private static boolean isDebugLogging() {
         var cfg = HeliumClient.getConfig();
         return cfg != null && cfg.rentitiesEntityBatchingDebug;
@@ -76,6 +104,10 @@ public class EntityBatchRenderer {
     private long renderFrame;
 
     private static final int MAX_QUEUE = EntityInstance.MAX_INSTANCES;
+    private Set<String> cachedWhitelist = Set.of();
+    private Set<String> cachedBlacklist = Set.of();
+    private boolean cachedWhitelistOnly;
+    private int cachedFilterHash;
     private static final EntityType<?>[] queuedTypes = new EntityType[MAX_QUEUE];
     private static final EntityType<?>[] extractionTypes = new EntityType[MAX_QUEUE];
     private static final int[] queuedOriginalIndices = new int[MAX_QUEUE];
@@ -102,7 +134,7 @@ public class EntityBatchRenderer {
     private final InstanceBufferBackend instanceBuffer;
     private final GpuFenceRing fenceRing = new GpuFenceRing(NUM_BUFFERS);
     private final EntityCullingPipeline cullPipeline;
-    private final GlStateCache stateCache = new GlStateCache();
+    private final BatchGlStateCache stateCache = new BatchGlStateCache();
     private static final int SSBO_BINDING = 12;
     private static final int PIVOT_SSBO_BINDING = 13;
 
@@ -177,7 +209,8 @@ public class EntityBatchRenderer {
                     selected.getClass().getSimpleName());
         }
         EntityCullingPipeline culling = null;
-        if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(HeliumClient.getConfig())) {
+        if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(config)
+                && EntityBatchRegistry.REGISTRY_TYPES().contains(EntityType.PLAYER)) {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
             } catch (Throwable t) {
@@ -197,7 +230,7 @@ public class EntityBatchRenderer {
             int idx = queueSize.getAndIncrement();
             if (idx >= MAX_QUEUE) {
                 queueSize.decrementAndGet();
-                if (false) {
+                if (isDebugLogging()) {
                     HeliumClient.LOGGER.warn(
                             "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
                             MAX_QUEUE);
@@ -299,6 +332,7 @@ public class EntityBatchRenderer {
 
     public static void beginWorldRender(Matrix4f positionMatrix, Matrix4f projectionMatrix) {
         if (INSTANCE != null) {
+            INSTANCE.refreshEntityFilterCache(HeliumClient.getConfig());
             INSTANCE.passPrepared = false;
             INSTANCE.renderFrame++;
             INSTANCE.asyncVisibility.beginFrame(INSTANCE.renderFrame);
@@ -342,6 +376,7 @@ public class EntityBatchRenderer {
     }
 
     private void doFlush() {
+        HeliumConfig config = HeliumClient.getConfig();
         int rawCount = Math.min(queueSize.getAndSet(0), MAX_QUEUE);
         int count = compactQueue(rawCount);
         RESERVED_SLOTS.get().clear();
@@ -491,17 +526,17 @@ public class EntityBatchRenderer {
                 stateCache.bindVertexArray(vaoId);
             
                 // Ensure correct GL state for entity rendering
-                glEnable(GL_DEPTH_TEST);
-                glDepthFunc(GL_LEQUAL);
+                stateCache.depthTest(true);
+                stateCache.depthFunc(GL_LEQUAL);
                 glDepthMask(true);
-                glDisable(GL_CULL_FACE);
+                stateCache.cullFace(false);
                 glDisable(GL_SCISSOR_TEST);
                 glDisable(GL_STENCIL_TEST);
-                glEnable(GL_BLEND);
-                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                stateCache.blend(true);
+                stateCache.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             
                 if (HeliumClient.getConfig().rentitiesEntityBatchingDebugSolid) {
-                    glDisable(GL_BLEND);
+                    stateCache.blend(false);
                 }
 
                 glColorMask(true, true, true, true);
@@ -547,6 +582,7 @@ public class EntityBatchRenderer {
             errorRenderer.flush(vp, gameTime);
         } finally {
             stateGuard.restore();
+            GLStateCache.reset();
         }
 
         // Clear queued references
@@ -1166,16 +1202,31 @@ public class EntityBatchRenderer {
         }
     }
 
-    public boolean asyncAllowsBatch(EntityType<?> type) {
-        if (HeliumClient.getConfig().rentitiesAsyncRenderPreparationEnabled) {
-            return asyncPreparation.allowsBatch(type,
-                    HeliumClient.getConfig().rentitiesEntityBatchWhitelistOnly,
-                    new java.util.HashSet<>(HeliumClient.getConfig().rentitiesEntityBatchWhitelist),
-                    new java.util.HashSet<>(HeliumClient.getConfig().rentitiesEntityBatchBlacklist));
+    private void refreshEntityFilterCache(HeliumConfig config) {
+        if (config == null) {
+            cachedWhitelist = Set.of();
+            cachedBlacklist = Set.of();
+            cachedWhitelistOnly = false;
+            cachedFilterHash = 0;
+            return;
         }
-        return !HeliumClient.getConfig().rentitiesEntityBatchBlacklist.contains(type.toString())
-                && (!HeliumClient.getConfig().rentitiesEntityBatchWhitelistOnly
-                    || HeliumClient.getConfig().rentitiesEntityBatchWhitelist.contains(type.toString()));
+        int hash = 31 * (31 * (config.rentitiesEntityBatchWhitelistOnly ? 1 : 0)
+                + config.rentitiesEntityBatchWhitelist.hashCode())
+                + config.rentitiesEntityBatchBlacklist.hashCode();
+        if (hash == cachedFilterHash) return;
+        cachedWhitelistOnly = config.rentitiesEntityBatchWhitelistOnly;
+        cachedWhitelist = Set.copyOf(config.rentitiesEntityBatchWhitelist);
+        cachedBlacklist = Set.copyOf(config.rentitiesEntityBatchBlacklist);
+        cachedFilterHash = hash;
+    }
+
+    public boolean asyncAllowsBatch(EntityType<?> type) {
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || type == null) return false;
+        if (cachedBlacklist.contains(type.toString())) return false;
+        if (cachedWhitelistOnly && !cachedWhitelist.contains(type.toString())) return false;
+        if (!config.rentitiesAsyncRenderPreparationEnabled) return true;
+        return asyncPreparation.allowsBatch(type, cachedWhitelistOnly, cachedWhitelist, cachedBlacklist);
     }
 
     public boolean asyncVisibilityAllows(Entity entity) {
