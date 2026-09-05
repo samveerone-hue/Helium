@@ -242,16 +242,8 @@ public class HeliumClient implements ClientModInitializer {
                         && com.helium.rentities.entities.EntityBatchRenderer.INSTANCE == null) {
                     new com.helium.rentities.entities.EntityBatchRenderer();
                 }
-                var renderer = com.helium.rentities.entities.EntityBatchRenderer.INSTANCE;
-                if (renderer != null
-                        && com.helium.rentities.RendererCapabilityState.current() != null
-                        && com.helium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)) {
-                    var camera = context.camera().getPos();
-                    com.helium.rentities.entities.EntityBatchRenderer.cameraX = camera.x;
-                    com.helium.rentities.entities.EntityBatchRenderer.cameraY = camera.y;
-                    com.helium.rentities.entities.EntityBatchRenderer.cameraZ = camera.z;
-                    com.helium.rentities.entities.EntityBatchRenderer.beginWorldRender(
-                            context.positionMatrix(), context.projectionMatrix());
+                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.helium.rentities.entities.EntityBatchRenderer.beginCapturedWorldRender();
                 }
             } catch (Throwable t) {
                 LOGGER.warn("Rentities entity batching preparation failed; using vanilla rendering", t);
