@@ -28,6 +28,11 @@ import static org.lwjgl.opengl.GL45C.*;
 
 // Extracts entity meshes from vanilla renderers and bakes them into a shared GPU VBO.
 public class EntityMeshBaker {
+    private static boolean isDebugLogging() {
+        var cfg = HeliumClient.getConfig();
+        return cfg != null && cfg.rentitiesEntityBatchingDebug;
+    }
+
 
     public static final int VERTEX_STRIDE = 36; // 9 floats × 4 bytes
     public static final int MAX_BONES = 10;
@@ -212,7 +217,7 @@ public class EntityMeshBaker {
                 return;
             }
 
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.info("Starting Entity Mesh Baking...");
             }
 
@@ -251,7 +256,7 @@ public class EntityMeshBaker {
                                 new MatrixStack());
                     }
                 } catch (Throwable t) {
-                    if (false) {
+                    if (isDebugLogging()) {
                         HeliumClient.LOGGER.error("Failed to bake mesh for {}", type, t);
                     }
                 }
@@ -316,7 +321,7 @@ public class EntityMeshBaker {
             cachedRendererMap = (Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>>) f.get(dispatcher);
             return cachedRendererMap;
         } catch (Exception e) {
-            if (false) HeliumClient.LOGGER.error("Failed to access renderer map: {}", e.getMessage());
+            if (isDebugLogging()) HeliumClient.LOGGER.error("Failed to access renderer map: {}", e.getMessage());
             return null;
         }
     }
@@ -348,10 +353,10 @@ public class EntityMeshBaker {
                                                EntityAnimationCategory category,
                                                EntityMeshCapturingConsumer consumer,
                                                MatrixStack poseStack) {
-        if (false) HeliumClient.LOGGER.info("Extracting from renderer: {}", renderer.getClass().getName());
+        if (isDebugLogging()) HeliumClient.LOGGER.info("Extracting from renderer: {}", renderer.getClass().getName());
         @SuppressWarnings("rawtypes") EntityModel model = getModelFromRenderer(renderer);
         if (model == null) {
-            if (false) HeliumClient.LOGGER.error("Could not find EntityModel in renderer {}", renderer.getClass().getName());
+            if (isDebugLogging()) HeliumClient.LOGGER.error("Could not find EntityModel in renderer {}", renderer.getClass().getName());
             return null;
         }
 
@@ -361,7 +366,7 @@ public class EntityMeshBaker {
         // Get root ModelPart (the model itself is a ModelPart tree)
         ModelPart root = getRootPart(model);
         if (root == null) {
-            if (false) HeliumClient.LOGGER.warn("Root ModelPart is NULL for renderer {}", renderer.getClass().getName());
+            if (isDebugLogging()) HeliumClient.LOGGER.warn("Root ModelPart is NULL for renderer {}", renderer.getClass().getName());
             
             // Try fallback: check for any ModelPart field on the model itself
             for (Field f : model.getClass().getDeclaredFields()) {
@@ -370,7 +375,7 @@ public class EntityMeshBaker {
                         f.setAccessible(true);
                         root = (ModelPart) f.get(model);
                         if (root != null) {
-                            if (false) HeliumClient.LOGGER.info("Found fallback root ModelPart in field {}", f.getName());
+                            if (isDebugLogging()) HeliumClient.LOGGER.info("Found fallback root ModelPart in field {}", f.getName());
                             break;
                         }
                     } catch (Exception ignored) {}
@@ -379,7 +384,7 @@ public class EntityMeshBaker {
         }
 
         if (root == null) {
-            if (false) HeliumClient.LOGGER.warn("Final root ModelPart is NULL for renderer {}", renderer.getClass().getName());
+            if (isDebugLogging()) HeliumClient.LOGGER.warn("Final root ModelPart is NULL for renderer {}", renderer.getClass().getName());
             return null;
         }
 
@@ -408,7 +413,7 @@ public class EntityMeshBaker {
         poseStack.popPose();
 
         float[] captured = consumer.bakeAndReset();
-        if (false) {
+        if (isDebugLogging()) {
             if (captured.length > 0) {
                 HeliumClient.LOGGER.info("Extraction finished: captured {} vertices", captured.length / 9);
             } else {
@@ -476,7 +481,7 @@ public class EntityMeshBaker {
                 poseStack.popPose();
             }
         } catch (Exception e) {
-            if (false) HeliumClient.LOGGER.error("renderPartTree error: {}", e.getMessage());
+            if (isDebugLogging()) HeliumClient.LOGGER.error("renderPartTree error: {}", e.getMessage());
         }
     }
 
@@ -550,7 +555,7 @@ public class EntityMeshBaker {
                 }
             }
         } catch (Exception e) {
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn("renderPartCubesDirectly failed: {}", e.getMessage());
             }
         }
@@ -581,7 +586,7 @@ public class EntityMeshBaker {
                     f.setAccessible(true);
                     Object val = f.get(renderer);
                     if (val != null) {
-                        if (false) HeliumClient.LOGGER.info("Found EntityModel field: {} in {}", f.getName(), renderer.getClass().getSimpleName());
+                        if (isDebugLogging()) HeliumClient.LOGGER.info("Found EntityModel field: {} in {}", f.getName(), renderer.getClass().getSimpleName());
                         return (EntityModel) val;
                     }
                 } catch (Exception ignored) {}
@@ -707,7 +712,7 @@ public class EntityMeshBaker {
                 if (Map.class.isAssignableFrom(f.getType())) {
                     f.setAccessible(true);
                     FIELD_CACHE.put(key, f);
-                    if (false) HeliumClient.LOGGER.info("Fell back to Map field {} for field_3661", f.getName());
+                    if (isDebugLogging()) HeliumClient.LOGGER.info("Fell back to Map field {} for field_3661", f.getName());
                     return f;
                 }
             }
@@ -716,7 +721,7 @@ public class EntityMeshBaker {
                 if (List.class.isAssignableFrom(f.getType())) {
                     f.setAccessible(true);
                     FIELD_CACHE.put(key, f);
-                    if (false) HeliumClient.LOGGER.info("Fell back to List field {} for field_3663", f.getName());
+                    if (isDebugLogging()) HeliumClient.LOGGER.info("Fell back to List field {} for field_3663", f.getName());
                     return f;
                 }
             }
@@ -782,7 +787,7 @@ public class EntityMeshBaker {
                 vf.put(verts);
                 for (int idx : inds) {
                     if (idx < 0 || idx >= totalVertices) {
-                        if (false) {
+                        if (isDebugLogging()) {
                             HeliumClient.LOGGER.error("INDEX OUT OF BOUNDS: {} not in [0,{})",
                                     idx, totalVertices);
                         }
@@ -1040,7 +1045,7 @@ public class EntityMeshBaker {
         } finally {
             MemoryUtil.memFree(buf);
         }
-        if (false) HeliumClient.LOGGER.info("Uploaded bone pivot SSBO: {} entries", bonePivotData.length / 4);
+        if (isDebugLogging()) HeliumClient.LOGGER.info("Uploaded bone pivot SSBO: {} entries", bonePivotData.length / 4);
         return pivotSSBOId;
     }
 
