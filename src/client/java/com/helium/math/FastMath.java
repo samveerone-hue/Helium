@@ -37,11 +37,13 @@ public final class FastMath {
     }
 
     public static float sin(double radians) {
+        if (!initialized) return (float) Math.sin(radians);
         int index = angleIndex(radians);
         return sinTable[index];
     }
 
     public static float cos(double radians) {
+        if (!initialized) return (float) Math.cos(radians);
         int index = angleIndex(radians);
         return cosTable[index];
     }
