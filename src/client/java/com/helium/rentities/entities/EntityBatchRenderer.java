@@ -791,8 +791,6 @@ public class EntityBatchRenderer {
         }
     }
 
-    public static double cameraX, cameraY, cameraZ;
-
     public void setCamera(double x, double y, double z) {
         cameraX = x;
         cameraY = y;
