@@ -4,6 +4,8 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.compat.ExternalModCompat;
 import com.helium.particle.ParticleLimiter;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
@@ -15,6 +17,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ParticleManager.class)
 public abstract class ParticleManagerMixin {
+
+    @Unique
+    private static final Map<Class<?>, Boolean> helium$lodClassCache = new ConcurrentHashMap<>();
+
+    @Unique
+    private static boolean helium$shouldApplyLod(Class<?> type) {
+        if (type == null) return false;
+        return helium$lodClassCache.computeIfAbsent(type, c -> {
+            String name = c.getName();
+            return !name.contains("AmbientEntityEffectParticle")
+                    && !name.contains("BarrierParticle")
+                    && !name.contains("TotemParticle");
+        });
+    }
 
     @Unique
     private static boolean helium$particleCullFailed = false;
@@ -64,7 +80,7 @@ public abstract class ParticleManagerMixin {
                 }
 
                 if (config.particleLOD
-                        && ParticleLodClassifier.shouldApply(particle.getClass())) {
+                        && helium$shouldApplyLod(particle.getClass())) {
                     double threshold = Math.max(0.0, config.particleLODDistance);
                     double reduction = Math.max(0.0, Math.min(1.0, config.particleLODReduction));
                     if (reduction > 0.0
