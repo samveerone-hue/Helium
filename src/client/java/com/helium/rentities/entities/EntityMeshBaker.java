@@ -211,7 +211,7 @@ public class EntityMeshBaker {
         bakeState = BakeState.BAKING;
 
         try {
-            if (!Rentities.config.entity_scan_mode && loadFromCache()) {
+            if (loadFromCache()) {
                 HeliumClient.LOGGER.info("[EntityCache] Using cached mesh data — skipping bake");
                 bootstrapTextures(MinecraftClient.getInstance().getEntityRenderDispatcher());
                 return;
