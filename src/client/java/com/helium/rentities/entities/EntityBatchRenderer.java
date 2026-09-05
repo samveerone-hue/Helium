@@ -162,10 +162,7 @@ public class EntityBatchRenderer {
         try {
             selected = new StandardInstanceBufferBackend(EntityInstance.SSBO_SIZE, NUM_BUFFERS);
         } catch (Throwable standardError) {
-            if (null != null) {
-                null.markFailed(
-                        RendererCapabilityState.Feature.GPU_BATCHING, standardError);
-            }
+            HeliumClient.LOGGER.warn("[Rentities] standard SSBO backend failed: {}", standardError.toString());
             throw standardError;
         }
         this.instanceBuffer = selected;
@@ -175,7 +172,7 @@ public class EntityBatchRenderer {
                     selected.getClass().getSimpleName());
         }
         EntityCullingPipeline culling = null;
-        if (RendererCapabilityState.current() == null || null.indirectAllowed(HeliumClient.getConfig())) {
+        if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(HeliumClient.getConfig())) {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
             } catch (Throwable t) {
