@@ -342,10 +342,6 @@ public class EntityBatchRenderer {
 
     private static org.joml.Matrix4f capturedPositionMatrix;
     private static org.joml.Matrix4f capturedProjectionMatrix;
-    public static double cameraX;
-    public static double cameraY;
-    public static double cameraZ;
-
     public static void captureWorldRenderMatrices(Matrix4f positionMatrix, Matrix4f projectionMatrix,
                                                    double x, double y, double z) {
         capturedPositionMatrix = positionMatrix == null ? null : new Matrix4f(positionMatrix);
@@ -474,12 +470,12 @@ public class EntityBatchRenderer {
             MinecraftClient mc = MinecraftClient.getInstance();
             float partialTick = mc.getRenderTickCounter().getTickProgress(true);
             float gameTime = mc.world != null
-                    ? (float)(mc.level.getGameTime() % 100000L) + partialTick
+                    ? (float)(mc.world.getTime() % 100000L) + partialTick
                     : partialTick;
             glUniform1f(uGameTime, gameTime);
             if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
             if (uCameraPos >= 0) {
-                var cam = mc.gameRenderer.getCamera().getPos();
+                var cam = mc.gameRenderer.getCamera().getCameraPos();
                 glUniform3f(uCameraPos, (float) cam.x, (float) cam.y, (float) cam.z);
             }
 
