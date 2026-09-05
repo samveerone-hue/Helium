@@ -59,6 +59,16 @@ public class EntityBatchRenderer {
                 if (enabled) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
             }
         }
+        void scissor(boolean enabled) {
+            if (GLStateCache.shouldEnableScissor(enabled)) {
+                if (enabled) glEnable(GL_SCISSOR_TEST); else glDisable(GL_SCISSOR_TEST);
+            }
+        }
+        void stencil(boolean enabled) {
+            if (GLStateCache.shouldEnableStencil(enabled)) {
+                if (enabled) glEnable(GL_STENCIL_TEST); else glDisable(GL_STENCIL_TEST);
+            }
+        }
         void blend(boolean enabled) {
             if (GLStateCache.shouldEnableBlend(enabled)) {
                 if (enabled) glEnable(GL_BLEND); else glDisable(GL_BLEND);
@@ -530,8 +540,8 @@ public class EntityBatchRenderer {
                 stateCache.depthFunc(GL_LEQUAL);
                 glDepthMask(true);
                 stateCache.cullFace(false);
-                glDisable(GL_SCISSOR_TEST);
-                glDisable(GL_STENCIL_TEST);
+                stateCache.scissor(false);
+                stateCache.stencil(false);
                 stateCache.blend(true);
                 stateCache.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             
