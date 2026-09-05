@@ -30,6 +30,7 @@ import com.helium.threading.EventPoller;
 import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import com.helium.compat.CrossLoaderCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
@@ -227,6 +228,41 @@ public class HeliumClient implements ClientModInitializer {
             if (gpuInitDeferred && client != null && client.getWindow() != null) {
                 gpuInitDeferred = false;
                 initDeferredGpuFeatures();
+            }
+        });
+
+        WorldRenderEvents.BEFORE_ENTITIES.register(context -> {
+            if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
+            try {
+                if (com.helium.rentities.RendererCapabilityState.current() == null) {
+                    com.helium.rentities.RendererCapabilityState.probe();
+                }
+                if (com.helium.rentities.RendererCapabilityState.current() != null
+                        && com.helium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)
+                        && com.helium.rentities.entities.EntityBatchRenderer.INSTANCE == null) {
+                    new com.helium.rentities.entities.EntityBatchRenderer();
+                }
+                var renderer = com.helium.rentities.entities.EntityBatchRenderer.INSTANCE;
+                if (renderer != null
+                        && com.helium.rentities.RendererCapabilityState.current() != null
+                        && com.helium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)) {
+                    var camera = context.camera().getPos();
+                    com.helium.rentities.entities.EntityBatchRenderer.cameraX = camera.x;
+                    com.helium.rentities.entities.EntityBatchRenderer.cameraY = camera.y;
+                    com.helium.rentities.entities.EntityBatchRenderer.cameraZ = camera.z;
+                    com.helium.rentities.entities.EntityBatchRenderer.beginWorldRender(
+                            context.positionMatrix(), context.projectionMatrix());
+                }
+            } catch (Throwable t) {
+                LOGGER.warn("Rentities entity batching preparation failed; using vanilla rendering", t);
+            }
+        });
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+            if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
+            try {
+                com.helium.rentities.entities.EntityBatchRenderer.flushBatch();
+            } catch (Throwable t) {
+                LOGGER.warn("Rentities entity batch flush failed; using vanilla rendering", t);
             }
         });
 
