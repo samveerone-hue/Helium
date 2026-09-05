@@ -54,16 +54,7 @@ public final class NativeMemoryManager {
         int poolIndex = findPoolIndex(size);
         int actualSize = poolIndex >= 0 ? POOL_SIZES[poolIndex] : size;
 
-        if (totalAllocatedBytes.get() + actualSize > maxMemoryBytes) {
-            evictFromPools(actualSize);
-            if (totalAllocatedBytes.get() + actualSize > maxMemoryBytes) {
-                HeliumClient.LOGGER.warn("native memory limit reached, cannot allocate {} bytes", size);
-                return null;
-            }
-        }
-
         ByteBuffer buffer = null;
-
         if (poolIndex >= 0) {
             buffer = POOLS[poolIndex].pollFirst();
             if (buffer != null) {
@@ -73,6 +64,14 @@ public final class NativeMemoryManager {
         }
 
         if (buffer == null) {
+            if (totalAllocatedBytes.get() + actualSize > maxMemoryBytes) {
+                evictFromPools(actualSize);
+                if (totalAllocatedBytes.get() + actualSize > maxMemoryBytes) {
+                    HeliumClient.LOGGER.warn("native memory limit reached, cannot allocate {} bytes", size);
+                    return null;
+                }
+            }
+
             try {
                 buffer = ByteBuffer.allocateDirect(actualSize).order(ByteOrder.nativeOrder());
                 totalAllocatedBytes.addAndGet(actualSize);
@@ -101,8 +100,12 @@ public final class NativeMemoryManager {
 
         if (info != null && info.poolIndex >= 0) {
             buffer.clear();
-            POOLS[info.poolIndex].offerFirst(buffer);
-            totalPooledBytes.addAndGet(info.size);
+            if (POOLS[info.poolIndex].size() < 64) {
+                POOLS[info.poolIndex].offerFirst(buffer);
+                totalPooledBytes.addAndGet(info.size);
+            } else {
+                totalAllocatedBytes.addAndGet(-info.size);
+            }
         }
 
         if (cleanupCounter.incrementAndGet() % CLEANUP_INTERVAL == 0) {
