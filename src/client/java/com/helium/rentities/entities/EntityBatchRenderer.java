@@ -219,8 +219,7 @@ public class EntityBatchRenderer {
                     selected.getClass().getSimpleName());
         }
         EntityCullingPipeline culling = null;
-        if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(config)
-                && EntityBatchRegistry.REGISTRY_TYPES().contains(EntityType.PLAYER)) {
+        if (RendererCapabilityState.current() != null && RendererCapabilityState.current().indirectAllowed(config)) {
             try {
                 culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
             } catch (Throwable t) {
