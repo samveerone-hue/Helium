@@ -177,7 +177,7 @@ try {
     private static synchronized void ensureMethods(Object loc) {
         if (textureManager != null && getTexMethod != null) return;
 
-        Minecraft mc = MinecraftClient.getInstance();
+        MinecraftClient mc = MinecraftClient.getInstance();
         if (mc == null) return;
 
         Object tm = mc.getTextureManager();
