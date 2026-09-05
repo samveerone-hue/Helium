@@ -9,34 +9,34 @@ public class EntityMeshCapturingConsumer implements VertexConsumer {
 
     private final List<float[]> captured = new ArrayList<>(); //
 
-    private float vx, vy, vz; //[cite: 1]
-    private float vnx, vny, vnz; //[cite: 1]
-    private float vu, vv; //[cite: 1]
-    private int currentBone = 0; //[cite: 1]
+    private float vx, vy, vz;
+    private float vnx, vny, vnz;
+    private float vu, vv;
+    private int currentBone = 0;
 
-    private float pivotX = 0, pivotY = 0, pivotZ = 0; //[cite: 1]
-    private boolean hasPivot = false; //[cite: 1]
+    private float pivotX = 0, pivotY = 0, pivotZ = 0;
+    private boolean hasPivot = false;
 
-    public void setBone(int boneIndex) { //[cite: 1]
-        this.currentBone = boneIndex; //[cite: 1]
+    public void setBone(int boneIndex) {
+        this.currentBone = boneIndex;
     }
 
-    public void setBonePivot(float px, float py, float pz) { //[cite: 1]
-        this.pivotX = px; //[cite: 1]
-        this.pivotY = py; //[cite: 1]
-        this.pivotZ = pz; //[cite: 1]
-        this.hasPivot = true; //[cite: 1]
+    public void setBonePivot(float px, float py, float pz) {
+        this.pivotX = px;
+        this.pivotY = py;
+        this.pivotZ = pz;
+        this.hasPivot = true;
     }
 
-    public void clearBonePivot() { //[cite: 1]
-        this.pivotX = 0; //[cite: 1]
-        this.pivotY = 0; //[cite: 1]
-        this.pivotZ = 0; //[cite: 1]
-        this.hasPivot = false; //[cite: 1]
+    public void clearBonePivot() {
+        this.pivotX = 0;
+        this.pivotY = 0;
+        this.pivotZ = 0;
+        this.hasPivot = false;
     }
 
-    public int capturedVertexCount() { //[cite: 1]
-        return captured.size(); //[cite: 1]
+    public int capturedVertexCount() {
+        return captured.size();
     }
 
     public float[] bakeAndReset() {
@@ -52,76 +52,66 @@ public class EntityMeshCapturingConsumer implements VertexConsumer {
         return result;
     }
 
-    public void reset() { //[cite: 1]
-        captured.clear(); //[cite: 1]
+    public void reset() {
+        captured.clear();
     }
 
     @Override
-    public VertexConsumer vertex(float x, float y, float z) { //[cite: 1]
-        this.vx = x; //[cite: 1]
-        this.vy = y; //[cite: 1]
-        this.vz = z; //[cite: 1]
-        this.lastNormalMatrix.identity(); //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer vertex(float x, float y, float z) {
+        this.vx = x;
+        this.vy = y;
+        this.vz = z;
+        this.lastNormalMatrix.identity();
+        return this;
+    }
+
+    private org.joml.Matrix3f lastNormalMatrix = new org.joml.Matrix3f();
+
+    @Override
+    public VertexConsumer color(int r, int g, int b, int a) {
+        return this;
     }
 
     @Override
-    public VertexConsumer addVertex(net.minecraft.client.util.math.MatrixStack.Pose pose, float x, float y, float z) { //[cite: 1]
-        org.joml.Vector4f pos = new org.joml.Vector4f(x, y, z, 1.0f).mul(pose.pose()); //[cite: 1]
-        this.vx = pos.x; //[cite: 1]
-        this.vy = pos.y; //[cite: 1]
-        this.vz = pos.z; //[cite: 1]
-        this.lastNormalMatrix = pose.normal(); //[cite: 1]
-        return this; //[cite: 1]
-    }
-
-    private org.joml.Matrix3f lastNormalMatrix = new org.joml.Matrix3f(); //[cite: 1]
-
-    @Override
-    public VertexConsumer color(int r, int g, int b, int a) { //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer color(int packedArgb) {
+        return this;
     }
 
     @Override
-    public VertexConsumer color(int packedArgb) { //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer texture(float u, float v) {
+        this.vu = u;
+        this.vv = v;
+        return this;
     }
 
     @Override
-    public VertexConsumer texture(float u, float v) { //[cite: 1]
-        this.vu = u; //[cite: 1]
-        this.vv = v; //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer overlay(int u, int v) {
+        return this;
     }
 
     @Override
-    public VertexConsumer overlay(int u, int v) { //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer light(int u, int v) {
+        return this;
     }
 
     @Override
-    public VertexConsumer light(int u, int v) { //[cite: 1]
-        return this; //[cite: 1]
+    public VertexConsumer lineWidth(float width) {
+        return this;
     }
 
     @Override
-    public VertexConsumer lineWidth(float width) { //[cite: 1]
-        return this; //[cite: 1]
-    }
-
-    @Override
-    public VertexConsumer normal(float nx, float ny, float nz) { //[cite: 1]
-        org.joml.Vector3f norm = new org.joml.Vector3f(nx, ny, nz).mul(lastNormalMatrix); //[cite: 1]
-        this.vnx = norm.x; //[cite: 1]
-        this.vny = norm.y; //[cite: 1]
-        this.vnz = norm.z; //[cite: 1]
+    public VertexConsumer normal(float nx, float ny, float nz) {
+        org.joml.Vector3f norm = new org.joml.Vector3f(nx, ny, nz).mul(lastNormalMatrix);
+        this.vnx = norm.x;
+        this.vny = norm.y;
+        this.vnz = norm.z;
         
-        float fx = hasPivot ? vx - pivotX : vx; //[cite: 1]
-        float fy = hasPivot ? vy - pivotY : vy; //[cite: 1]
-        float fz = hasPivot ? vz - pivotZ : vz; //[cite: 1]
+        float fx = hasPivot ? vx - pivotX : vx;
+        float fy = hasPivot ? vy - pivotY : vy;
+        float fz = hasPivot ? vz - pivotZ : vz;
         
-        captured.add(new float[]{fx, fy, fz, vnx, vny, vnz, vu, vv, currentBone}); //[cite: 1]
-        return this; //[cite: 1]
+        captured.add(new float[]{fx, fy, fz, vnx, vny, vnz, vu, vv, currentBone});
+        return this;
     }
 
     @Override
