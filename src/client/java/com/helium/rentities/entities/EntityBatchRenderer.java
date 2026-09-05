@@ -264,7 +264,7 @@ public class EntityBatchRenderer {
             int idx = queueSize.getAndIncrement();
             if (idx >= MAX_QUEUE) {
                 queueSize.decrementAndGet();
-                if (false) {
+                if (isDebugLogging()) {
                     HeliumClient.LOGGER.warn(
                             "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
                             MAX_QUEUE);
@@ -301,7 +301,7 @@ public class EntityBatchRenderer {
             int idx = queueSize.getAndIncrement();
             if (idx >= MAX_QUEUE) {
                 queueSize.decrementAndGet();
-                if (false) {
+                if (isDebugLogging()) {
                     HeliumClient.LOGGER.warn(
                             "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
                             MAX_QUEUE);
@@ -392,7 +392,7 @@ public class EntityBatchRenderer {
         fenceRing.waitFor(bufIdx);
 
         if (storedViewProjection == null || entityShader == null || meshBaker.getVaoId() == 0) {
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn("[Rentities] Batch flush aborted: render resources not ready");
             }
             clearQueuedReferences(count);
@@ -498,7 +498,7 @@ public class EntityBatchRenderer {
                     GL_SHADER_STORAGE_BUFFER,
                     PIVOT_SSBO_BINDING,
                     pivotSSBO);
-        } else if (false) {
+        } else if (isDebugLogging()) {
             HeliumClient.LOGGER.warn(
                     "Entity pivot SSBO is not available; using zero pivots");
         }
@@ -569,14 +569,14 @@ public class EntityBatchRenderer {
 
                 fenceRing.signal(bufIdx);
 
-                if (false) {
+                if (isDebugLogging()) {
                     int err = glGetError();
                     if (err != 0) {
                         HeliumClient.LOGGER.error("GL ERROR during entity draw: 0x{}", Integer.toHexString(err));
                     }
                 }
             } else {
-                if (false) HeliumClient.LOGGER.warn("FLUSH: meshBaker VAO is 0, skipping draw");
+                if (isDebugLogging()) HeliumClient.LOGGER.warn("FLUSH: meshBaker VAO is 0, skipping draw");
             }
 
             errorRenderer.flush(vp, gameTime);
@@ -671,7 +671,7 @@ public class EntityBatchRenderer {
                      * drop every type after index 256. Abort indirect entirely; the
                      * caller (doFlush) falls back to CPU-ordered rendering.
                      */
-                    if (false) {
+                    if (isDebugLogging()) {
                         HeliumClient.LOGGER.warn(
                                 "[Rentities] Indirect draw group table overflow (>{}) — "
                                         + "falling back to CPU-ordered drawing",
@@ -694,7 +694,7 @@ public class EntityBatchRenderer {
         // the core batching feature while avoiding the hitbox-only regression.
         for (int g = 0; g < groups; g++) {
             if (groupTypes[g] != net.minecraft.entity.EntityType.PLAYER) {
-                if (false) {
+                if (isDebugLogging()) {
                     HeliumClient.LOGGER.info("[Rentities] Indirect culling bypassed for non-player batch; using direct instanced draw");
                 }
                 for (int i = 0; i < groups; i++) groupTypes[i] = null;
@@ -766,7 +766,7 @@ public class EntityBatchRenderer {
                             if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
                         }
                     } else {
-                        if (false) {
+                        if (isDebugLogging()) {
                             HeliumClient.LOGGER.warn("SKIP_NO_MESH: type={}, count={} — no meshInfo found!", currentType, currentCount);
                         }
                     }
@@ -1122,7 +1122,7 @@ public class EntityBatchRenderer {
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_Y, 1f);
             return true;
         } catch (Exception e) {
-            if (false) {
+            if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn("[Rentities] Failed to extract entity instance data for {}",
                     state != null ? state.getClass().getName() : "null", e);
             }
@@ -1141,7 +1141,7 @@ public class EntityBatchRenderer {
             try {
                 return (EntityType<?>) invokeAccessor(acc.type, state);
             } catch (Exception e) {
-                if (false) {
+                if (isDebugLogging()) {
                     HeliumClient.LOGGER.warn(
                             "[Rentities] Failed to resolve EntityType from {}",
                             state.getClass().getName(),
