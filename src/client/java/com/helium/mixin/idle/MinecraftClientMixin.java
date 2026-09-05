@@ -3,7 +3,6 @@ package com.helium.mixin.idle;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.AsyncChunkMeshing;
-import com.helium.render.RenderBatch;
 import com.helium.util.VersionMethodResolver;
 import net.minecraft.client.MinecraftClient;
 import org.spongepowered.asm.mixin.Mixin;
@@ -35,12 +34,10 @@ public abstract class MinecraftClientMixin {
         if (config == null || !config.renderPipelining) return;
 
         MinecraftClient client = (MinecraftClient) (Object) this;
-        RenderBatch.beginFrame();
-
         if (client.worldRenderer != null) {
             AsyncChunkMeshing.drainQueue(
                     client.worldRenderer,
-                    AsyncChunkMeshing.DEFAULT_MAX_PER_TICK
+                    config.chunkScheduleMaxPerTick
             );
         }
     }
