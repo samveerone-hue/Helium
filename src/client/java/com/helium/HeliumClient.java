@@ -338,6 +338,20 @@ public class HeliumClient implements ClientModInitializer {
         }
     }
 
+    public static void setEntityGpuBatching(boolean enabled) {
+        if (config == null) return;
+        config.entityGpuBatching = enabled;
+        if (!enabled) {
+            try {
+                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.helium.rentities.entities.EntityBatchRenderer.INSTANCE.delete();
+                }
+            } catch (Throwable t) {
+                LOGGER.debug("[Rentities] entity batch teardown failed: {}", t.toString());
+            }
+        }
+    }
+
     public static void setRenderPipelining(boolean enabled) {
         if (config == null) return;
         config.renderPipelining = enabled;
