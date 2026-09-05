@@ -3,7 +3,6 @@ package com.helium.mixin.particle;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.particle.ParticleLimiter;
-import com.helium.particle.ParticleLODState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
@@ -24,14 +23,7 @@ public abstract class ParticleManagerMixin {
     private void helium$prepareParticleFrame(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null) {
-            ParticleLODState.prepare(null);
             return;
-        }
-
-        if (config.particleLOD) {
-            ParticleLODState.prepare(config);
-        } else {
-            ParticleLODState.prepare(null);
         }
 
         if (config.particleLimiting && !ParticleLimiter.isInitialized()) {
@@ -67,6 +59,23 @@ public abstract class ParticleManagerMixin {
                 if (dx * dx + dy * dy + dz * dz > maxDistSq) {
                     ci.cancel();
                     return;
+                }
+            }
+
+            if (config.particleLOD && client.player != null
+                    && ParticleLodClassifier.shouldApply(particle.getClass())) {
+                double threshold = Math.max(0.0, config.particleLODDistance);
+                double reduction = Math.max(0.0, Math.min(1.0, config.particleLODReduction));
+                if (reduction > 0.0) {
+                    var box = particle.getBoundingBox();
+                    double dx = ((box.minX + box.maxX) * 0.5) - client.player.getX();
+                    double dy = ((box.minY + box.maxY) * 0.5) - client.player.getY();
+                    double dz = ((box.minZ + box.maxZ) * 0.5) - client.player.getZ();
+                    if (dx * dx + dy * dy + dz * dz > threshold * threshold
+                            && java.util.concurrent.ThreadLocalRandom.current().nextDouble() < reduction) {
+                        ci.cancel();
+                        return;
+                    }
                 }
             }
 
