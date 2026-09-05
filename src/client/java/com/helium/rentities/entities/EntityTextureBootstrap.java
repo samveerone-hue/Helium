@@ -75,8 +75,8 @@ public final class EntityTextureBootstrap {
 
     private static Entity createDummy(EntityType<?> type) {
         try {
-            Method create = EntityType.class.getMethod("create", net.minecraft.world.World.class);
-            return (Entity) create.invoke(type, MinecraftClient.getInstance().world);
+            Method create = EntityType.class.getMethod("create", net.minecraft.world.World.class, net.minecraft.entity.SpawnReason.class);
+            return (Entity) create.invoke(type, MinecraftClient.getInstance().world, net.minecraft.entity.SpawnReason.MOB_SUMMONED);
         } catch (Throwable ignored) {
             return null;
         }
