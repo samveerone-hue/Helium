@@ -133,7 +133,7 @@ public class HeliumConfig {
 
     public boolean glContextUpgrade = true;
     public boolean jomlFastMath = true;
-    public boolean fastRandom = true;
+    public boolean fastRandom = false;
     public boolean directStateAccess = true;
     public boolean renderbufferDepth = false;
     public boolean oneClickCrafting = false;
