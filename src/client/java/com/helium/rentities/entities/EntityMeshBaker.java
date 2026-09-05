@@ -213,7 +213,7 @@ public class EntityMeshBaker {
         try {
             if (loadFromCache()) {
                 HeliumClient.LOGGER.info("[EntityCache] Using cached mesh data — skipping bake");
-                bootstrapTextures(MinecraftClient.getInstance().getEntityRenderManager());
+                bootstrapTextures(MinecraftClient.getInstance().getEntityRenderDispatcher());
                 return;
             }
 
@@ -226,7 +226,7 @@ public class EntityMeshBaker {
             int vertexCount = 0;
             int indexCount = 0;
 
-            var dispatcher = MinecraftClient.getInstance().getEntityRenderManager();
+            var dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
             if (dispatcher == null) {
                 throw new IllegalStateException("EntityRenderManager is NULL");
             }
@@ -306,7 +306,7 @@ public class EntityMeshBaker {
     @SuppressWarnings("rawtypes")
     public void ensureTexturesBootstrapped() {
         if (texturesBootstrapped) return;
-        bootstrapTextures(MinecraftClient.getInstance().getEntityRenderManager());
+        bootstrapTextures(MinecraftClient.getInstance().getEntityRenderDispatcher());
         texturesBootstrapped = true;
     }
 
@@ -462,7 +462,7 @@ public class EntityMeshBaker {
                 // the matrix's translation column gives the pivot in shader pixel space.
                 if (currentBakingTypeIdx >= 0
                         && boneIdx >= 0 && boneIdx < MAX_BONES) {
-                    Matrix4f m = poseStack.peek().pose();
+                    Matrix4f m = poseStack.peek().getPositionMatrix();
                     int base = (currentBakingTypeIdx * MAX_BONES + boneIdx) * 4;
                     int pivotIndex = currentBakingTypeIdx * MAX_BONES + boneIdx;
                     // A zero pivot is valid. Use an explicit written bit instead of treating
@@ -875,7 +875,7 @@ public class EntityMeshBaker {
         MeshStatus known = meshStatus.get(type);
         if (known == MeshStatus.BUILDING) return MeshStatus.BUILDING;
 
-        var dispatcher = MinecraftClient.getInstance().getEntityRenderManager();
+        var dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
         if (dispatcher == null) {
             recordExtractionFailure(type, now);
             return MeshStatus.UNKNOWN;
