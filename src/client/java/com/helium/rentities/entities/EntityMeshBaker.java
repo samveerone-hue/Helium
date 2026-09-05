@@ -311,8 +311,8 @@ public class EntityMeshBaker {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Map<EntityType<?>, net.minecraft.client.renderer.entity.EntityRenderer<?, ?>> getRendererMap(
-            net.minecraft.client.renderer.entity.EntityRenderDispatcher dispatcher) {
+    private static Map<EntityType<?>, net.minecraft.client.render.entity.EntityRenderer<?, ?>> getRendererMap(
+            net.minecraft.client.render.entity.EntityRenderDispatcher dispatcher) {
         if (cachedRendererMap != null) return cachedRendererMap;
         if (dispatcher == null) return null;
         try {
@@ -1060,7 +1060,7 @@ public class EntityMeshBaker {
     private static synchronized java.io.File getCacheFile() {
         if (cacheFile == null) {
             cacheFile = new java.io.File(
-                net.minecraft.client.MinecraftClient.getInstance().gameDirectory,
+                net.minecraft.client.MinecraftClient.getInstance().runDirectory,
                 "rentities_entity_mesh_cache.bin");
         }
         return cacheFile;
@@ -1099,7 +1099,7 @@ public class EntityMeshBaker {
                 EntityType<?> type = entry.getKey();
                 CpuMesh mesh = entry.getValue();
 
-                String id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE
+                String id = net.minecraft.registry.Registries.ENTITY_TYPE
                         .getKey(type).toString();
                 byte[] idBytes = id.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                 out.writeInt(idBytes.length);
