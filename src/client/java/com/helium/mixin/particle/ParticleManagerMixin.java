@@ -6,7 +6,6 @@ import com.helium.particle.ParticleLimiter;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleManager;
-import net.minecraft.client.render.Camera;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -48,30 +47,27 @@ public abstract class ParticleManagerMixin {
             }
 
             MinecraftClient client = MinecraftClient.getInstance();
-            if (config.particleCulling && client.player != null) {
-                int cullDist = Math.max(0, config.particleCullDistance);
+            if (client.player != null && (config.particleCulling || config.particleLOD)) {
                 var box = particle.getBoundingBox();
                 double dx = ((box.minX + box.maxX) * 0.5) - client.player.getX();
                 double dy = ((box.minY + box.maxY) * 0.5) - client.player.getY();
                 double dz = ((box.minZ + box.maxZ) * 0.5) - client.player.getZ();
-                double maxDistSq = (double) cullDist * cullDist;
+                double distanceSq = dx * dx + dy * dy + dz * dz;
 
-                if (dx * dx + dy * dy + dz * dz > maxDistSq) {
-                    ci.cancel();
-                    return;
+                if (config.particleCulling) {
+                    double cullDist = Math.max(0, config.particleCullDistance);
+                    if (distanceSq > cullDist * cullDist) {
+                        ci.cancel();
+                        return;
+                    }
                 }
-            }
 
-            if (config.particleLOD && client.player != null
-                    && ParticleLodClassifier.shouldApply(particle.getClass())) {
-                double threshold = Math.max(0.0, config.particleLODDistance);
-                double reduction = Math.max(0.0, Math.min(1.0, config.particleLODReduction));
-                if (reduction > 0.0) {
-                    var box = particle.getBoundingBox();
-                    double dx = ((box.minX + box.maxX) * 0.5) - client.player.getX();
-                    double dy = ((box.minY + box.maxY) * 0.5) - client.player.getY();
-                    double dz = ((box.minZ + box.maxZ) * 0.5) - client.player.getZ();
-                    if (dx * dx + dy * dy + dz * dz > threshold * threshold
+                if (config.particleLOD
+                        && ParticleLodClassifier.shouldApply(particle.getClass())) {
+                    double threshold = Math.max(0.0, config.particleLODDistance);
+                    double reduction = Math.max(0.0, Math.min(1.0, config.particleLODReduction));
+                    if (reduction > 0.0
+                            && distanceSq > threshold * threshold
                             && java.util.concurrent.ThreadLocalRandom.current().nextDouble() < reduction) {
                         ci.cancel();
                         return;
