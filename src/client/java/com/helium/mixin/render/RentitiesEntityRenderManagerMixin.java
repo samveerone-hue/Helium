@@ -47,7 +47,6 @@ public abstract class RentitiesEntityRenderManagerMixin {
         if (caps == null || !caps.gpuBatchingAllowed(config) || renderer == null || state == null) return;
 
         try {
-            if (renderer.getClass() == null) return;
             if (EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) {
                 ci.cancel();
             }
