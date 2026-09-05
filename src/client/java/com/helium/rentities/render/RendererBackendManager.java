@@ -2,6 +2,7 @@ package com.helium.rentities.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.rentities.RendererCapabilityState;
 
 /** Single authoritative renderer-path selector. Unsupported paths fail open to vanilla. */
 public final class RendererBackendManager {
