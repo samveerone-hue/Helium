@@ -93,7 +93,8 @@
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",
     "dedup.BakedQuadDedupMixin",
-    "dedup.NbtCompoundDedupMixin"
+    "dedup.NbtCompoundDedupMixin",
+    "render.RentitiesEntityRenderManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 0
