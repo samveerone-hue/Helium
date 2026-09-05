@@ -1,0 +1,1232 @@
+package com.helium.rentities.entities;
+
+import com.helium.rentities.render.RendererBackendManager;
+
+import com.helium.HeliumClient;
+import com.helium.rentities.RendererCapabilityState;
+import com.helium.rentities.gl.GlShader;
+import me.balancinglight.rentities.gl.GlStateGuard;
+import me.balancinglight.rentities.gl.GpuFenceRing;
+import me.balancinglight.rentities.gl.InstanceBufferBackend;
+import me.balancinglight.rentities.gl.PersistentMappedInstanceBufferBackend;
+import me.balancinglight.rentities.gl.StandardInstanceBufferBackend;
+import me.balancinglight.rentities.gl.GpuSync;
+import me.balancinglight.rentities.gl.GlStateCache;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import org.joml.Matrix4f;
+import org.lwjgl.system.MemoryUtil;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.lwjgl.opengl.GL11C.*;
+import static org.lwjgl.opengl.GL13C.GL_ACTIVE_TEXTURE;
+import static org.lwjgl.opengl.GL13C.GL_TEXTURE0;
+import static org.lwjgl.opengl.GL13C.glActiveTexture;
+import static org.lwjgl.opengl.GL20C.glGetUniformLocation;
+import static org.lwjgl.opengl.GL20C.glUniform1f;
+import static org.lwjgl.opengl.GL20C.glUniform1i;
+import static org.lwjgl.opengl.GL20C.glUniform3f;
+import static org.lwjgl.opengl.GL20C.glUniformMatrix4fv;
+import static org.lwjgl.opengl.GL20C.glUseProgram;
+import static org.lwjgl.opengl.GL30C.glBindVertexArray;
+import static org.lwjgl.opengl.GL30C.glBindBufferRange;
+import static org.lwjgl.opengl.GL30C.glBindBufferBase;
+import static org.lwjgl.opengl.GL43C.glMultiDrawElementsIndirect;
+import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER;
+import static org.lwjgl.opengl.GL31C.glDrawElementsInstanced;
+
+public class EntityBatchRenderer {
+    private final RendererBackendManager backendManager = new RendererBackendManager();
+
+
+    /**
+     * Invokes a reflective MethodHandle used by the compatibility accessor layer.
+     *
+     * MethodHandle.invoke() declares Throwable, while the renderer methods intentionally
+     * do not expose Throwable. Keep the exception boundary here so one failed optional
+     * accessor can be handled by the caller's existing null/default checks.
+     */
+    private static Object invokeAccessor(java.lang.invoke.MethodHandle handle, Object state) {
+        if (handle == null) return null;
+        try {
+            return handle.invoke(state);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+
+
+    public static EntityBatchRenderer INSTANCE;
+    private final AsyncRenderPreparation asyncPreparation;
+    private final AsyncVisibilityManager asyncVisibility;
+    private long renderFrame;
+
+    private static final int MAX_QUEUE = EntityInstance.MAX_INSTANCES;
+    private static final EntityType<?>[] queuedTypes = new EntityType[MAX_QUEUE];
+    private static final EntityType<?>[] extractionTypes = new EntityType[MAX_QUEUE];
+    private static final int[] queuedOriginalIndices = new int[MAX_QUEUE];
+    private static final AtomicInteger queueSize = new AtomicInteger(0);
+    private static final Object QUEUE_LOCK = new Object();
+    private static final ThreadLocal<Deque<Integer>> RESERVED_SLOTS =
+            ThreadLocal.withInitial(ArrayDeque::new);
+    private static long extractionBuffer;
+
+    // Stored VP matrix from terrain render pass
+    public static org.joml.Matrix4f storedViewProjection;
+    private boolean textureCacheLoaded = false;
+    private boolean passPrepared = false;
+
+    /**
+     * Three slots is the sweet spot for a persistently mapped ring: two lets the CPU run
+     * exactly one frame ahead, which the driver's own queueing already consumes, while four
+     * or more only adds input latency and VRAM. With three, the CPU writes slot N while the
+     * GPU still reads N-1 and N-2, so the fence wait is a no-op in steady state.
+     */
+    private static final int NUM_BUFFERS = 3;
+    // Pre-allocated to avoid per-frame heap allocation
+    private final float[] vpFloats = new float[16];
+    private final InstanceBufferBackend instanceBuffer;
+    private final GpuFenceRing fenceRing = new GpuFenceRing(NUM_BUFFERS);
+    private final EntityCullingPipeline cullPipeline;
+    private final GlStateCache stateCache = new GlStateCache();
+    private static final int SSBO_BINDING = 12;
+    private static final int PIVOT_SSBO_BINDING = 13;
+
+    private final GlStateGuard stateGuard = new GlStateGuard(
+            SSBO_BINDING,
+            PIVOT_SSBO_BINDING,
+            EntityCullingPipeline.GROUP_SSBO_BINDING,
+            EntityCullingPipeline.CMD_SSBO_BINDING,
+            EntityCullingPipeline.VISIBLE_SSBO_BINDING);
+    private int currentBufferIdx = 0;
+
+    private GlShader entityShader;
+    private int uViewProjection = -1;
+    private int uGameTime = -1;
+    private int uEntityTextures = -1; // sampler2D uEntityTexture — bound per draw call
+    private int lastBoundGlTexId = 0;
+    private int uBaseInstance  = -1;
+    private int uIndirect      = -1;
+    private int uCameraPos    = -1;
+    private int uSlimeOverlay = -1;
+    private int uLightMap = -1;
+    private int uHasLightMap = -1;
+    private boolean lightMapResolveFailed = false;
+
+    private final EntityMeshBaker meshBaker;
+    private final EntityErrorRenderer errorRenderer;
+
+    private static final Map<Class<?>, Map<String, Field>> fieldCache = new ConcurrentHashMap<>();
+
+    /*
+     * Keys are "class → logical field name" pairs for fields we could not resolve.
+     * Warnings are logged once per key so mapping-broken diagnostics do not spam
+     * the log every frame.
+     */
+    private static final Set<String> reflectionMissingWarned =
+            java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    // Entity type -> texture ResourceLocation; GL ids cached separately in entityGlTexIds
+    public final java.util.Map<EntityType<?>, Object> entityTextureLocs = new ConcurrentHashMap<>();
+    public final java.util.Map<EntityType<?>, Integer> entityGlTexIds = new ConcurrentHashMap<>();
+    public final java.util.Set<EntityType<?>> entityTexFailed = java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+    public EntityBatchRenderer() {
+        INSTANCE = this;
+        this.asyncPreparation = new AsyncRenderPreparation();
+        this.asyncVisibility = new AsyncVisibilityManager();
+        this.meshBaker = new EntityMeshBaker();
+        this.errorRenderer = new EntityErrorRenderer();
+
+        // Prefer persistent mapping, but retain a standard SSBO upload backend so GPU
+        // batching can survive on drivers that expose the required GL 4.3 path without
+        // reliable persistent mapping. The backend is isolated from entity extraction.
+        /*
+         * Stable batching baseline:
+         *
+         * The original working Rentities path used an explicitly uploaded SSBO each
+         * frame. Keep that contract as the default. Persistent/coherent mapping is
+         * retained as an experimental backend, but it must not sit on the critical
+         * visibility path until it has been proven against Sodium/Helium/Catalyst.
+         */
+        InstanceBufferBackend selected;
+        try {
+            selected = new StandardInstanceBufferBackend(EntityInstance.SSBO_SIZE, NUM_BUFFERS);
+        } catch (Throwable standardError) {
+            if (null != null) {
+                null.markFailed(
+                        RendererCapabilityState.Feature.GPU_BATCHING, standardError);
+            }
+            throw standardError;
+        }
+        this.instanceBuffer = selected;
+        if (false) {
+            HeliumClient.LOGGER.info(
+                    "[Rentities] GPU batching SSBO backend: {}",
+                    selected.getClass().getSimpleName());
+        }
+        EntityCullingPipeline culling = null;
+        if (null == null || null.indirectAllowed(HeliumClient.getConfig())) {
+            try {
+                culling = new EntityCullingPipeline(NUM_BUFFERS, EntityInstance.MAX_INSTANCES);
+            } catch (Throwable t) {
+                Rentities.disableFeature(RendererCapabilityState.Feature.INDIRECT_CULLING, t);
+            }
+        }
+        this.cullPipeline = culling;
+
+        extractionBuffer = MemoryUtil.nmemAlloc(EntityInstance.SSBO_SIZE);
+        compileShader();
+    }
+
+    public static boolean queueEntityStateDirect(Object state, double x, double y, double z,
+                                                 EntityType<?> type) {
+        if (INSTANCE == null) return false;
+        synchronized (QUEUE_LOCK) {
+            int idx = queueSize.getAndIncrement();
+            if (idx >= MAX_QUEUE) {
+                queueSize.decrementAndGet();
+                if (false) {
+                    HeliumClient.LOGGER.warn(
+                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
+                            MAX_QUEUE);
+                }
+                return false;
+            }
+
+            queuedTypes[idx] = type;
+            extractionTypes[idx] = type;
+            queuedOriginalIndices[idx] = idx;
+
+            if (!INSTANCE.writeEntityInstance(
+                    extractionBuffer + (long) idx * EntityInstance.STRIDE, state, x, y, z)) {
+                queuedTypes[idx] = null;
+                extractionTypes[idx] = null;
+                queuedOriginalIndices[idx] = 0;
+                queueSize.decrementAndGet();
+                return false;
+            }
+            return true;
+        }
+    }
+
+    /**
+     * Reserves a queue slot for direct extraction. The reservation slot is tracked per
+     * calling thread so rollback cannot accidentally remove another producer's slot.
+     */
+    public static long reserveInstance(EntityType<?> type) {
+        if (INSTANCE == null) return 0L;
+        synchronized (QUEUE_LOCK) {
+            int idx = queueSize.getAndIncrement();
+            if (idx >= MAX_QUEUE) {
+                queueSize.decrementAndGet();
+                if (false) {
+                    HeliumClient.LOGGER.warn(
+                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
+                            MAX_QUEUE);
+                }
+                return 0L;
+            }
+            queuedTypes[idx] = type;
+            extractionTypes[idx] = type;
+            queuedOriginalIndices[idx] = idx;
+            RESERVED_SLOTS.get().addLast(idx);
+            return extractionBuffer + (long) idx * EntityInstance.STRIDE;
+        }
+    }
+
+    /** Rolls back the calling thread's most recent direct-extraction reservation. */
+    public static void releaseReservedInstance(EntityType<?> type) {
+        if (INSTANCE == null) return;
+        synchronized (QUEUE_LOCK) {
+            Deque<Integer> slots = RESERVED_SLOTS.get();
+            Integer slot = slots.peekLast();
+            if (slot == null || slot < 0 || slot >= MAX_QUEUE) return;
+            if (queuedTypes[slot] != type || extractionTypes[slot] != type) return;
+            slots.pollLast();
+            queuedTypes[slot] = null;
+            extractionTypes[slot] = null;
+            queuedOriginalIndices[slot] = 0;
+            // Keep queueSize as a high-water mark. doFlush compacts cancelled slots.
+        }
+    }
+
+    public static boolean queueEntityState(Object state, double x, double y, double z) {
+        if (INSTANCE == null) return false;
+        synchronized (QUEUE_LOCK) {
+            int idx = queueSize.getAndIncrement();
+            if (idx >= MAX_QUEUE) {
+                queueSize.decrementAndGet();
+                if (false) {
+                    HeliumClient.LOGGER.warn(
+                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
+                            MAX_QUEUE);
+                }
+                return false;
+            }
+
+            EntityType<?> type = getEntityType(state);
+            queuedTypes[idx] = type;
+            extractionTypes[idx] = type;
+            queuedOriginalIndices[idx] = idx;
+
+            if (!INSTANCE.writeEntityInstance(
+                    extractionBuffer + (long) idx * EntityInstance.STRIDE,
+                    state,
+                    x,
+                    y,
+                    z)) {
+                queuedTypes[idx] = null;
+                extractionTypes[idx] = null;
+                queuedOriginalIndices[idx] = 0;
+                queueSize.decrementAndGet();
+                return false;
+            }
+            return true;
+        }
+    }
+
+    public static void beginWorldRender(Matrix4f positionMatrix, Matrix4f projectionMatrix) {
+        if (INSTANCE != null) {
+            INSTANCE.passPrepared = false;
+            INSTANCE.renderFrame++;
+            INSTANCE.asyncVisibility.beginFrame(INSTANCE.renderFrame);
+        }
+        setViewMatrix(positionMatrix);
+        updateProjectionMatrix(projectionMatrix);
+        prepareForEntityPass();
+    }
+
+    public static void ensurePrepared() {
+        if (INSTANCE != null && !INSTANCE.passPrepared) {
+            prepareForEntityPass();
+        }
+    }
+
+    public static void prepareForEntityPass() {
+        if (INSTANCE == null) return;
+
+        if (!INSTANCE.meshBaker.isBaked()) {
+        INSTANCE.meshBaker.bake();
+        }
+
+        /*
+         * EntityMeshBaker collects one pivot vec4 for every
+         * (entityTypeIndex, boneIndex) pair while baking. This works
+         * both for a fresh bake and for meshes loaded from the cache.
+         *
+         * The resulting SSBO is bound at binding 13 during the entity pass.
+         */
+        INSTANCE.meshBaker.uploadPivotSSBO();
+
+        INSTANCE.meshBaker.ensureTexturesBootstrapped();
+        INSTANCE.passPrepared = true;
+    }
+    
+    public static void flushBatch() {
+        if (INSTANCE == null) return;
+        synchronized (QUEUE_LOCK) {
+            INSTANCE.doFlush();
+        }
+    }
+
+    private void doFlush() {
+        int rawCount = Math.min(queueSize.getAndSet(0), MAX_QUEUE);
+        int count = compactQueue(rawCount);
+        RESERVED_SLOTS.get().clear();
+        if (count == 0) return;
+
+        // Sort by entity type for contiguous SSBO blocks
+        sortByEntityType(count);
+
+        // Advance the ring and wait for the GPU to finish with the slot we are about to
+        // overwrite.
+        currentBufferIdx = (currentBufferIdx + 1) % NUM_BUFFERS;
+        int bufIdx = currentBufferIdx;
+        fenceRing.waitFor(bufIdx);
+
+        if (storedViewProjection == null || entityShader == null || meshBaker.getVaoId() == 0) {
+            if (false) {
+                HeliumClient.LOGGER.warn("[Rentities] Batch flush aborted: render resources not ready");
+            }
+            clearQueuedReferences(count);
+            return;
+        }
+
+        // Sorted-order copy straight into the mapped slot. The contiguous run index is
+        // also written into the existing texture-layer slot so the culling shader can
+        // address its DrawGroup directly without a per-instance binary search.
+        long slotAddr = instanceBuffer.addrOf(bufIdx);
+        EntityType<?> previousType = null;
+        int groupIndex = -1;
+        var meshInfoMap = meshBaker.getMeshInfoMap();
+        for (int i = 0; i < count; i++) {
+            int originalIdx = queuedOriginalIndices[i];
+            EntityType<?> currentType = extractionTypes[originalIdx];
+            if (currentType != previousType) {
+                previousType = currentType;
+                if (currentType != null && meshInfoMap.containsKey(currentType)) {
+                    groupIndex++;
+                }
+            }
+            long dst = slotAddr + (long)i * EntityInstance.STRIDE;
+            MemoryUtil.memCopy(
+                    extractionBuffer + (long)originalIdx * EntityInstance.STRIDE,
+                    dst,
+                    EntityInstance.STRIDE);
+            MemoryUtil.memPutInt(
+                    dst + EntityInstance.OFFSET_GROUP_INDEX,
+                    (currentType != null && meshInfoMap.containsKey(currentType))
+                            ? groupIndex : -1);
+        }
+
+        instanceBuffer.upload(bufIdx, (long) count * EntityInstance.STRIDE);
+        GpuSync.afterCpuUploadBeforeShaderRead();
+
+        stateGuard.capture();
+        stateCache.reset();
+        // GlStateGuard restores external GL state independently of this cache.
+        // Never carry a texture binding assumption across render passes.
+        lastBoundGlTexId = 0;
+        try {
+            // Bind shader and upload uniforms. Cache is only valid inside this guarded pass.
+            stateCache.useProgram(entityShader.id);
+            float[] vp = vpFloats;
+            if (storedViewProjection != null) storedViewProjection.get(vp);
+            glUniformMatrix4fv(uViewProjection, false, vp);
+            
+            Minecraft mc = MinecraftClient.getInstance();
+            float partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+            float gameTime = mc.level != null
+                    ? (float)(mc.level.getGameTime() % 100000L) + partialTick
+                    : partialTick;
+            glUniform1f(uGameTime, gameTime);
+            if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
+            if (uCameraPos >= 0) {
+                var cam = mc.gameRenderer.getMainCamera().position();
+                glUniform3f(uCameraPos, (float) cam.x, (float) cam.y, (float) cam.z);
+            }
+
+            boolean lightMapBound = false;
+            if (uLightMap >= 0 && uHasLightMap >= 0 && !lightMapResolveFailed) {
+                try {
+                    int lightTexId = EntityGlTextureResolver.resolveLightMapGlId(mc.gameRenderer.lightTexture());
+                    if (lightTexId > 0 && glIsTexture(lightTexId)) {
+                        glActiveTexture(org.lwjgl.opengl.GL13C.GL_TEXTURE1);
+                        glBindTexture(GL_TEXTURE_2D, lightTexId);
+                        glActiveTexture(GL_TEXTURE0);
+                        glUniform1i(uLightMap, 1);
+                        lightMapBound = true;
+                    }
+                } catch (Throwable t) {
+                    // Mapping/API mismatch on some other MC version — don't retry every
+                    // frame, just fall back to the flat brightness approximation.
+                    lightMapResolveFailed = true;
+                    HeliumClient.LOGGER.warn(
+                            "[Rentities] Could not bind vanilla light texture, falling back "
+                                    + "to approximate entity lighting", t);
+                }
+            }
+            if (uHasLightMap >= 0) glUniform1i(uHasLightMap, lightMapBound ? 1 : 0);
+
+            // Bind SSBOs
+        glBindBufferRange(
+                GL_SHADER_STORAGE_BUFFER,
+                SSBO_BINDING,
+                instanceBuffer.id(),
+                instanceBuffer.offsetOf(bufIdx),
+                instanceBuffer.slotSize());
+
+        /*
+         * Static per-entity-type/per-bone pivot table.
+         *
+         * Layout:
+         *   pivotIndex = entityTypeIndex * EntityMeshBaker.MAX_BONES + boneIndex
+         *   vec4       = (x, y, z, padding)
+         *
+         * The vertex shader reads this at binding 13.
+         */
+        int pivotSSBO = meshBaker.getPivotSSBOId();
+        if (pivotSSBO != 0) {
+            glBindBufferBase(
+                    GL_SHADER_STORAGE_BUFFER,
+                    PIVOT_SSBO_BINDING,
+                    pivotSSBO);
+        } else if (false) {
+            HeliumClient.LOGGER.warn(
+                    "Entity pivot SSBO is not available; using zero pivots");
+        }
+
+            if (HeliumClient.getConfig().entity_batching_debug && count > 0 && (System.currentTimeMillis() % 2000 < 50)) {
+                 float px = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_X);
+                 float py = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Y);
+                 float pz = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Z);
+             
+                 float w = vp[3]*px + vp[7]*py + vp[11]*pz + vp[15];
+                 float z = vp[2]*px + vp[6]*py + vp[10]*pz + vp[14];
+             
+                 HeliumClient.LOGGER.info("FLUSH: count={}, pos=({},{},{}), w_calc={}, z_calc={}, matrix=[{},{},{},{}; {},{},{},{}; {},{},{},{}; {},{},{},{}], VAO={}", 
+                     count, px, py, pz, w, z,
+                     vp[0], vp[1], vp[2], vp[3],
+                     vp[4], vp[5], vp[6], vp[7],
+                     vp[8], vp[9], vp[10], vp[11],
+                     vp[12], vp[13], vp[14], vp[15],
+                     meshBaker.getVaoId());
+            }
+
+            // Bind VAO and draw
+            int vaoId = meshBaker.getVaoId();
+            if (vaoId != 0) {
+                stateCache.bindVertexArray(vaoId);
+            
+                // Ensure correct GL state for entity rendering
+                glEnable(GL_DEPTH_TEST);
+                glDepthFunc(GL_LEQUAL);
+                glDepthMask(true);
+                glDisable(GL_CULL_FACE);
+                glDisable(GL_SCISSOR_TEST);
+                glDisable(GL_STENCIL_TEST);
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            
+                if (HeliumClient.getConfig().entity_batching_debug_solid) {
+                    glDisable(GL_BLEND);
+                }
+
+                glColorMask(true, true, true, true);
+
+    
+                /*
+                 * Keep GPU entity batching on the proven instanced-draw path by default.
+                 * Ordinary mobs are the primary Rentities batch path; players are not
+                 * registered here and therefore do not enter this branch. The indirect
+                 * compute/culling backend remains available as an explicit opt-in
+                 * optimization, but it cannot make a valid batch disappear.
+                 */
+                RendererBackendManager.Backend backend = selectRenderBackend();
+                boolean indirect = backend == RendererBackendManager.Backend.GPU_INDIRECT
+                        && cullPipeline != null && cullPipeline.isAvailable()
+                        && storedViewProjection != null;
+                if (indirect) {
+                    try {
+                        indirect = renderIndirect(count, bufIdx);
+                    } catch (Throwable t) {
+                        indirect = false;
+                        Rentities.disableFeature(RendererCapabilityState.Feature.INDIRECT_CULLING, t);
+                    }
+                }
+                if (!indirect) {
+                    stateCache.useProgram(entityShader.id);
+                    glUniform1i(uIndirect, 0);
+                    renderBySortedEntityType(count);
+                }
+
+                fenceRing.signal(bufIdx);
+
+                if (false) {
+                    int err = glGetError();
+                    if (err != 0) {
+                        HeliumClient.LOGGER.error("GL ERROR during entity draw: 0x{}", Integer.toHexString(err));
+                    }
+                }
+            } else {
+                if (false) HeliumClient.LOGGER.warn("FLUSH: meshBaker VAO is 0, skipping draw");
+            }
+
+            errorRenderer.flush(vp, gameTime);
+        } finally {
+            stateGuard.restore();
+        }
+
+        // Clear queued references
+        for (int i = 0; i < count; i++) {
+            queuedTypes[i] = null;
+            extractionTypes[i] = null;
+        }
+    }
+
+    public static void queueErrorEntity(double x, double y, double z) {
+        if (INSTANCE != null) INSTANCE.errorRenderer.queueError(x, y, z);
+    }
+
+    private final long[] sortKeys = new long[MAX_QUEUE];
+
+    private int compactQueue(int rawCount) {
+        int write = 0;
+        for (int read = 0; read < rawCount; read++) {
+            if (queuedTypes[read] == null && extractionTypes[read] == null) continue;
+            if (write != read) {
+                queuedTypes[write] = queuedTypes[read];
+                extractionTypes[write] = extractionTypes[read];
+                queuedOriginalIndices[write] = write;
+                MemoryUtil.memCopy(
+                        extractionBuffer + (long) read * EntityInstance.STRIDE,
+                        extractionBuffer + (long) write * EntityInstance.STRIDE,
+                        EntityInstance.STRIDE);
+            }
+            write++;
+        }
+        for (int i = write; i < rawCount; i++) {
+            queuedTypes[i] = null;
+            extractionTypes[i] = null;
+            queuedOriginalIndices[i] = 0;
+        }
+        return write;
+    }
+
+    private void clearQueuedReferences(int count) {
+        for (int i = 0; i < count; i++) {
+            queuedTypes[i] = null;
+            extractionTypes[i] = null;
+            queuedOriginalIndices[i] = 0;
+        }
+    }
+
+    private void sortByEntityType(int count) {
+        for (int i = 0; i < count; i++) {
+            EntityType<?> type = queuedTypes[i];
+            int typeIdx = type != null ? EntityBatchRegistry.getEntityTypeIndex(type) : 0;
+            sortKeys[i] = ((long) typeIdx << 32) | (queuedOriginalIndices[i] & 0xFFFFFFFFL);
+        }
+        java.util.Arrays.sort(sortKeys, 0, count);
+        for (int i = 0; i < count; i++) {
+            int originalIdx = (int) (sortKeys[i] & 0xFFFFFFFFL);
+            queuedOriginalIndices[i] = originalIdx;
+        }
+        for (int i = 0; i < count; i++) {
+            queuedTypes[i] = getEntityTypeFromIdx(queuedOriginalIndices[i]);
+        }
+    }
+
+    private EntityType<?> getEntityTypeFromIdx(int idx) {
+        return extractionTypes[idx];
+    }
+
+    private static final int MAX_DRAW_GROUPS = 256;
+    private final EntityType<?>[] groupTypes = new EntityType[MAX_DRAW_GROUPS];
+
+    private boolean renderIndirect(int count, int bufIdx) {
+        var meshInfoMap = meshBaker.getMeshInfoMap();
+        cullPipeline.begin(bufIdx);
+
+        int runStart = 0;
+        for (int i = 1; i <= count; i++) {
+            if (i < count && queuedTypes[i] == queuedTypes[runStart]) continue;
+
+            EntityType<?> type = queuedTypes[runStart];
+            var meshInfo = type != null ? meshInfoMap.get(type) : null;
+            if (meshInfo != null) {
+                int g = cullPipeline.addGroup(meshInfo.indexCount, meshInfo.indexOffset,
+                        runStart, i - runStart, type);
+                if (g < 0) {
+                    /*
+                     * Group-table overflow: drawing a partial group table would silently
+                     * drop every type after index 256. Abort indirect entirely; the
+                     * caller (doFlush) falls back to CPU-ordered rendering.
+                     */
+                    if (false) {
+                        HeliumClient.LOGGER.warn(
+                                "[Rentities] Indirect draw group table overflow (>{}) — "
+                                        + "falling back to CPU-ordered drawing",
+                                MAX_DRAW_GROUPS);
+                    }
+                    return false;
+                }
+                groupTypes[g] = type;
+            }
+            runStart = i;
+        }
+
+        int groups = cullPipeline.groupCount();
+        if (groups == 0) return false;
+
+        // Conservative compatibility guard: keep GPU entity batching/instancing enabled,
+        // but do not submit non-player groups through the indirect+frustum path until the
+        // per-group visibility contract is proven against all 1.21.11 render-state variants.
+        // The direct instanced path uses the same SSBO/VAO/shader and therefore preserves
+        // the core batching feature while avoiding the hitbox-only regression.
+        for (int g = 0; g < groups; g++) {
+            if (groupTypes[g] != net.minecraft.entity.EntityType.PLAYER) {
+                if (false) {
+                    HeliumClient.LOGGER.info("[Rentities] Indirect culling bypassed for non-player batch; using direct instanced draw");
+                }
+                for (int i = 0; i < groups; i++) groupTypes[i] = null;
+                return false;
+            }
+        }
+
+        cullPipeline.dispatch(count, storedViewProjection);
+        stateCache.reset();
+
+        stateCache.useProgram(entityShader.id);
+        glUniform1i(uIndirect, 1);
+        cullPipeline.bindForDraw();
+
+        int runFirst = 0;
+        Object runLoc = entityTextureLocs.get(groupTypes[0]);
+        for (int g = 1; g <= groups; g++) {
+            Object loc = g < groups ? entityTextureLocs.get(groupTypes[g]) : null;
+            if (g < groups && java.util.Objects.equals(loc, runLoc)) continue;
+
+            bindEntityTexture(groupTypes[runFirst]);
+            glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT,
+                    cullPipeline.indirectOffset(runFirst), g - runFirst,
+                    EntityCullingPipeline.CMD_STRIDE);
+            runFirst = g;
+            runLoc = loc;
+        }
+
+        for (int g = 0; g < groups; g++) groupTypes[g] = null;
+        return true;
+    }
+
+    private void renderBySortedEntityType(int count) {
+        var meshInfoMap = meshBaker.getMeshInfoMap();
+        int instanceOffset = 0;
+        EntityType<?> currentType = null;
+        int currentCount = 0;
+
+        for (int i = 0; i <= count; i++) {
+            EntityType<?> type = (i < count) ? queuedTypes[i] : null;
+            if (type != currentType) {
+                if (currentType != null && currentCount > 0) {
+                    var meshInfo = meshInfoMap.get(currentType);
+                    if (meshInfo != null) {
+                        bindEntityTexture(currentType);
+                        boolean slime = currentType == EntityType.SLIME || currentType == EntityType.MAGMA_CUBE;
+                        glUniform1i(uBaseInstance, instanceOffset);
+                        if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
+                        glDepthMask(true);
+                        if (false && (System.currentTimeMillis() % 2000 < 50)) {
+                            HeliumClient.LOGGER.info("DRAW: type={}, count={}, indexCount={}, indexOffset={}, baseInstance={}",
+                                currentType, currentCount, meshInfo.indexCount, meshInfo.indexOffset, instanceOffset);
+                        }
+                        glDrawElementsInstanced(
+                                GL_TRIANGLES, meshInfo.indexCount, GL_UNSIGNED_INT,
+                                (long)meshInfo.indexOffset, currentCount);
+
+                        if (slime) {
+                            // Second pass: translucent outer shell around the inner slime model.
+                            // GL_CULL_FACE is already disabled for the whole entity batch (see the
+                            // flush setup above) — do not touch it here, or the very next group's
+                            // draw in this same flush inherits face culling it isn't expecting.
+                            if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 1);
+                            glDepthMask(false);
+                            glDrawElementsInstanced(
+                                    GL_TRIANGLES, meshInfo.indexCount, GL_UNSIGNED_INT,
+                                    (long)meshInfo.indexOffset, currentCount);
+                            glDepthMask(true);
+                            if (uSlimeOverlay >= 0) glUniform1i(uSlimeOverlay, 0);
+                        }
+                    } else {
+                        if (false) {
+                            HeliumClient.LOGGER.warn("SKIP_NO_MESH: type={}, count={} — no meshInfo found!", currentType, currentCount);
+                        }
+                    }
+                    instanceOffset += currentCount;
+                }
+                currentType = type;
+                currentCount = 1;
+            } else {
+                currentCount++;
+            }
+        }
+    }
+
+    public static double cameraX, cameraY, cameraZ;
+
+    public void setCamera(double x, double y, double z) {
+        cameraX = x;
+        cameraY = y;
+        cameraZ = z;
+    }
+
+    private static final Matrix4f lastViewMatrix = new Matrix4f();
+
+    public static void updateProjectionMatrix(Matrix4f projection) {
+        if (storedViewProjection == null) {
+            storedViewProjection = new Matrix4f();
+        }
+        projection.mul(lastViewMatrix, storedViewProjection);
+    }
+
+    public static void setViewMatrix(Matrix4f view) {
+        lastViewMatrix.set(view);
+        lastViewMatrix.m30(0.0f);
+        lastViewMatrix.m31(0.0f);
+        lastViewMatrix.m32(0.0f);
+    }
+
+    private static class StateAccessor {
+        final java.lang.invoke.MethodHandle yaw, yawO, limbSwing, limbSwingAmt, headYaw, headYawO, headPitch, headPitchO, attackProgress;
+        final java.lang.invoke.MethodHandle deathTime, swimProgress, hurtTime, sneaking;
+        final java.lang.invoke.MethodHandle type, invisible, onGround, inWater;
+        final java.lang.invoke.MethodHandle entityId;
+
+        StateAccessor(Class<?> cls) {
+            this.yaw            = mhFloat(cls,   "bodyYaw", "yBodyRot", "field_53329", "M");
+            this.yawO           = mhFloat(cls,   "bodyYawO", "yBodyRotO", "prevYBodyRot");
+            this.limbSwing      = mhFloat(cls,   "field_53446", "walkAnimationPos", "ab");
+            this.limbSwingAmt   = mhFloat(cls,   "field_53447", "walkAnimationSpeed", "ac");
+            this.headYaw        = mhFloat(cls,   "headYaw", "yHeadRot", "field_53448", "ad");
+            this.headYawO       = mhFloat(cls,   "yHeadRotO", "prevYHeadRot");
+            this.headPitch      = mhFloat(cls,   "field_53449", "headPitch", "ae");
+            this.headPitchO     = mhFloat(cls,   "xRotO", "prevXRot");
+            this.attackProgress = mhFloat(cls,   "field_53450", "attackAnim", "af");
+            this.deathTime      = mhFloat(cls,   "field_53452", "deathTime", "ah");
+            this.swimProgress   = mhFloat(cls,   "field_53451", "swimAmount", "ag");
+            this.hurtTime       = mhBool(cls,    "field_53456", "isHurt", "al");
+            this.sneaking       = mhBool(cls,    "field_53455", "isSneaking", "ak");
+            this.type           = requireObj(cls, "field_58171", "entityType", "H");
+            this.invisible      = mhBool(cls,    "field_53333", "invisible", "Q");
+            this.onGround       = mhBool(cls,    "field_53334", "onGround", "R");
+            this.inWater        = mhBool(cls,    "field_53335", "inWater", "S");
+            this.entityId       = mhInt(cls,     "id", "field_53328", "N");
+        }
+
+        /**
+         * Logs a one-time warning naming the class, the failing state field and every
+         * candidate mapping name that was attempted. Because render-state classes are
+         * registered per-class through the ClassValue cache, this fires at most once per
+         * (class, field) pair instead of spamming the log every frame.
+         */
+        private static void warnUnresolved(Class<?> cls, String logical, String... names) {
+            String key = cls.getName() + "#" + logical;
+            if (!reflectionMissingWarned.add(key)) return;
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            for (int i = 0; i < names.length; i++) {
+                if (i > 0) sb.append(", ");
+                sb.append('"').append(names[i]).append('"');
+            }
+            sb.append(']');
+            HeliumClient.LOGGER.warn(
+                    "[Rentities] Reflection: could not resolve state field '{}' on class {} "
+                            + "(tried names: {})."
+                            + " Entities of this type may render with reduced/missing animation.",
+                    logical, cls.getName(), sb);
+        }
+
+        private static Field findField(Class<?> cls, Class<?> type, String logical, String... names) {
+            for (String name : names) {
+                Class<?> c = cls;
+                while (c != null) {
+                    try {
+                        Field f = c.getDeclaredField(name);
+                        if (type == null || f.getType() == type) {
+                            f.setAccessible(true);
+                            return f;
+                        }
+                    } catch (NoSuchFieldException ignored) {}
+                    c = c.getSuperclass();
+                }
+            }
+            warnUnresolved(cls, logical, names);
+            return null;
+        }
+
+        /** Optional float — null when absent; consumers already treat null as 0f. */
+        private static java.lang.invoke.MethodHandle mhFloat(Class<?> cls, String... names) {
+            Field f = findField(cls, float.class, "float", names);
+            if (f == null) return null;
+            try {
+                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
+                    .asType(java.lang.invoke.MethodType.methodType(float.class, Object.class));
+            } catch (Exception e) { return null; }
+        }
+
+        /** Optional boolean — null when absent; consumers already treat null as false. */
+        private static java.lang.invoke.MethodHandle mhBool(Class<?> cls, String... names) {
+            Field f = findField(cls, boolean.class, "boolean", names);
+            if (f == null) return null;
+            try {
+                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
+                    .asType(java.lang.invoke.MethodType.methodType(boolean.class, Object.class));
+            } catch (Exception e) { return null; }
+        }
+
+        /** Optional int — null when absent; consumers already treat null as unresolvable. */
+        private static java.lang.invoke.MethodHandle mhInt(Class<?> cls, String... names) {
+            Field f = findField(cls, int.class, "int", names);
+            if (f == null) return null;
+            try {
+                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
+                    .asType(java.lang.invoke.MethodType.methodType(int.class, Object.class));
+            } catch (Exception e) { return null; }
+        }
+
+        /** Optional object — null when absent. */
+        private static java.lang.invoke.MethodHandle mhObj(Class<?> cls, String... names) {
+            Field f = findField(cls, null, "object", names);
+            if (f == null) return null;
+            try {
+                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
+                    .asType(java.lang.invoke.MethodType.methodType(Object.class, Object.class));
+            } catch (Exception e) { return null; }
+        }
+
+        /**
+         * Mandatory object field. Missing it means the fallback queued-state
+         * extraction cannot know which entity type the state represents, so it
+         * could never render correctly. Produce a clear diagnostic and return null
+         * (callers already guard for null and will fall back to vanilla).
+         */
+        private static java.lang.invoke.MethodHandle requireObj(Class<?> cls, String... names) {
+            Field f = findField(cls, null, "object(mandatory)", names);
+            if (f == null) {
+                HeliumClient.LOGGER.error(
+                        "[RentEntities] MANDATORY reflection field missing for class {} "
+                                + "(tried names: {}). The entity state cannot be queued and "
+                                + "will fall back to vanilla rendering.",
+                        cls.getName(), java.util.Arrays.toString(names));
+                return null;
+            }
+            try {
+                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
+                    .asType(java.lang.invoke.MethodType.methodType(Object.class, Object.class));
+            } catch (Exception e) {
+                HeliumClient.LOGGER.error(
+                        "[RenderSystem] Failed to build method handle for mandatory field {}: {}",
+                        f.getName(), e.toString());
+                return null;
+            }
+        }
+    }
+
+    private static float clampBodyYaw(float bodyYaw, float headYaw) {
+        float diff = wrapDegrees(bodyYaw - headYaw);
+        if (diff > 75.0f) return headYaw + 75.0f;
+        if (diff < -75.0f) return headYaw - 75.0f;
+        return bodyYaw;
+    }
+
+    private static float wrapDegrees(float deg) {
+        float d = deg % 360f;
+        if (d >= 180f) d -= 360f;
+        if (d < -180f) d += 360f;
+        return d;
+    }
+
+    private static final ClassValue<StateAccessor> ACCESSOR_CACHE = new ClassValue<>() {
+        @Override protected StateAccessor computeValue(Class<?> type) { return new StateAccessor(type); }
+    };
+
+
+
+    /** Binds the entity type's texture to unit 0; returns true on success. */
+    private boolean bindEntityTexture(EntityType<?> type) {
+        if (type == null) return false;
+
+        Integer cached = entityGlTexIds.get(type);
+        if (cached != null && cached > 0 && glIsTexture(cached)) {
+            bindTextureUnit0(cached);
+            return true;
+        }
+        if (cached != null) entityGlTexIds.remove(type, cached);
+
+        Object loc = entityTextureLocs.get(type);
+        if (loc == null) {
+            unbindTextureUnit0();
+            return false;
+        }
+
+        int glId = EntityGlTextureResolver.resolveGlId(loc);
+        if (glId > 0 && glIsTexture(glId)) {
+            entityGlTexIds.put(type, glId);
+            bindTextureUnit0(glId);
+            return true;
+        }
+
+        // Do not unbind another valid texture on a resolver miss. The caller will
+        // fall back to vanilla/CPU rendering if it needs a guaranteed texture.
+        return false;
+    }
+
+    /** Binds texture unit 0 to 0 so a stale entity texture can never be re-sampled. */
+    private void unbindTextureUnit0() {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+        lastBoundGlTexId = 0;
+    }
+
+
+    private RendererBackendManager.Backend selectRenderBackend() {
+        return backendManager.select();
+    }
+
+
+    private void bindTextureUnit0(int glId) {
+        if (glId <= 0) return;
+        glActiveTexture(GL_TEXTURE0);
+        int bound = org.lwjgl.opengl.GL11C.glGetInteger(GL_TEXTURE_BINDING_2D);
+        if (bound != glId || lastBoundGlTexId != glId) {
+            glBindTexture(GL_TEXTURE_2D, glId);
+        }
+        glUniform1i(uEntityTextures, 0);
+        lastBoundGlTexId = glId;
+    }
+    
+    public boolean writeEntityInstance(long ptr, Object state, double rx, double ry, double rz) {
+        if (state == null) return false;
+        StateAccessor acc = ACCESSOR_CACHE.get(state.getClass());
+        try {
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_POSITION_X, (float) rx);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_POSITION_Y, (float) ry);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_POSITION_Z, (float) rz);
+
+            float partialTick = MinecraftClient.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
+
+            EntityType<?> type = acc.type != null ? (EntityType<?>) invokeAccessor(acc.type, state) : null;
+            boolean isArmorStand = (type == EntityType.ARMOR_STAND);
+
+            float headYawDeg = 0f;
+            if (!isArmorStand && acc.headYaw != null) {
+                headYawDeg = (float) invokeAccessor(acc.headYaw, state);
+                if (acc.headYawO != null) {
+                    float headYawO = (float) invokeAccessor(acc.headYawO, state);
+                    headYawDeg = net.minecraft.util.Mth.rotLerp(partialTick, headYawO, headYawDeg);
+                }
+            }
+
+            float bodyYawDeg = acc.yaw != null ? (float) invokeAccessor(acc.yaw, state) : 0f;
+            if (acc.yawO != null) {
+                float yawODeg = (float) invokeAccessor(acc.yawO, state);
+                bodyYawDeg = net.minecraft.util.Mth.rotLerp(partialTick, yawODeg, bodyYawDeg);
+            }
+            if (!isArmorStand) bodyYawDeg = clampBodyYaw(bodyYawDeg, headYawDeg);
+
+            float rotY = (float) Math.toRadians(180.0f - bodyYawDeg);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y, rotY);
+
+            float headYawRel = 0f;
+            float headPitchRel = 0f;
+            if (!isArmorStand) {
+                headYawRel = (float) Math.toRadians(wrapDegrees(headYawDeg - bodyYawDeg));
+                if (acc.headPitch != null) {
+                    float pitchDeg = (float) invokeAccessor(acc.headPitch, state);
+                    if (acc.headPitchO != null) {
+                        float pitchODeg = (float) invokeAccessor(acc.headPitchO, state);
+                        pitchDeg = net.minecraft.util.Mth.lerp(partialTick, pitchODeg, pitchDeg);
+                    }
+                    headPitchRel = (float) Math.toRadians(pitchDeg);
+                }
+            }
+
+            float limbSwing = 0f, limbSwingAmt = 0f, attackProgress = 0f, swimProgress = 0f;
+            float sneakProg = 0f, deathTime = 0f, hurtTime = 0f;
+            if (!isArmorStand) {
+                if (acc.limbSwing != null) limbSwing = (float) invokeAccessor(acc.limbSwing, state);
+                if (acc.limbSwingAmt != null) {
+                    float raw = (float) invokeAccessor(acc.limbSwingAmt, state);
+                    limbSwingAmt = raw < 0f ? 0f : raw > 1f ? 1f : raw;
+                }
+                if (acc.attackProgress != null) attackProgress = (float) invokeAccessor(acc.attackProgress, state);
+                if (acc.swimProgress != null) swimProgress = (float) invokeAccessor(acc.swimProgress, state);
+                if (acc.sneaking != null && (boolean) invokeAccessor(acc.sneaking, state)) sneakProg = 1f;
+                if (acc.hurtTime != null && (boolean) invokeAccessor(acc.hurtTime, state)) hurtTime = 10f;
+                if (acc.deathTime != null) {
+                    float raw = (float) invokeAccessor(acc.deathTime, state);
+                    if (raw >= 0f && raw <= 20f) deathTime = raw;
+                }
+            }
+
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING, limbSwing);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING_AMT, limbSwingAmt);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_YAW, headYawRel);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PITCH, headPitchRel);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ATTACK_PROGRESS, attackProgress);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_BOW_PULL, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HURT_TIME, hurtTime);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_DEATH_TIME, deathTime);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SNEAK_PROGRESS, sneakProg);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SWIM_PROGRESS, swimProgress);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_RIPTIDE, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SIT_PROGRESS, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_EAT_PROGRESS, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SWELL_AMOUNT, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_EXPLODE_PROGRESS, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROLL_PROGRESS, 0f);
+
+            int flags = 0;
+            if (acc.invisible != null && (boolean) invokeAccessor(acc.invisible, state)) flags |= EntityInstance.FLAG_IS_INVISIBLE;
+            if (acc.onGround != null && (boolean) invokeAccessor(acc.onGround, state)) flags |= EntityInstance.FLAG_ON_GROUND;
+            if (acc.inWater != null && (boolean) invokeAccessor(acc.inWater, state)) flags |= EntityInstance.FLAG_IS_IN_WATER;
+            if (type == EntityType.PLAYER) flags |= EntityInstance.FLAG_IS_PLAYER;
+            if (type != null && EntityBatchRegistry.hasZombieArms(type)) flags |= EntityInstance.FLAG_ZOMBIE_ARMS;
+            if (type == EntityType.ARMOR_STAND) flags |= EntityInstance.FLAG_ARMOR_STAND;
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
+
+            int typeIdx = type != null ? EntityBatchRegistry.getEntityTypeIndex(type) : 0;
+            EntityAnimationCategory cat = type != null ? EntityBatchRegistry.getCategory(type) : EntityAnimationCategory.CPU_ANIMATED;
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ENTITY_TYPE, typeIdx);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ANIM_CATEGORY, cat.glslId);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_TEXTURE_LAYER, 0);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_HELD_MAIN, EntityInstance.NO_ITEM);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_HELD_OFFHAND, EntityInstance.NO_ITEM);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ARMOR_HEAD, EntityInstance.NO_ARMOR);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ARMOR_CHEST, EntityInstance.NO_ARMOR);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ARMOR_LEGS, EntityInstance.NO_ARMOR);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ARMOR_FEET, EntityInstance.NO_ARMOR);
+            MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_MOUNT_ID, EntityInstance.NO_MOUNT);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SEAT_OFFSET_X, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SEAT_OFFSET_Y, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SEAT_OFFSET_Z, 0f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_X, 1f);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_Y, 1f);
+            return true;
+        } catch (Exception e) {
+            if (false) {
+                HeliumClient.LOGGER.warn("[Rentities] Failed to extract entity instance data for {}",
+                    state != null ? state.getClass().getName() : "null", e);
+            }
+            MemoryUtil.memSet(ptr, 0, EntityInstance.STRIDE);
+            return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static EntityType<?> getEntityType(Object state) {
+        if (state == null) return null;
+
+        StateAccessor acc = ACCESSOR_CACHE.get(state.getClass());
+    
+        if (acc.type != null) {
+            try {
+                return (EntityType<?>) invokeAccessor(acc.type, state);
+            } catch (Exception e) {
+                if (false) {
+                    HeliumClient.LOGGER.warn(
+                            "[Rentities] Failed to resolve EntityType from {}",
+                            state.getClass().getName(),
+                            e);
+                }
+             }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort entity id from an opaque render state, or -1 if this state's class
+     * doesn't expose one under any of the attempted field names. Used to resolve the
+     * live {@link net.minecraft.entity.Entity} for checks that can't be answered
+     * from the render state alone (see {@link EntityDirectExtractor#mustFallBackToVanilla}).
+     */
+    public static int getEntityId(Object state) {
+        if (state == null) return -1;
+        StateAccessor acc = ACCESSOR_CACHE.get(state.getClass());
+        if (acc.entityId == null) return -1;
+        Object result = invokeAccessor(acc.entityId, state);
+        return result != null ? (int) result : -1;
+    }
+
+    private void compileShader() {
+        try {
+            String vertSrc = loadShader("assets/rentities/shaders/entity/entity_vert.glsl");
+            String fragSrc = loadShader("assets/rentities/shaders/entity/entity_frag.glsl");
+            entityShader = GlShader.builder()
+                    .vert(vertSrc)
+                    .frag(fragSrc)
+                    .compile();
+            entityShader.bind();
+            uViewProjection = entityShader.getUniformLocation("uViewProjection");
+            uGameTime       = entityShader.getUniformLocation("uGameTime");
+            uEntityTextures = entityShader.getUniformLocation("uEntityTexture");
+            uBaseInstance   = entityShader.getUniformLocation("uBaseInstance");
+            uIndirect       = entityShader.getUniformLocation("uIndirect");
+            uCameraPos     = entityShader.getUniformLocation("uCameraPos");
+            uSlimeOverlay  = entityShader.getUniformLocation("uSlimeOverlay");
+            uLightMap      = entityShader.getUniformLocation("uLightMap");
+            uHasLightMap   = entityShader.getUniformLocation("uHasLightMap");
+            glUseProgram(0);
+        } catch (Exception e) {
+            HeliumClient.LOGGER.error("Entity shader compilation failed", e);
+            entityShader = null;
+        }
+    }
+
+    private String loadShader(String path) {
+        try {
+            var stream = getClass().getClassLoader().getResourceAsStream(path);
+            if (stream == null) throw new RuntimeException("Shader not found: " + path);
+            return new String(stream.readAllBytes());
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load entity shader: " + path, e);
+        }
+    }
+
+    public boolean asyncAllowsBatch(EntityType<?> type) {
+        if (HeliumClient.getConfig().async_render_preparation_enabled) {
+            return asyncPreparation.allowsBatch(type,
+                    HeliumClient.getConfig().entity_batching_whitelist_only,
+                    new java.util.HashSet<>(HeliumClient.getConfig().entity_batching_whitelist),
+                    new java.util.HashSet<>(HeliumClient.getConfig().entity_batching_blacklist));
+        }
+        return !HeliumClient.getConfig().entity_batching_blacklist.contains(type.toString())
+                && (!HeliumClient.getConfig().entity_batching_whitelist_only
+                    || HeliumClient.getConfig().entity_batching_whitelist.contains(type.toString()));
+    }
+
+    public boolean asyncVisibilityAllows(Entity entity) {
+        return asyncVisibility.shouldBatch(entity, cameraX, cameraY, cameraZ,
+                HeliumClient.getConfig().async_visibility_enabled,
+                HeliumClient.getConfig().async_visibility_refresh_frames,
+                HeliumClient.getConfig().async_visibility_max_age_frames,
+                HeliumClient.getConfig().async_visibility_max_distance);
+    }
+
+    public boolean canBatchEntity(EntityType<?> type) {
+        if (type == null || !passPrepared || storedViewProjection == null || entityShader == null
+                || uViewProjection < 0 || uEntityTextures < 0) return false;
+        if (meshBaker.getVaoId() == 0) return false;
+        if (null == null ||
+                null.choosePath(HeliumClient.getConfig()) == RendererCapabilityState.RenderPath.VANILLA) return false;
+        if (!meshBaker.getMeshInfoMap().containsKey(type) || entityTexFailed.contains(type)) return false;
+
+        Integer glId = entityGlTexIds.get(type);
+        if (glId != null && glId > 0 && glIsTexture(glId)) return true;
+
+        Object loc = entityTextureLocs.get(type);
+        if (loc == null) return false;
+        int resolved = EntityGlTextureResolver.resolveGlId(loc);
+        if (resolved <= 0 || !glIsTexture(resolved)) return false;
+        entityGlTexIds.put(type, resolved);
+        return true;
+    }
+
+    public boolean hasMeshFor(EntityType<?> type) {
+        return meshBaker.getMeshInfoMap().containsKey(type);
+    }
+
+    public EntityMeshBaker getMeshBaker() {
+        return meshBaker;
+    }
+
+    public void reloadShaders() {
+        if (entityShader != null) entityShader.delete();
+        compileShader();
+    }
+
+    public void delete() {
+        asyncPreparation.shutdown();
+        asyncVisibility.shutdown();
+        EntityGlTextureResolver.invalidateCache();
+        if (entityShader != null) entityShader.delete();
+        fenceRing.deleteAll();
+        instanceBuffer.delete();
+        if (cullPipeline != null) cullPipeline.delete();
+        if (extractionBuffer != 0) MemoryUtil.nmemFree(extractionBuffer);
+        meshBaker.delete();
+        errorRenderer.delete();
+        INSTANCE = null;
+    }
+}
