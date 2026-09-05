@@ -503,7 +503,7 @@ public class EntityBatchRenderer {
                     "Entity pivot SSBO is not available; using zero pivots");
         }
 
-            if (HeliumClient.getConfig().rentitiesEntityBatchingDebug && count > 0 && (System.currentTimeMillis() % 2000 < 50)) {
+            if (config != null && config.rentitiesEntityBatchingDebug && count > 0 && (System.currentTimeMillis() % 2000 < 50)) {
                  float px = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_X);
                  float py = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Y);
                  float pz = MemoryUtil.memGetFloat(slotAddr + EntityInstance.OFFSET_POSITION_Z);
@@ -535,7 +535,7 @@ public class EntityBatchRenderer {
                 stateCache.blend(true);
                 stateCache.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             
-                if (HeliumClient.getConfig().rentitiesEntityBatchingDebugSolid) {
+                if (config != null && config.rentitiesEntityBatchingDebugSolid) {
                     stateCache.blend(false);
                 }
 
@@ -687,22 +687,7 @@ public class EntityBatchRenderer {
         int groups = cullPipeline.groupCount();
         if (groups == 0) return false;
 
-        // Conservative compatibility guard: keep GPU entity batching/instancing enabled,
-        // but do not submit non-player groups through the indirect+frustum path until the
-        // per-group visibility contract is proven against all 1.21.11 render-state variants.
-        // The direct instanced path uses the same SSBO/VAO/shader and therefore preserves
-        // the core batching feature while avoiding the hitbox-only regression.
-        for (int g = 0; g < groups; g++) {
-            if (groupTypes[g] != net.minecraft.entity.EntityType.PLAYER) {
-                if (isDebugLogging()) {
-                    HeliumClient.LOGGER.info("[Rentities] Indirect culling bypassed for non-player batch; using direct instanced draw");
-                }
-                for (int i = 0; i < groups; i++) groupTypes[i] = null;
-                return false;
-            }
-        }
-
-        cullPipeline.dispatch(count, storedViewProjection);
+                cullPipeline.dispatch(count, storedViewProjection);
         stateCache.reset();
 
         stateCache.useProgram(entityShader.id);
@@ -1230,19 +1215,23 @@ public class EntityBatchRenderer {
     }
 
     public boolean asyncVisibilityAllows(Entity entity) {
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null) return true;
         return asyncVisibility.shouldBatch(entity, cameraX, cameraY, cameraZ,
-                HeliumClient.getConfig().rentitiesAsyncVisibilityEnabled,
-                HeliumClient.getConfig().rentitiesAsyncVisibilityRefreshFrames,
-                HeliumClient.getConfig().rentitiesAsyncVisibilityMaxAgeFrames,
-                HeliumClient.getConfig().rentitiesAsyncVisibilityMaxDistance);
+                config.rentitiesAsyncVisibilityEnabled,
+                config.rentitiesAsyncVisibilityRefreshFrames,
+                config.rentitiesAsyncVisibilityMaxAgeFrames,
+                config.rentitiesAsyncVisibilityMaxDistance);
     }
 
     public boolean canBatchEntity(EntityType<?> type) {
         if (type == null || !passPrepared || storedViewProjection == null || entityShader == null
                 || uViewProjection < 0 || uEntityTextures < 0) return false;
         if (meshBaker.getVaoId() == 0) return false;
-        if (null == null ||
-                RendererCapabilityState.current().choosePath(HeliumClient.getConfig()) == RendererCapabilityState.RenderPath.VANILLA) return false;
+        RendererCapabilityState capabilities = RendererCapabilityState.current();
+        HeliumConfig config = HeliumClient.getConfig();
+        if (config == null || capabilities == null
+                || capabilities.choosePath(config) == RendererCapabilityState.RenderPath.VANILLA) return false;
         if (!meshBaker.getMeshInfoMap().containsKey(type) || entityTexFailed.contains(type)) return false;
 
         Integer glId = entityGlTexIds.get(type);
