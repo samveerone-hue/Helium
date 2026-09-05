@@ -24,7 +24,7 @@
     "render.LeavesBlockMixin",
     "compat.SodiumLeafCullingMixin",
     "particle.ParticleManagerMixin",
-    "particle.ParticleLODMixin",
+    "particle.ParticleLifecycleMixin",
     "tick.ClientWorldMixin",
     "tick.ClientTickMixin",
     "network.ClientConnectionMixin",
