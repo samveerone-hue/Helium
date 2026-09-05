@@ -46,6 +46,9 @@ public abstract class RentitiesEntityRenderManagerMixin {
         EntityBatchRenderer renderer = EntityBatchRenderer.INSTANCE;
         if (caps == null || !caps.gpuBatchingAllowed(config) || renderer == null || state == null) return;
 
+        // Player skin extraction is not implemented yet. Never cancel vanilla player rendering.
+        if (EntityBatchRenderer.getEntityType(state) == net.minecraft.entity.EntityType.PLAYER) return;
+
         try {
             if (EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) {
                 ci.cancel();
