@@ -70,6 +70,32 @@ public final class HeliumConfigScreen {
                     addsharedentry(eb, groupentries, opt);
                 }
 
+                if (page.key().equals("helium.page.rendering") && group.key().equals("helium.group.entity_culling")) {
+                    groupentries.add(eb.startBooleanToggle(
+                                    Text.translatable("helium.option.rentities_entity_batch_whitelist_only"),
+                                    config.rentitiesEntityBatchWhitelistOnly)
+                            .setDefaultValue(defaults.rentitiesEntityBatchWhitelistOnly)
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_whitelist_only.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchWhitelistOnly = v)
+                            .build());
+
+                    groupentries.add(eb.startStrField(
+                                    Text.translatable("helium.option.rentities_entity_batch_whitelist"),
+                                    String.join(", ", config.rentitiesEntityBatchWhitelist))
+                            .setDefaultValue(String.join(", ", defaults.rentitiesEntityBatchWhitelist))
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_whitelist.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchWhitelist = parseEntityTypeList(v))
+                            .build());
+
+                    groupentries.add(eb.startStrField(
+                                    Text.translatable("helium.option.rentities_entity_batch_blacklist"),
+                                    String.join(", ", config.rentitiesEntityBatchBlacklist))
+                            .setDefaultValue(String.join(", ", defaults.rentitiesEntityBatchBlacklist))
+                            .setTooltip(Text.translatable("helium.option.rentities_entity_batch_blacklist.tooltip"))
+                            .setSaveConsumer(v -> config.rentitiesEntityBatchBlacklist = parseEntityTypeList(v))
+                            .build());
+                }
+
                 if (page.key().equals("helium.page.general") && group.key().equals("helium.group.engine")) {
                     groupentries.add(eb.startBooleanToggle(Text.translatable("helium.option.auto_pause_on_idle"), config.autoPauseOnIdle)
                             .setDefaultValue(defaults.autoPauseOnIdle)
@@ -112,6 +138,16 @@ public final class HeliumConfigScreen {
         toolsCat.addEntry(eb.startTextDescription(Text.translatable("helium.config.category.tools.tooltip")).build());
 
         return builder.build();
+    }
+
+    private static List<String> parseEntityTypeList(String value) {
+        if (value == null || value.isBlank()) return new ArrayList<>();
+        List<String> result = new ArrayList<>();
+        for (String raw : value.split(",")) {
+            String id = raw.trim();
+            if (!id.isEmpty() && id.length() <= 128) result.add(id);
+        }
+        return result;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
