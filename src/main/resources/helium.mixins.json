@@ -62,8 +62,6 @@
     "hotbar.HotbarKeybindingMixin",
     "hotbar.HotbarRenderSyncMixin",
     "hotbar.HotbarTickResetMixin",
-    "hotbar.HotbarConnectScreenMixin",
-    "hotbar.HotbarGameJoinMixin",
     "tweaks.SkinPartsRendererMixin",
     "tweaks.SkinPartsDimensionMixin",
     "tweaks.SkinPartsRespawnMixin",
@@ -75,7 +73,6 @@
     "lang.LanguageReloadMixin",
     "lang.LanguageScreenMixin",
     "reflex.GameRendererReflexMixin",
-
     "math.GivensPairMixin",
     "math.MatrixStackEntryMixin",
     "random.CheckedRandomMixin",
@@ -86,7 +83,6 @@
     "crafting.KeyMappingAccessor",
     "crafting.ClientPlayNetworkHandlerCraftingMixin",
     "crafting.RecipeBookWidgetCraftingMixin",
-
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",
     "dedup.BakedQuadDedupMixin",
