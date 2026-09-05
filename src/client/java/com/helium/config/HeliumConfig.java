@@ -112,7 +112,7 @@ public class HeliumConfig {
     public boolean reduceRenderDistanceWhenInactive = false;
     public int inactiveRenderDistance = 4;
 
-    public boolean hotbarOptimizer = true;
+    public boolean hotbarOptimizer = false;
     public boolean hotbarMultiSwitch = false;
     public boolean smoothHotbar = true;
 
