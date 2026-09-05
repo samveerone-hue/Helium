@@ -1195,7 +1195,7 @@ public class EntityMeshBaker {
 
             Map<String, EntityType<?>> typesById = new HashMap<>();
             for (EntityType<?> candidate : EntityBatchRegistry.REGISTRY_TYPES()) {
-                Object key = net.minecraft.registry.Registries.ENTITY_TYPE.getKey(candidate);
+                Object key = net.minecraft.registry.Registries.ENTITY_TYPE.getId(candidate);
                 if (key != null) typesById.put(key.toString(), candidate);
             }
 
