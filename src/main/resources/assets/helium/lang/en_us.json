@@ -283,5 +283,19 @@
   "helium.option.rentities_entity_batch_whitelist": "Rentities Batch Whitelist",
   "helium.option.rentities_entity_batch_whitelist.tooltip": "Comma-separated entity IDs to allow in GPU batching, for example minecraft:zombie, minecraft:cow.",
   "helium.option.rentities_entity_batch_blacklist": "Rentities Batch Blacklist",
-  "helium.option.rentities_entity_batch_blacklist.tooltip": "Comma-separated entity IDs to exclude from GPU batching. Excluded entities continue to use vanilla rendering."
+  "helium.option.rentities_entity_batch_blacklist.tooltip": "Comma-separated entity IDs to exclude from GPU batching. Excluded entities continue to use vanilla rendering.",
+  "helium.option.rentities_entity_batch_debug": "Rentities Entity Batching Debug",
+  "helium.option.rentities_entity_batch_debug.tooltip": "Enable diagnostic logging for the Rentities entity batching path.",
+  "helium.option.rentities_entity_batch_debug_solid": "Rentities Solid Debug Draw",
+  "helium.option.rentities_entity_batch_debug_solid.tooltip": "Disable entity blending for debugging. Requires Rentities Entity Batching Debug.",
+  "helium.option.rentities_async_render_preparation": "Rentities Async Render Preparation",
+  "helium.option.rentities_async_render_preparation.tooltip": "Prepare entity-type batching metadata asynchronously. Safe fallback keeps vanilla rendering when unavailable.",
+  "helium.option.rentities_async_visibility": "Rentities Visibility Prefilter",
+  "helium.option.rentities_async_visibility.tooltip": "Apply the cheap distance prefilter before batching. The check stays on the render thread.",
+  "helium.option.rentities_visibility_refresh": "Rentities Visibility Refresh",
+  "helium.option.rentities_visibility_refresh.tooltip": "Minimum frame cadence used by the optional visibility prefilter.",
+  "helium.option.rentities_visibility_age": "Rentities Visibility Cache Age",
+  "helium.option.rentities_visibility_age.tooltip": "Maximum age used by the visibility-preparation compatibility controls.",
+  "helium.option.rentities_visibility_distance": "Rentities Visibility Distance",
+  "helium.option.rentities_visibility_distance.tooltip": "Optional maximum distance for the batching visibility prefilter."
 }
