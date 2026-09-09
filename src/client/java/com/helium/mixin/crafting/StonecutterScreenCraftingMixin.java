@@ -21,7 +21,7 @@ public abstract class StonecutterScreenCraftingMixin {
         if (config == null || !config.oneClickCrafting || !OneClickCraftingManager.isinitialized()) return;
 
         StonecutterScreen screen = (StonecutterScreen) (Object) this;
-        int selectedRecipe = screen.getMenu().getSelectedRecipe();
+        int selectedRecipe = screen.getMenu().getSelectedRecipeIndex();
         if (selectedRecipe >= 0) {
             OneClickCraftingManager.setlastbutton(1);
             OneClickCraftingManager.stonecutterrecipeclicked(screen, 1, selectedRecipe);
