@@ -268,5 +268,19 @@
   "helium.option.adaptive_chunk_scheduling.tooltip": "Reduce chunk rescheduling work when frames are already over budget. Only active when Render Pipelining is enabled.",
   "helium.option.chunk_schedule_max_per_tick": "Chunk Updates Per Frame",
   "helium.option.chunk_schedule_max_per_tick.tooltip": "Maximum queued chunk sections Helium may resubmit each frame.",
-  "helium.suffix.chunks": "%d chunks"
+  "helium.suffix.chunks": "%d chunks",
+  "helium.option.screenshot_leak_fix": "Screenshot memory leak fix",
+  "helium.option.screenshot_leak_fix.tooltip": "Release screenshot resources promptly to reduce retained memory.",
+  "helium.option.framebuffer_cleaner": "Framebuffer cleanup",
+  "helium.option.framebuffer_cleaner.tooltip": "Clean up stale framebuffer resources to reduce GPU memory pressure.",
+  "helium.option.reduce_render_distance_when_inactive": "Reduce render distance when inactive",
+  "helium.option.reduce_render_distance_when_inactive.tooltip": "Temporarily lower the render distance while Minecraft is inactive.",
+  "helium.option.inactive_render_distance": "Inactive render distance",
+  "helium.option.inactive_render_distance.tooltip": "Render distance to use while Minecraft is inactive.",
+  "helium.option.particle_lod": "Particle LOD",
+  "helium.option.particle_lod.tooltip": "Reduce distant particle update work.",
+  "helium.option.particle_lod_distance": "Particle LOD distance",
+  "helium.option.particle_lod_distance.tooltip": "Distance beyond which particle LOD reduction is applied.",
+  "helium.option.particle_lod_reduction": "Particle LOD reduction",
+  "helium.option.particle_lod_reduction.tooltip": "Percentage of distant particle updates to skip."
 }
