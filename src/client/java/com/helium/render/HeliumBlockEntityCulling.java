@@ -4,21 +4,17 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import net.caffeinemc.mods.sodium.api.blockentity.BlockEntityRenderHandler;
 import net.caffeinemc.mods.sodium.api.blockentity.BlockEntityRenderPredicate;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.core.BlockPos;
 
 public final class HeliumBlockEntityCulling {
-
-    private static volatile boolean registered = false;
+    private static volatile boolean registered;
 
     private HeliumBlockEntityCulling() {}
-
-    public static boolean isRegistered() {
-        return registered;
-    }
+    public static boolean isRegistered() { return registered; }
 
     @SuppressWarnings("unchecked")
     public static void register() {
@@ -28,10 +24,8 @@ public final class HeliumBlockEntityCulling {
         BlockEntityRenderPredicate<BlockEntity> predicate = (world, pos, entity) -> {
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.blockEntityCulling) return true;
-
             Minecraft client = Minecraft.getInstance();
             if (client.player == null) return true;
-
             double dist = client.player.blockPosition().distSqr(pos);
             double maxDist = config.blockEntityCullDistance * config.blockEntityCullDistance;
             return dist <= maxDist;
@@ -39,22 +33,20 @@ public final class HeliumBlockEntityCulling {
 
         try {
             BlockEntityRenderHandler handler = BlockEntityRenderHandler.instance();
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.CHEST, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.SIGN, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.HANGING_SIGN, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.BANNER, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.BELL, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.CAMPFIRE, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.ENCHANTING_TABLE, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.END_PORTAL, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.END_GATEWAY, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.DECORATED_POT, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.BED, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.SHULKER_BOX, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.SKULL, predicate);
-            handler.addRenderPredicate((BlockEntityType<BlockEntity>) (BlockEntityType<?>) BlockEntityType.CONDUIT, predicate);
+            String[] ids = {
+                    "chest", "sign", "hanging_sign", "banner", "bell", "campfire",
+                    "enchanting_table", "end_portal", "end_gateway", "decorated_pot",
+                    "bed", "shulker_box", "skull", "conduit"
+            };
+            for (String id : ids) {
+                BlockEntityType<?> type = BuiltInRegistries.BLOCK_ENTITY_TYPE
+                        .getValue(Identifier.withDefaultNamespace(id));
+                if (type != null) {
+                    handler.addRenderPredicate((BlockEntityType<BlockEntity>) type, predicate);
+                }
+            }
             HeliumClient.LOGGER.info("block entity culling registered via sodium api");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             HeliumClient.LOGGER.warn("failed to register block entity culling", e);
         }
     }
