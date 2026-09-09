@@ -3,6 +3,7 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.util.VersionMethodResolver;
+import com.helium.platform.RenderBackend;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import org.lwjgl.opengl.GL30;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,7 +26,7 @@ public abstract class FramebufferBlitMixin {
 
     @Inject(method = "blitToScreen()V", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$fastBlitModern(CallbackInfo ci) {
-        if (helium$failed) return;
+        if (helium$failed || !RenderBackend.isOpenGL()) return;
 
         try {
             HeliumConfig config = HeliumClient.getConfig();
