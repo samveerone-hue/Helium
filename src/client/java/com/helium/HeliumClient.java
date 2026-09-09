@@ -35,6 +35,7 @@ import com.helium.threading.EventPoller;
 import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
 import com.helium.compat.CrossLoaderCompat;
+import com.helium.compat.ExternalModCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.KeyMapping;
@@ -195,7 +196,7 @@ public class HeliumClient implements ClientModInitializer {
         }, () -> fastWorldLoadFailed = true);
 
         initFeatureSafely("FastIpPing", () -> {
-            if (config.fastIpPing) FastIpPingOptimizer.init();
+            if (config.fastIpPing && ExternalModCompat.shouldUseHeliumFastIpPing()) FastIpPingOptimizer.init();
         }, null);
 
         initFeatureSafely("ObjectDeduplication", () -> {
