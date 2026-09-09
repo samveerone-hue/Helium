@@ -5,6 +5,7 @@ import com.helium.platform.DeviceDetector;
 import com.helium.render.DisplaySyncOptimizer;
 import com.helium.render.FastWorldLoadingOptimizer;
 import com.helium.feature.FullbrightManager;
+import com.helium.platform.RenderBackend;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,7 +104,7 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.animation_throttling", true, () -> c.animationThrottling, v -> { c.animationThrottling = v; renderingdirty = true; }, IMPACT_LOW),
                 new BoolOpt("helium.option.fast_math", true, () -> c.fastMath, v -> { c.fastMath = v; renderingdirty = true; }, IMPACT_LOW),
                 new BoolOpt("helium.option.gl_state_cache", false, () -> c.glStateCache, v -> { c.glStateCache = v; renderingdirty = true; }, IMPACT_VARIES,
-                        () -> !HeliumClient.isAndroid()),
+                        () -> !HeliumClient.isAndroid() && !RenderBackend.isVulkan()),
                 new BoolOpt("helium.option.fast_animations", false, () -> c.fastAnimations, v -> { c.fastAnimations = v; renderingdirty = true; }, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.cached_enum_values", true, () -> c.cachedEnumValues, v -> { c.cachedEnumValues = v; renderingdirty = true; }, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.accelerated_text", true, () -> c.acceleratedText, v -> c.acceleratedText = v, IMPACT_MEDIUM),
@@ -294,10 +295,13 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.packet_batching", true, () -> c.packetBatching, v -> c.packetBatching = v, IMPACT_LOW),
                 new BoolOpt("helium.option.temporal_reprojection", false, () -> c.temporalReprojection, v -> c.temporalReprojection = v, IMPACT_HIGH),
                 new BoolOpt("helium.option.joml_fast_math", true, () -> c.jomlFastMath, v -> c.jomlFastMath = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.gl_context_upgrade", true, () -> c.glContextUpgrade, v -> c.glContextUpgrade = v, IMPACT_HIGH),
+                new BoolOpt("helium.option.gl_context_upgrade", true, () -> c.glContextUpgrade, v -> c.glContextUpgrade = v, IMPACT_HIGH,
+                        () -> !RenderBackend.isVulkan()),
                 new BoolOpt("helium.option.fast_random", false, () -> c.fastRandom, v -> c.fastRandom = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.direct_state_access", true, () -> c.directStateAccess, v -> c.directStateAccess = v, IMPACT_MEDIUM),
-                new BoolOpt("helium.option.renderbuffer_depth", true, () -> c.renderbufferDepth, v -> c.renderbufferDepth = v, IMPACT_LOW)
+                new BoolOpt("helium.option.direct_state_access", true, () -> c.directStateAccess, v -> c.directStateAccess = v, IMPACT_MEDIUM,
+                        () -> !RenderBackend.isVulkan()),
+                new BoolOpt("helium.option.renderbuffer_depth", true, () -> c.renderbufferDepth, v -> c.renderbufferDepth = v, IMPACT_LOW,
+                        () -> !RenderBackend.isVulkan())
         )));
 
         groups.add(new OptGroup("helium.group.crafting", List.of(
@@ -328,7 +332,8 @@ public final class HeliumSharedOptions {
 
         groups.add(new OptGroup("helium.group.performance", List.of(
                 new BoolOpt("helium.option.reflex", true, () -> c.enableReflex, v -> c.enableReflex = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.fast_blit", true, () -> c.fastFramebufferBlit, v -> c.fastFramebufferBlit = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.fast_blit", true, () -> c.fastFramebufferBlit, v -> c.fastFramebufferBlit = v, IMPACT_MEDIUM,
+                        () -> !RenderBackend.isVulkan()),
                 new BoolOpt("helium.option.suppress_gl_errors", true, () -> c.suppressOpenGLErrors, v -> c.suppressOpenGLErrors = v, IMPACT_LOW),
                 new BoolOpt("helium.option.pose_pooling", true, () -> c.poseStackPooling, v -> c.poseStackPooling = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.fast_bamboo", true, () -> c.fastBambooLight, v -> c.fastBambooLight = v, IMPACT_LOW),
