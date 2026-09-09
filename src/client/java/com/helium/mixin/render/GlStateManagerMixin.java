@@ -3,6 +3,7 @@ package com.helium.mixin.render;
 import com.helium.HeliumClient;
 import com.helium.render.GLStateCache;
 import com.helium.render.ShaderUniformCache;
+import com.helium.platform.RenderBackend;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -14,7 +15,7 @@ public abstract class GlStateManagerMixin {
 
     @Inject(method = "_activeTexture", at = @At("HEAD"), remap = false)
     private static void helium$trackActiveTexture(int texture, CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (RenderBackend.isOpenGL() && GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
             GLStateCache.setActiveTexture(texture);
         }
     }
