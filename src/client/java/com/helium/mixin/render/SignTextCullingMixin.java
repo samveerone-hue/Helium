@@ -2,7 +2,6 @@ package com.helium.mixin.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
-import com.helium.render.CullingHelper;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.StandingSignBlock;
 import net.minecraft.world.level.block.WallSignBlock;
@@ -23,59 +22,32 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(AbstractSignRenderer.class)
 public abstract class SignTextCullingMixin {
-
-    @Unique
-    private static boolean helium$failed = false;
-
-    @Unique
-    private static final double ONE_SIGN_ROTATION = Math.PI / 8.0;
+    @Unique private static boolean helium$failed;
+    @Unique private static final double ONE_SIGN_ROTATION = Math.PI / 8.0;
 
     @Inject(method = "submitSignText", at = @At("HEAD"), cancellable = true, require = 0)
-    private void helium$cullsigntext(SignRenderState renderstate, PoseStack matrices,
-                                      SubmitNodeCollector queue,
-                                      SignText text, CallbackInfo ci) {
+    private void helium$cullsigntext(SignRenderState renderstate, PoseStack matrices, SubmitNodeCollector queue, SignText text, CallbackInfo ci) {
         if (helium$failed) return;
         try {
             boolean front = text == renderstate.frontText;
             HeliumConfig config = HeliumClient.getConfig();
             if (config == null || !config.modEnabled || !config.signTextCulling) return;
-
             BlockPos pos = renderstate.blockPos;
             if (pos == null) return;
-
             Minecraft client = Minecraft.getInstance();
-            if (client.level == null || client.gameRenderer == null) return;
-
-            Vec3 camerapos = client.gameRenderer.getMainCamera().position();
-            if (camerapos == null) return;
-
+            if (client.level == null || client.gameRenderer == null || client.gameRenderer.mainCamera() == null) return;
+            Vec3 camerapos = client.gameRenderer.mainCamera().position();
             BlockState blockstate = client.level.getBlockState(pos);
-            if (blockstate == null) return;
-
             if (blockstate.hasProperty(WallSignBlock.FACING)) {
                 Direction facing = blockstate.getValue(WallSignBlock.FACING);
-                Vec3 signpos = Vec3.atCenterOf(pos).subtract(
-                        facing.getStepX() * 0.39, 0, facing.getStepZ() * 0.39
-                );
-                boolean hidden = helium$shouldhidewallsigntext(facing, signpos, camerapos);
-                if (front == hidden) {
-                    ci.cancel();
-                    return;
-                }
+                Vec3 signpos = Vec3.atCenterOf(pos).subtract(facing.getStepX() * 0.39, 0, facing.getStepZ() * 0.39);
+                if (front == helium$shouldhidewallsigntext(facing, signpos, camerapos)) { ci.cancel(); return; }
             } else if (blockstate.hasProperty(StandingSignBlock.ROTATION)) {
                 int rotation = blockstate.getValue(StandingSignBlock.ROTATION);
                 double angle = rotation * ONE_SIGN_ROTATION;
                 Vec3 signpos = Vec3.atCenterOf(pos);
-                if (front) {
-                    if (helium$isbehindline(angle, signpos, camerapos)) {
-                        ci.cancel();
-                        return;
-                    }
-                } else {
-                    if (helium$isbehindline(angle, camerapos, signpos)) {
-                        ci.cancel();
-                        return;
-                    }
+                if (front ? helium$isbehindline(angle, signpos, camerapos) : helium$isbehindline(angle, camerapos, signpos)) {
+                    ci.cancel();
                 }
             }
         } catch (Throwable t) {
@@ -86,8 +58,7 @@ public abstract class SignTextCullingMixin {
         }
     }
 
-    @Unique
-    private static boolean helium$shouldhidewallsigntext(Direction facing, Vec3 signpos, Vec3 camerapos) {
+    @Unique private static boolean helium$shouldhidewallsigntext(Direction facing, Vec3 signpos, Vec3 camerapos) {
         return switch (facing) {
             case NORTH -> camerapos.z > signpos.z;
             case SOUTH -> camerapos.z < signpos.z;
@@ -97,11 +68,8 @@ public abstract class SignTextCullingMixin {
         };
     }
 
-    @Unique
-    private static boolean helium$isbehindline(double angle, Vec3 a, Vec3 b) {
-        double dx = b.x - a.x;
-        double dz = b.z - a.z;
-        double lineangle = Math.atan2(-dz, dx);
+    @Unique private static boolean helium$isbehindline(double angle, Vec3 a, Vec3 b) {
+        double lineangle = Math.atan2(-(b.z - a.z), b.x - a.x);
         double diff = lineangle - angle;
         diff = ((diff + Math.PI) % (2 * Math.PI) + (2 * Math.PI)) % (2 * Math.PI) - Math.PI;
         return diff > 0;
