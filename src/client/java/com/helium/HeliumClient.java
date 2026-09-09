@@ -105,7 +105,7 @@ public class HeliumClient implements ClientModInitializer {
         detectCompatibleMods();
 
         initFeatureSafely("FastMath", () -> {
-            if (config.fastMath) FastMath.init();
+            if (config.fastMath && ExternalModCompat.shouldUseHeliumFastMath()) FastMath.init();
         }, () -> fastMathFailed = true);
 
         initFeatureSafely("MemoryOptimizations", () -> {
