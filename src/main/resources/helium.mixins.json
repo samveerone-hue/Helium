@@ -94,10 +94,9 @@
     "dedup.ComposterEmptyMixin",
     "dedup.ComposterInputMixin",
     "dedup.ComposterOutputMixin",
-    "render.LevelRendererChunkPipelineMixin",
-    "render.WorldRendererInvoker",
     "particle.ParticleLifecycleMixin",
-    "crafting.StonecutterScreenCraftingMixin"
+    "crafting.StonecutterScreenCraftingMixin",
+    "net.minecraft.client.renderer.chunk.HeliumSectionRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 0
