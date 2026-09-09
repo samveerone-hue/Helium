@@ -17,26 +17,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPlayNetworkHandlerCraftingMixin {
-
     @Inject(at = @At("TAIL"), method = "handleContainerSetSlot(Lnet/minecraft/network/protocol/game/ClientboundContainerSetSlotPacket;)V", require = 0)
     private void helium$onScreenHandlerSlotUpdate(ClientboundContainerSetSlotPacket packet, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
-        if (config == null || !config.oneClickCrafting) return;
-        if (!OneClickCraftingManager.isinitialized()) return;
-
-        Screen screen = Minecraft.getInstance().screen;
+        if (config == null || !config.oneClickCrafting || !OneClickCraftingManager.isinitialized()) return;
+        Screen screen = Minecraft.getInstance().gui.screen();
         if (screen == null) {
             OneClickCraftingManager.reset();
             return;
         }
         if (screen instanceof CraftingScreen || screen instanceof InventoryScreen) {
-            if (packet.getSlot() == 0 && packet.getItem() != null) {
-                OneClickCraftingManager.onresultslotupdated(packet.getItem());
-            }
+            if (packet.getSlot() == 0 && packet.getItem() != null) OneClickCraftingManager.onresultslotupdated(packet.getItem());
         } else if (screen instanceof StonecutterScreen) {
-            if (packet.getSlot() == 1 && packet.getItem() != null) {
-                OneClickCraftingManager.onstonecutterresultupdated(packet.getItem());
-            }
+            if (packet.getSlot() == 1 && packet.getItem() != null) OneClickCraftingManager.onstonecutterresultupdated(packet.getItem());
         }
     }
 }
