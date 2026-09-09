@@ -2,7 +2,10 @@ package com.helium.mixin.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.compat.ExternalModCompat;
+import com.helium.render.AsyncChunkMeshing;
 import com.helium.render.DevModeOptimizer;
+import com.helium.render.RenderBatch;
 import com.helium.render.RenderPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -37,7 +40,15 @@ public abstract class WorldRendererPipelineMixin {
                 RenderPipeline.setTargetFps(maxFps);
             }
 
-            RenderPipeline.onFrameStart();
+            LevelRenderer renderer = (LevelRenderer) (Object) this;
+            var camera = client.gameRenderer.getMainCamera();
+            if (camera != null) AsyncChunkMeshing.updateCamera(camera.getPosition());
+            RenderBatch.beginFrame();
+            AsyncChunkMeshing.drainQueue(renderer, AsyncChunkMeshing.getDrainBudget(config.chunkScheduleMaxPerTick));
+
+            if (ExternalModCompat.shouldUseHeliumFramePacing()) {
+                RenderPipeline.onFrameStart();
+            }
         } catch (Throwable t) {
             helium$failed = true;
             HeliumClient.LOGGER.warn("render pipeline hook disabled ({})", t.getClass().getSimpleName());
@@ -52,7 +63,9 @@ public abstract class WorldRendererPipelineMixin {
             if (config == null || !config.modEnabled || !config.renderPipelining) return;
             if (!RenderPipeline.isInitialized()) return;
 
-            RenderPipeline.onFrameEnd();
+            if (ExternalModCompat.shouldUseHeliumFramePacing()) {
+                RenderPipeline.onFrameEnd();
+            }
         } catch (Throwable ignored) {}
     }
 }
