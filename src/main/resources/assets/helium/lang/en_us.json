@@ -267,5 +267,6 @@
   "helium.option.adaptive_chunk_scheduling": "Adaptive Chunk Scheduling",
   "helium.option.adaptive_chunk_scheduling.tooltip": "Reduce chunk rescheduling work when frames are already over budget. Only active when Render Pipelining is enabled.",
   "helium.option.chunk_schedule_max_per_tick": "Chunk Updates Per Frame",
-  "helium.option.chunk_schedule_max_per_tick.tooltip": "Maximum queued chunk sections Helium may resubmit each frame."
+  "helium.option.chunk_schedule_max_per_tick.tooltip": "Maximum queued chunk sections Helium may resubmit each frame.",
+  "helium.suffix.chunks": "%d chunks"
 }
