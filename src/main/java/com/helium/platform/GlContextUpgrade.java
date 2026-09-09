@@ -4,6 +4,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.helium.platform.RenderBackend;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -15,6 +17,10 @@ public final class GlContextUpgrade {
     private GlContextUpgrade() {}
 
     public static boolean isEnabled() {
+        if (RenderBackend.isVulkan()) {
+            enabled = false;
+            return false;
+        }
         if (enabled != null) return enabled;
 
         if (FabricLoader.getInstance().isModLoaded("threatengl") || FabricLoader.getInstance().isModLoaded("catalyst")) {
