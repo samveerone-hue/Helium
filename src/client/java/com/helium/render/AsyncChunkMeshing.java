@@ -5,6 +5,7 @@ import com.helium.config.HeliumConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
+import java.lang.reflect.Method;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -16,28 +17,40 @@ import java.util.concurrent.PriorityBlockingQueue;
  */
 public final class AsyncChunkMeshing {
     private static final int MAX_PENDING = 16_384;
-    private static final PriorityBlockingQueue<SectionRenderDispatcher.RenderSection.CompileTask> PENDING =
+    private static final PriorityBlockingQueue<Object> PENDING =
             new PriorityBlockingQueue<>();
     private static final ThreadLocal<Boolean> BYPASS = ThreadLocal.withInitial(() -> false);
 
     private AsyncChunkMeshing() {}
 
-    public static boolean queue(SectionRenderDispatcher.RenderSection.CompileTask task) {
+    public static boolean queue(Object task) {
         if (task == null) return false;
         if (PENDING.size() >= MAX_PENDING) return false;
         return PENDING.offer(task);
     }
 
+    private static volatile Method SCHEDULE;
     public static int drainQueue(SectionRenderDispatcher dispatcher, int maxPerFrame) {
         if (dispatcher == null || maxPerFrame <= 0) return 0;
         int count = 0;
         BYPASS.set(true);
         try {
             while (count < Math.min(maxPerFrame, 64)) {
-                SectionRenderDispatcher.RenderSection.CompileTask task = PENDING.poll();
+                Object task = PENDING.poll();
                 if (task == null) break;
-                dispatcher.schedule(task);
-                count++;
+                try {
+                    Method method = SCHEDULE;
+                    if (method == null) {
+                        method = SectionRenderDispatcher.class.getDeclaredMethod("schedule", task.getClass().getSuperclass());
+                        method.setAccessible(true);
+                        SCHEDULE = method;
+                    }
+                    method.invoke(dispatcher, task);
+                    count++;
+                } catch (ReflectiveOperationException e) {
+                    PENDING.offer(task);
+                    break;
+                }
             }
         } finally {
             BYPASS.set(false);
