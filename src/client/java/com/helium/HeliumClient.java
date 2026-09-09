@@ -19,6 +19,7 @@ import com.helium.memory.ObjectPool;
 import com.helium.network.FastIpPingOptimizer;
 import com.helium.network.PacketBatcher;
 import com.helium.platform.DeviceDetector;
+import com.helium.platform.RenderBackend;
 import com.helium.render.DevModeOptimizer;
 import com.helium.render.EnumValueCache;
 import com.helium.render.FastAnimationOptimizer;
@@ -116,7 +117,8 @@ public class HeliumClient implements ClientModInitializer {
         }, () -> memoryOptsFailed = true);
 
         initFeatureSafely("GLStateCache", () -> {
-            if (config.glStateCache && !hasImmediatelyFast) {
+            RenderBackend.detect();
+            if (config.glStateCache && RenderBackend.isOpenGL() && !hasImmediatelyFast) {
                 GLStateCache.init();
             } else if (hasImmediatelyFast) {
                 LOGGER.info("gl state cache disabled - ImmediatelyFast handles this");
@@ -211,7 +213,8 @@ public class HeliumClient implements ClientModInitializer {
         }, null);
 
         initFeatureSafely("DSA", () -> {
-            if (config.directStateAccess) {
+            RenderBackend.detect();
+            if (config.directStateAccess && RenderBackend.isOpenGL()) {
                 LOGGER.info("dsa feature enabled - caps will be queried on render thread");
             }
         }, null);
@@ -267,8 +270,11 @@ public class HeliumClient implements ClientModInitializer {
     }
 
     private void initDeferredGpuFeatures() {
+        initFeatureSafely("RenderBackend", RenderBackend::detect, null);
+
         initFeatureSafely("GLCaps", () -> {
-            com.helium.gpu.GBGL.initcaps();
+            RenderBackend.detect();
+            if (RenderBackend.isOpenGL()) com.helium.gpu.GBGL.initcaps();
         }, null);
 
         initFeatureSafely("RenderThreadPriority", () -> {
