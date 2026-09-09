@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Bounds admission to Minecraft 26.1.2's native section compile queue without
- * replacing its CompileTask priority model.
+ * replacing its CompileTask priority model. The task stays opaque here because
+ * the mapped CompileTask is package-private inside the vanilla dispatcher.
  */
 @Mixin(SectionRenderDispatcher.class)
 public abstract class HeliumSectionRenderDispatcherMixin {
