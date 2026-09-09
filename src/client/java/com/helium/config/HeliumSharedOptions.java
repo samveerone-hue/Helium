@@ -168,7 +168,10 @@ public final class HeliumSharedOptions {
                 }, IMPACT_LOW),
                 new BoolOpt("helium.option.reduced_allocations", true, () -> c.reducedAllocations, v -> c.reducedAllocations = v, IMPACT_LOW),
                 new BoolOpt("helium.option.network_optimizations", false, () -> c.networkOptimizations, v -> c.networkOptimizations = v, IMPACT_LOW),
-                new BoolOpt("helium.option.object_deduplication", true, () -> c.objectDeduplication, v -> c.objectDeduplication = v, IMPACT_MEDIUM)
+                new BoolOpt("helium.option.object_deduplication", true, () -> c.objectDeduplication, v -> c.objectDeduplication = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.auto_pause_on_idle", false, () -> c.autoPauseOnIdle, v -> c.autoPauseOnIdle = v, IMPACT_LOW),
+                new IntOpt("helium.option.idle_timeout", 60, 10, 300, 10, "helium.suffix.seconds", () -> c.idleTimeoutSeconds, v -> c.idleTimeoutSeconds = v, IMPACT_LOW),
+                new IntOpt("helium.option.idle_fps_limit", 5, 1, 30, 1, "helium.suffix.fps", () -> c.idleFpsLimit, v -> c.idleFpsLimit = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.visual", List.of(
@@ -327,13 +330,17 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.suppress_gl_errors", true, () -> c.suppressOpenGLErrors, v -> c.suppressOpenGLErrors = v, IMPACT_LOW),
                 new BoolOpt("helium.option.pose_pooling", true, () -> c.poseStackPooling, v -> c.poseStackPooling = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.fast_bamboo", false, () -> c.fastBambooLight, v -> c.fastBambooLight = v, IMPACT_LOW),
-                new BoolOpt("helium.option.optimized_light", true, () -> c.optimizedLightEngine, v -> c.optimizedLightEngine = v, IMPACT_MEDIUM)
+                new BoolOpt("helium.option.optimized_light", true, () -> c.optimizedLightEngine, v -> c.optimizedLightEngine = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.screenshot_leak_fix", true, () -> c.screenshotLeakFix, v -> c.screenshotLeakFix = v, IMPACT_LOW),
+                new BoolOpt("helium.option.framebuffer_cleaner", true, () -> c.framebufferCleaner, v -> c.framebufferCleaner = v, IMPACT_MEDIUM)
         )));
 
         groups.add(new OptGroup("helium.group.idle", List.of(
                 new BoolOpt("helium.option.inactive_fps", true, () -> c.reduceFpsWhenInactive, v -> c.reduceFpsWhenInactive = v, IMPACT_LOW),
                 new IntOpt("helium.option.inactive_fps_limit", 10, 1, 60, 1, "helium.suffix.fps",
-                        () -> c.inactiveFpsLimit, v -> c.inactiveFpsLimit = v, IMPACT_LOW)
+                        () -> c.inactiveFpsLimit, v -> c.inactiveFpsLimit = v, IMPACT_LOW),
+                new BoolOpt("helium.option.reduce_render_distance_when_inactive", false, () -> c.reduceRenderDistanceWhenInactive, v -> c.reduceRenderDistanceWhenInactive = v, IMPACT_LOW),
+                new IntOpt("helium.option.inactive_render_distance", 4, 2, 32, 1, "helium.suffix.chunks", () -> c.inactiveRenderDistance, v -> c.inactiveRenderDistance = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.misc", List.of(
