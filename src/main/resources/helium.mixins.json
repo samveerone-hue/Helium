@@ -96,7 +96,8 @@
     "dedup.ComposterOutputMixin",
     "render.LevelRendererChunkPipelineMixin",
     "render.WorldRendererInvoker",
-    "particle.ParticleLifecycleMixin"
+    "particle.ParticleLifecycleMixin",
+    "crafting.StonecutterScreenCraftingMixin"
   ],
   "injectors": {
     "defaultRequire": 0
