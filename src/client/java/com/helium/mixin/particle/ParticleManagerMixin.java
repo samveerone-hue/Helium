@@ -2,6 +2,7 @@ package com.helium.mixin.particle;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.compat.ExternalModCompat;
 import com.helium.particle.ParticleBatcher;
 import com.helium.particle.ParticleLimiter;
 import com.helium.threading.ParticleWorkerPool;
@@ -41,7 +42,7 @@ public abstract class ParticleManagerMixin {
     @Inject(method = "tick", at = @At("HEAD"))
     private void helium$initParticlePool(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
-        if (config == null) return;
+        if (config == null || ExternalModCompat.hasAsyncParticles()) return;
 
         if (config.threadOptimizations && !ParticleWorkerPool.isInitialized()) {
             ParticleWorkerPool.init(Math.max(2, Runtime.getRuntime().availableProcessors() / 2));
@@ -126,7 +127,7 @@ public abstract class ParticleManagerMixin {
                 if (particleCollection == null) continue;
 
                 for (Particle particle : particleCollection) {
-                    if (!helium$shouldApplyLOD(particle)) continue;
+                    if (!ParticleLodClassifier.shouldApply(particle.getClass())) continue;
 
                     double dx = particle.getBoundingBox().getCenter().x - camPos.x;
                     double dy = particle.getBoundingBox().getCenter().y - camPos.y;
@@ -174,7 +175,7 @@ public abstract class ParticleManagerMixin {
     @Unique
     private void helium$cullDistantParticlesInternal(Particle particle, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
-        if (config == null || !config.modEnabled) return;
+        if (config == null || !config.modEnabled || ExternalModCompat.hasAsyncParticles()) return;
 
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
