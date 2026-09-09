@@ -1,6 +1,7 @@
 package com.helium.network;
 
 import com.helium.HeliumClient;
+import com.helium.compat.ExternalModCompat;
 
 import java.lang.reflect.Field;
 import java.net.InetAddress;
@@ -21,6 +22,10 @@ public final class FastIpPingOptimizer {
     private FastIpPingOptimizer() {}
 
     public static void init() {
+        if (!ExternalModCompat.shouldUseHeliumFastIpPing()) {
+            HeliumClient.LOGGER.info("fast ip ping disabled - another server-ping optimizer is active");
+            return;
+        }
         try {
             holderField = InetAddress.class.getDeclaredField("holder");
             holderField.setAccessible(true);
@@ -53,7 +58,7 @@ public final class FastIpPingOptimizer {
     }
 
     public static void patchAddress(InetSocketAddress socketAddr) {
-        if (!initialized || socketAddr == null) return;
+        if (!initialized || socketAddr == null || !ExternalModCompat.shouldUseHeliumFastIpPing()) return;
 
         InetAddress addr = socketAddr.getAddress();
         if (addr == null) return;
