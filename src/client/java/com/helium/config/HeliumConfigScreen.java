@@ -70,27 +70,7 @@ public final class HeliumConfigScreen {
                     addsharedentry(eb, groupentries, opt);
                 }
 
-                if (page.key().equals("helium.page.general") && group.key().equals("helium.group.engine")) {
-                    groupentries.add(eb.startBooleanToggle(Text.translatable("helium.option.auto_pause_on_idle"), config.autoPauseOnIdle)
-                            .setDefaultValue(defaults.autoPauseOnIdle)
-                            .setTooltip(Text.translatable("helium.option.auto_pause_on_idle.tooltip"))
-                            .setSaveConsumer(v -> config.autoPauseOnIdle = v)
-                            .build());
-                    groupentries.add(eb.startIntSlider(Text.translatable("helium.option.idle_timeout"), config.idleTimeoutSeconds, 10, 300)
-                            .setDefaultValue(defaults.idleTimeoutSeconds)
-                            .setTooltip(Text.translatable("helium.option.idle_timeout.tooltip"))
-                            .setTextGetter(v -> Text.translatable("helium.suffix.seconds", v))
-                            .setSaveConsumer(v -> { config.idleTimeoutSeconds = v; if (IdleManager.isInitialized()) IdleManager.setTimeoutSeconds(v); })
-                            .build());
-                    groupentries.add(eb.startIntSlider(Text.translatable("helium.option.idle_fps_limit"), config.idleFpsLimit, 1, 30)
-                            .setDefaultValue(defaults.idleFpsLimit)
-                            .setTooltip(Text.translatable("helium.option.idle_fps_limit.tooltip"))
-                            .setTextGetter(v -> Text.translatable("helium.suffix.fps", v))
-                            .setSaveConsumer(v -> { config.idleFpsLimit = v; if (IdleManager.isInitialized()) IdleManager.setIdleFpsLimit(v); })
-                            .build());
-                }
-
-                SubCategoryListEntry subcat = eb.startSubCategory(Text.translatable(group.key()), groupentries)
+                                SubCategoryListEntry subcat = eb.startSubCategory(Text.translatable(group.key()), groupentries)
                         .setExpanded(true)
                         .build();
                 cat.addEntry(subcat);
