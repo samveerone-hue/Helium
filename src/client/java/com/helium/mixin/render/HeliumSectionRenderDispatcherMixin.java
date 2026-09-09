@@ -1,4 +1,4 @@
-package net.minecraft.client.renderer.chunk;
+package com.helium.mixin.render;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
@@ -17,7 +17,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class HeliumSectionRenderDispatcherMixin {
     @Inject(method = "schedule", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$interceptCompileSchedule(
-            SectionRenderDispatcher.RenderSection.CompileTask task,
+            Object task,
             CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.renderPipelining) return;
