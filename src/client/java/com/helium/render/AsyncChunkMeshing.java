@@ -14,9 +14,9 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 /** Bounded, camera-prioritized chunk scheduling layer for Minecraft 26.1.2. */
 public final class AsyncChunkMeshing {
-    private static final PriorityBlockingQueue<ChunkTask> PENDING =
-            new PriorityBlockingQueue<>(256, Comparator.comparingDouble(ChunkTask::priority));
-    private static final ConcurrentHashMap<Long, ChunkTask> QUEUED = new ConcurrentHashMap<>();
+    private static final PriorityBlockingQueue<ChunkPool.Task> PENDING =
+            new PriorityBlockingQueue<>(256, Comparator.comparingDouble(ChunkPool.Task::priority));
+    private static final ConcurrentHashMap<Long, ChunkPool.Task> QUEUED = new ConcurrentHashMap<>();
     private static volatile Vec3 cameraPos = Vec3.ZERO;
     private static volatile long cameraChunkKey;
     private static volatile boolean bypassing;
@@ -32,10 +32,10 @@ public final class AsyncChunkMeshing {
     public static boolean queue(int x, int y, int z, boolean important) {
         long key = ChunkPosUtil.packPos(x, y, z);
         synchronized (AsyncChunkMeshing.class) {
-            ChunkTask existing = QUEUED.get(key);
+            ChunkPool.Task existing = QUEUED.get(key);
             if (existing != null) {
                 if (!important || existing.important()) return true;
-                ChunkTask upgraded = new ChunkTask(x, y, z, calculatePriority(x, y, z, true), true);
+                ChunkPool.Task upgraded = ChunkPool.borrow(x, y, z, calculatePriority(x, y, z, true), true);
                 if (QUEUED.replace(key, existing, upgraded)) {
                     PENDING.remove(existing);
                     PENDING.offer(upgraded);
@@ -44,7 +44,7 @@ public final class AsyncChunkMeshing {
                 return false;
             }
             if (QUEUED.size() >= 8192) return false;
-            ChunkTask task = new ChunkTask(x, y, z, calculatePriority(x, y, z, important), important);
+            ChunkPool.Task task = ChunkPool.borrow(x, y, z, calculatePriority(x, y, z, important), important);
             QUEUED.put(key, task);
             PENDING.offer(task);
             return true;
@@ -58,10 +58,12 @@ public final class AsyncChunkMeshing {
     }
 
     private static ChunkScheduler.ChunkEntry dequeue() {
-        ChunkTask task = PENDING.poll();
+        ChunkPool.Task task = PENDING.poll();
         if (task == null) return null;
         QUEUED.remove(ChunkPosUtil.packPos(task.x(), task.y(), task.z()), task);
-        return new ChunkScheduler.ChunkEntry(task.x(), task.y(), task.z(), task.important());
+        ChunkScheduler.ChunkEntry entry = new ChunkScheduler.ChunkEntry(task.x(), task.y(), task.z(), task.important());
+        ChunkPool.release(task);
+        return entry;
     }
 
     public static int getDrainBudget(int configured) {
@@ -97,6 +99,4 @@ public final class AsyncChunkMeshing {
         double distSq = (double) dx * dx + (double) dy * dy + (double) dz * dz;
         return important ? distSq * 0.5D : distSq;
     }
-
-    public record ChunkTask(int x, int y, int z, double priority, boolean important) {}
 }
