@@ -93,7 +93,10 @@
     "dedup.WeightedBakedModelDedupMixin",
     "dedup.ComposterEmptyMixin",
     "dedup.ComposterInputMixin",
-    "dedup.ComposterOutputMixin"
+    "dedup.ComposterOutputMixin",
+    "render.LevelRendererChunkPipelineMixin",
+    "render.WorldRendererInvoker",
+    "particle.ParticleLifecycleMixin"
   ],
   "injectors": {
     "defaultRequire": 0
