@@ -127,7 +127,7 @@ public abstract class ParticleManagerMixin {
                 if (particleCollection == null) continue;
 
                 for (Particle particle : particleCollection) {
-                    if (!ParticleLodClassifier.shouldApply(particle.getClass())) continue;
+                    if (!helium$shouldApplyLOD(particle)) continue;
 
                     double dx = particle.getBoundingBox().getCenter().x - camPos.x;
                     double dy = particle.getBoundingBox().getCenter().y - camPos.y;
