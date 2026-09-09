@@ -263,5 +263,9 @@
   "helium.option.renderbuffer_depth.tooltip": "Use a Renderbuffer Object for depth attachment instead of a texture. Slightly faster for depth-only operations. Incompatible with Iris shaders. Requires game restart.",
   "helium.group.crafting": "Crafting",
   "helium.option.one_click_crafting": "One Click Crafting",
-  "helium.option.one_click_crafting.tooltip": "Automatically shift-click crafted items from the result slot into your inventory when using the recipe book. Also works with the stonecutter. Right-click a recipe to craft one, shift-click to craft a stack, hold drop key to drop instead."
+  "helium.option.one_click_crafting.tooltip": "Automatically shift-click crafted items from the result slot into your inventory when using the recipe book. Also works with the stonecutter. Right-click a recipe to craft one, shift-click to craft a stack, hold drop key to drop instead.",
+  "helium.option.adaptive_chunk_scheduling": "Adaptive Chunk Scheduling",
+  "helium.option.adaptive_chunk_scheduling.tooltip": "Reduce chunk rescheduling work when frames are already over budget. Only active when Render Pipelining is enabled.",
+  "helium.option.chunk_schedule_max_per_tick": "Chunk Updates Per Frame",
+  "helium.option.chunk_schedule_max_per_tick.tooltip": "Maximum queued chunk sections Helium may resubmit each frame."
 }
