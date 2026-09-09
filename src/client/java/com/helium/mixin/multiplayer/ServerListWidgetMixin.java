@@ -1,6 +1,7 @@
 package com.helium.mixin.multiplayer;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.helium.compat.ExternalModCompat;
+import com.helium.network.FastServerPingHelper;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
@@ -14,7 +15,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Mixin(ServerSelectionList.class)
@@ -38,7 +38,7 @@ public abstract class ServerListWidgetMixin {
     @Inject(method = "<init>", at = @At("TAIL"))
     private void helium$initPingerPool(CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
-        if (config == null || !config.modEnabled || !config.fastServerPing) return;
+        if (config == null || !config.modEnabled || !config.fastServerPing || !ExternalModCompat.shouldUseHeliumServerPings()) return;
 
         if (!helium$poolInitialized) {
             helium$poolInitialized = true;
@@ -63,14 +63,6 @@ public abstract class ServerListWidgetMixin {
         } catch (Exception ignored) {}
 
         int serverCount = onlineServers != null ? onlineServers.size() : 0;
-        int poolSize = Math.max(serverCount + HELIUM_THREAD_OVERHEAD, Runtime.getRuntime().availableProcessors());
-
-        THREAD_POOL = new ScheduledThreadPoolExecutor(
-                poolSize,
-                new ThreadFactoryBuilder()
-                        .setNameFormat("Helium-ServerPinger-%d")
-                        .setDaemon(true)
-                        .build()
-        );
+        THREAD_POOL = FastServerPingHelper.createExecutor(serverCount);
     }
 }
