@@ -1,5 +1,7 @@
 package com.helium.memory;
 
+import com.helium.render.ChunkVertexHeap;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -35,6 +37,7 @@ public final class BufferPool {
             }
         }
 
+        if (minCapacity >= 65536) return ChunkVertexHeap.borrow(minCapacity);
         int size = bucketIndex >= 0 ? BUCKET_SIZES[bucketIndex] : minCapacity;
         return ByteBuffer.allocateDirect(size).order(ByteOrder.nativeOrder());
     }
@@ -43,6 +46,7 @@ public final class BufferPool {
         if (buffer == null || !buffer.isDirect()) return;
 
         int capacity = buffer.capacity();
+        if (capacity >= 65536) { ChunkVertexHeap.release(buffer); return; }
         int bucketIndex = findExactBucket(capacity);
         if (bucketIndex >= 0 && BUCKETS[bucketIndex] != null && BUCKET_COUNTS[bucketIndex] != null) {
             if (BUCKET_COUNTS[bucketIndex].get() < maxPerBucket) {
