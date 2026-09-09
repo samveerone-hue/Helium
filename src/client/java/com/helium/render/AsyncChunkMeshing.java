@@ -8,18 +8,17 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
-
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
-/** Bounded, camera-prioritized chunk scheduling layer for 26.1.2. */
+/** Bounded, camera-prioritized chunk scheduling layer for Minecraft 26.1.2. */
 public final class AsyncChunkMeshing {
     private static final PriorityBlockingQueue<ChunkTask> PENDING =
             new PriorityBlockingQueue<>(256, Comparator.comparingDouble(ChunkTask::priority));
     private static final ConcurrentHashMap<Long, ChunkTask> QUEUED = new ConcurrentHashMap<>();
     private static volatile Vec3 cameraPos = Vec3.ZERO;
-    private static volatile long cameraChunkKey = 0L;
+    private static volatile long cameraChunkKey;
     private static volatile boolean bypassing;
 
     private AsyncChunkMeshing() {}
@@ -27,9 +26,7 @@ public final class AsyncChunkMeshing {
     public static void updateCamera(Vec3 pos) {
         if (pos == null) return;
         cameraPos = pos;
-        int cx = Mth.floor(pos.x / 16.0D);
-        int cz = Mth.floor(pos.z / 16.0D);
-        cameraChunkKey = ChunkPosUtil.packPos(cx, 0, cz);
+        cameraChunkKey = ChunkPosUtil.packPos(Mth.floor(pos.x / 16.0D), 0, Mth.floor(pos.z / 16.0D));
     }
 
     public static boolean queue(int x, int y, int z, boolean important) {
@@ -38,8 +35,7 @@ public final class AsyncChunkMeshing {
             ChunkTask existing = QUEUED.get(key);
             if (existing != null) {
                 if (!important || existing.important()) return true;
-                ChunkTask upgraded = new ChunkTask(
-                        x, y, z, calculatePriority(x, y, z, true), true);
+                ChunkTask upgraded = new ChunkTask(x, y, z, calculatePriority(x, y, z, true), true);
                 if (QUEUED.replace(key, existing, upgraded)) {
                     PENDING.remove(existing);
                     PENDING.offer(upgraded);
@@ -72,8 +68,13 @@ public final class AsyncChunkMeshing {
         int max = Math.max(1, Math.min(configured, 64));
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.adaptiveChunkScheduling || !RenderPipeline.isInitialized()) return max;
+        int targetFps = 60;
+        Minecraft client = Minecraft.getInstance();
+        if (client != null && client.options.framerateLimit().get() > 0) {
+            targetFps = client.options.framerateLimit().get();
+        }
+        double budgetMs = 1000.0 / Math.max(1, targetFps);
         double frameMs = RenderPipeline.getSmoothedFrameTimeMs();
-        double budgetMs = 1000.0 / Math.max(1, Minecraft.getInstance().options.framerateLimit().get());
         if (frameMs <= budgetMs) return max;
         return Math.max(1, (int) Math.floor(max * Math.max(0.25, budgetMs / frameMs)));
     }
@@ -90,15 +91,12 @@ public final class AsyncChunkMeshing {
     }
 
     private static double calculatePriority(int x, int y, int z, boolean important) {
-        long dx = (long) x - unpackCameraX();
-        long dz = (long) z - unpackCameraZ();
+        long dx = (long) x - ChunkPosUtil.unpackX(cameraChunkKey);
+        long dz = (long) z - ChunkPosUtil.unpackZ(cameraChunkKey);
         long dy = (long) y - Mth.floor(cameraPos.y / 16.0D);
         double distSq = (double) dx * dx + (double) dy * dy + (double) dz * dz;
         return important ? distSq * 0.5D : distSq;
     }
-
-    private static int unpackCameraX() { return ChunkPosUtil.unpackX(cameraChunkKey); }
-    private static int unpackCameraZ() { return ChunkPosUtil.unpackZ(cameraChunkKey); }
 
     public record ChunkTask(int x, int y, int z, double priority, boolean important) {}
 }
