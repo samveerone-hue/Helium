@@ -41,10 +41,14 @@ public abstract class WorldRendererPipelineMixin {
             }
 
             LevelRenderer renderer = (LevelRenderer) (Object) this;
-            var camera = client.gameRenderer.getMainCamera();
-            if (camera != null) AsyncChunkMeshing.updateCamera(camera.getPosition());
             RenderBatch.beginFrame();
-            AsyncChunkMeshing.drainQueue(renderer, AsyncChunkMeshing.getDrainBudget(config.chunkScheduleMaxPerTick));
+            net.minecraft.client.renderer.chunk.SectionRenderDispatcher dispatcher =
+                    renderer.getSectionRenderDispatcher();
+            if (dispatcher != null) {
+                AsyncChunkMeshing.drainQueue(
+                        dispatcher,
+                        AsyncChunkMeshing.getDrainBudget(config.chunkScheduleMaxPerTick));
+            }
 
             if (ExternalModCompat.shouldUseHeliumFramePacing()) {
                 RenderPipeline.onFrameStart();
