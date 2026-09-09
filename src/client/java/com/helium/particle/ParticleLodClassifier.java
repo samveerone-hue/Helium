@@ -2,17 +2,16 @@ package com.helium.particle;
 
 import java.util.Locale;
 
-/** Cached classification for low-visual-impact particle families. */
+/** Classifies low-visual-impact particle families once per implementation class. */
 public final class ParticleLodClassifier {
-    private static final ClassValue<Boolean> LOD_TYPES = new ClassValue<>() {
+    private static final ClassValue<Boolean> TYPES = new ClassValue<>() {
         @Override protected Boolean computeValue(Class<?> type) {
-            String name = type.getName().toLowerCase(Locale.ROOT);
-            return name.contains("rain") || name.contains("snow")
-                    || name.contains("cloud") || name.contains("ash")
-                    || name.contains("drip") || name.contains("spore")
-                    || name.contains("smoke") || name.contains("dust");
+            String n = type.getName().toLowerCase(Locale.ROOT);
+            return n.contains("rain") || n.contains("snow") || n.contains("cloud")
+                    || n.contains("ash") || n.contains("drip") || n.contains("spore")
+                    || n.contains("smoke") || n.contains("dust");
         }
     };
     private ParticleLodClassifier() {}
-    public static boolean shouldApply(Class<?> type) { return type != null && LOD_TYPES.get(type); }
+    public static boolean shouldApply(Class<?> type) { return type != null && TYPES.get(type); }
 }
