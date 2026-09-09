@@ -289,13 +289,13 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.temporal_reprojection", false, () -> c.temporalReprojection, v -> c.temporalReprojection = v, IMPACT_HIGH),
                 new BoolOpt("helium.option.joml_fast_math", true, () -> c.jomlFastMath, v -> c.jomlFastMath = v, IMPACT_HIGH),
                 new BoolOpt("helium.option.gl_context_upgrade", true, () -> c.glContextUpgrade, v -> c.glContextUpgrade = v, IMPACT_HIGH),
-                new BoolOpt("helium.option.fast_random", true, () -> c.fastRandom, v -> c.fastRandom = v, IMPACT_MEDIUM),
+                new BoolOpt("helium.option.fast_random", false, () -> c.fastRandom, v -> c.fastRandom = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.direct_state_access", true, () -> c.directStateAccess, v -> c.directStateAccess = v, IMPACT_MEDIUM),
                 new BoolOpt("helium.option.renderbuffer_depth", true, () -> c.renderbufferDepth, v -> c.renderbufferDepth = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.crafting", List.of(
-                new BoolOpt("helium.option.one_click_crafting", true, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
+                new BoolOpt("helium.option.one_click_crafting", false, () -> c.oneClickCrafting, v -> c.oneClickCrafting = v, IMPACT_LOW)
         )));
 
         groups.add(new OptGroup("helium.group.gpu_specific", List.of(
