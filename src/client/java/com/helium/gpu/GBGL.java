@@ -2,6 +2,7 @@ package com.helium.gpu;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.platform.RenderBackend;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -29,6 +30,11 @@ public final class GBGL {
 
     public static void initcaps() {
         if (capsinitialized) return;
+        RenderBackend.detect();
+        if (!RenderBackend.isOpenGL()) {
+            capsinitialized = true;
+            return;
+        }
         try {
             GLCapabilities caps = GL.getCapabilities();
             gl45available = caps.OpenGL45;
@@ -48,7 +54,7 @@ public final class GBGL {
 
     public static boolean isdsaenabled() {
         HeliumConfig config = HeliumClient.getConfig();
-        return config != null && config.directStateAccess && dsaavailable;
+        return RenderBackend.isOpenGL() && config != null && config.directStateAccess && dsaavailable;
     }
 
     public static int createvao() {
