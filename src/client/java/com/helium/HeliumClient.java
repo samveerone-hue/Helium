@@ -118,6 +118,7 @@ public class HeliumClient implements ClientModInitializer {
 
         initFeatureSafely("GLStateCache", () -> {
             RenderBackend.detect();
+            com.helium.platform.GlContextUpgrade.setVulkanBackend(RenderBackend.isVulkan());
             if (config.glStateCache && RenderBackend.isOpenGL() && !hasImmediatelyFast) {
                 GLStateCache.init();
             } else if (hasImmediatelyFast) {
@@ -214,6 +215,7 @@ public class HeliumClient implements ClientModInitializer {
 
         initFeatureSafely("DSA", () -> {
             RenderBackend.detect();
+            com.helium.platform.GlContextUpgrade.setVulkanBackend(RenderBackend.isVulkan());
             if (config.directStateAccess && RenderBackend.isOpenGL()) {
                 LOGGER.info("dsa feature enabled - caps will be queried on render thread");
             }
@@ -274,6 +276,7 @@ public class HeliumClient implements ClientModInitializer {
 
         initFeatureSafely("GLCaps", () -> {
             RenderBackend.detect();
+            com.helium.platform.GlContextUpgrade.setVulkanBackend(RenderBackend.isVulkan());
             if (RenderBackend.isOpenGL()) com.helium.gpu.GBGL.initcaps();
         }, null);
 
