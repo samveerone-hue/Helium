@@ -10,15 +10,17 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Bounds admission to Minecraft 26.1.2's native section compile queue without
- * replacing its CompileTask priority model.
+ * Bounds admission to Minecraft's native section compile queue without taking
+ * ownership of the version-specific SectionTask/CompileTask implementation.
+ *
+ * <p>26.2 changed the internal task type from CompileTask to SectionTask. The
+ * hook therefore deliberately accepts the task as Object and lets the queue
+ * adapter invoke the native schedule method reflectively.</p>
  */
 @Mixin(SectionRenderDispatcher.class)
 public abstract class HeliumSectionRenderDispatcherMixin {
     @Inject(method = "schedule", at = @At("HEAD"), cancellable = true, require = 0)
-    private void helium$interceptCompileSchedule(
-            SectionRenderDispatcher.RenderSection.CompileTask task,
-            CallbackInfo ci) {
+    private void helium$interceptCompileSchedule(Object task, CallbackInfo ci) {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.renderPipelining) return;
         if (AsyncChunkMeshing.isBypassing()) return;
