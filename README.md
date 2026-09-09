@@ -1,6 +1,6 @@
 <div align="center">
 
-# Helium(26.1.2 Port)
+# Helium (26.2 Port)
 
 lightweight client-side performance mod for Minecraft
 
@@ -56,7 +56,7 @@ src/
 ├── main/resources/          # mod metadata, mixins config, assets
 └── client/java/com/helium/
     ├── HeliumClient.java    # entrypoint
-    ├── config/              # config loading/saving + YACL screen
+    ├── config/              # config loading/saving + Cloth Config screen
     ├── compat/              # sodium config integration, modmenu
     ├── data/                # custom data structures
     ├── memory/              # object pools, buffer pools
@@ -77,8 +77,8 @@ src/
 | Dependency | Type | Why |
 |---|---|---|
 | [Fabric API](https://modrinth.com/mod/fabric-api) | Required | you know why |
-| [Sodium](https://modrinth.com/mod/sodium) | Required | config UI lives inside sodium's settings |
-| [YACL](https://modrinth.com/mod/yacl) | Embedded | powers the ModMenu config screen |
+| [Sodium](https://modrinth.com/mod/sodium) | Required | rendering integration and config API |
+| [Cloth Config](https://modrinth.com/mod/cloth-config) | Embedded | powers the Helium config screen |
 | [ModMenu](https://modrinth.com/mod/modmenu) | Optional | adds the mod toggle in the mod list |
 
 ---
@@ -87,7 +87,7 @@ src/
 
 PRs welcome. if you're fixing a bug, please describe what was broken and why. if you're adding a feature, open an issue first so we don't waste each other's time.
 
-the codebase uses **official Mojang names** (Minecraft 26.1+ ships de-obfuscated, so there is no Yarn mapping set) and targets **Minecraft 26.1.x** with **Fabric Loader 0.19+**.
+the codebase uses **official Mojang names** and targets **Minecraft 26.2** with **Fabric Loader 0.19+** and Java 25.
 
 fair warning: the mixin naming convention uses `helium$` prefix for all injected methods. keep it consistent.
 
