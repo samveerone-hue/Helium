@@ -4,6 +4,7 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.render.AsyncChunkMeshing;
 import com.helium.render.RenderBatch;
+import net.minecraft.client.renderer.chunk.SectionRenderDispatcher;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
