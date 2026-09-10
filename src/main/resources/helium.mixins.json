@@ -37,6 +37,7 @@
     "lighting.LightingProviderMixin",
     "lighting.BambooLightMixin",
     "lighting.DynamicGraphMixin",
+    "lighting.LightingProviderMixin",
     "render.GameRendererTemporalMixin",
     "render.WorldRendererPipelineMixin",
     "compat.GameOptionsAccessor",
@@ -96,7 +97,7 @@
     "dedup.ComposterOutputMixin",
     "particle.ParticleLifecycleMixin",
     "crafting.StonecutterScreenCraftingMixin",
-    "net.minecraft.client.renderer.chunk.HeliumSectionRenderDispatcherMixin"
+    "render.HeliumSectionRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 0
