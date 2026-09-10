@@ -20,7 +20,7 @@ public abstract class GlBackendHintsMixin {
                 value = 4;
                 HeliumClient.LOGGER.info("gl context upgrade: major version set to {}", value);
             } else if (hint == GLFW.GLFW_CONTEXT_VERSION_MINOR) {
-                value = isMacOS ? 1 : 6;
+                value = isMacOS ? 1 : 5;
                 HeliumClient.LOGGER.info("gl context upgrade: minor version set to {}{}", value, isMacOS ? " (macOS limit)" : "");
             }
         }
