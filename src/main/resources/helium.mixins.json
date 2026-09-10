@@ -96,7 +96,7 @@
     "dedup.ComposterOutputMixin",
     "particle.ParticleLifecycleMixin",
     "crafting.StonecutterScreenCraftingMixin",
-    "net.minecraft.client.renderer.chunk.HeliumSectionRenderDispatcherMixin"
+    "render.HeliumSectionRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 0
