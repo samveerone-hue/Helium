@@ -1,6 +1,7 @@
 package com.helium.mixin.tick;
 
 import com.helium.HeliumClient;
+import com.helium.compute.GpuComputeManager;
 import com.helium.lighting.AsyncLightEngine;
 import com.helium.memory.MemoryCompactor;
 import com.helium.tick.ClientTickCache;
@@ -13,20 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ClientLevel.class)
 public abstract class ClientWorldMixin {
-
-    @Unique
-    private long helium$tickCounter = 0;
+    @Unique private long helium$tickCounter = 0;
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void helium$tickCache(CallbackInfo ci) {
         if (HeliumClient.getConfig() == null || !HeliumClient.getConfig().modEnabled) return;
-        long time = helium$tickCounter++;
+        if (helium$tickCounter++ == 0) GpuComputeManager.clearWorldState();
+        long time = helium$tickCounter - 1;
         ClientTickCache.tick(time);
-        if (HeliumClient.getConfig().memoryOptimizations) {
-            MemoryCompactor.tick(time);
-        }
-        if (HeliumClient.getConfig().asyncLightUpdates && AsyncLightEngine.isInitialized()) {
-            AsyncLightEngine.applyCompleted();
-        }
+        if (HeliumClient.getConfig().memoryOptimizations) MemoryCompactor.tick(time);
+        if (HeliumClient.getConfig().asyncLightUpdates && AsyncLightEngine.isInitialized()) AsyncLightEngine.applyCompleted();
     }
 }
