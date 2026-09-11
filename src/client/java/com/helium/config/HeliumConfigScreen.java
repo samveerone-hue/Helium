@@ -1,6 +1,7 @@
 package com.helium.config;
 
 import com.helium.HeliumClient;
+import com.helium.compute.GpuComputeConfig;
 import com.helium.idle.IdleManager;
 import com.helium.config.HeliumSharedOptions.*;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
@@ -30,12 +31,14 @@ public final class HeliumConfigScreen {
     public static Screen create(Screen parent) {
         HeliumConfig config = HeliumClient.getConfig();
         HeliumConfig defaults = new HeliumConfig();
+        GpuComputeConfig gpuCompute = GpuComputeConfig.load();
 
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(parent)
                 .setTitle(Text.translatable("helium.name"))
                 .setSavingRunnable(() -> {
                     config.save();
+                    gpuCompute.save();
                     if (HeliumSharedOptions.consumedirty()) {
                         MinecraftClient client = MinecraftClient.getInstance();
                         if (client != null) {
@@ -70,10 +73,50 @@ public final class HeliumConfigScreen {
                     addsharedentry(eb, groupentries, opt);
                 }
 
-                                SubCategoryListEntry subcat = eb.startSubCategory(Text.translatable(group.key()), groupentries)
+                SubCategoryListEntry subcat = eb.startSubCategory(Text.translatable(group.key()), groupentries)
                         .setExpanded(true)
                         .build();
                 cat.addEntry(subcat);
+            }
+
+            if (page.key().equals("helium.page.advanced")) {
+                List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> gpuEntries = new ArrayList<>();
+                gpuEntries.add(eb.startBooleanToggle(Text.literal("Enable GPU Compute"), gpuCompute.enabled)
+                        .setDefaultValue(false)
+                        .setTooltip(Text.literal("Enable Helium's optional OpenCL compute backend. Disabled by default and requires a usable OpenCL device."))
+                        .setSaveConsumer(v -> gpuCompute.enabled = v)
+                        .build());
+                gpuEntries.add(eb.startBooleanToggle(Text.literal("GPU Line-of-Sight"), gpuCompute.lineOfSight)
+                        .setDefaultValue(false)
+                        .setTooltip(Text.literal("Use the GPU to asynchronously test entity line-of-sight against a sampled block grid. Results are cached briefly and fall back safely when unavailable."))
+                        .setSaveConsumer(v -> gpuCompute.lineOfSight = v)
+                        .build());
+                gpuEntries.add(eb.startBooleanToggle(Text.literal("GPU Pathfinding"), gpuCompute.pathfinding)
+                        .setDefaultValue(false)
+                        .setTooltip(Text.literal("Enable the OpenCL flow-field pathfinding kernel for GPU-assisted path calculations. Enabling this does not automatically replace Minecraft entity navigation."))
+                        .setSaveConsumer(v -> gpuCompute.pathfinding = v)
+                        .build());
+                gpuEntries.add(eb.startIntSlider(Text.literal("GPU Grid Size"), gpuCompute.gridSize, 16, 48)
+                        .setDefaultValue(32)
+                        .setTooltip(Text.literal("Requested world-snapshot size in blocks for GPU compute. Larger grids cover longer rays but increase sampling and GPU memory work."))
+                        .setTextGetter(v -> Text.literal(String.valueOf(v)))
+                        .setSaveConsumer(v -> gpuCompute.gridSize = v)
+                        .build());
+                gpuEntries.add(eb.startIntSlider(Text.literal("GPU Refresh Ticks"), gpuCompute.refreshTicks, 1, 10)
+                        .setDefaultValue(2)
+                        .setTooltip(Text.literal("How many client ticks a cached GPU line-of-sight result remains valid. Lower values react faster to world changes but submit more work."))
+                        .setTextGetter(v -> Text.literal(String.valueOf(v)))
+                        .setSaveConsumer(v -> gpuCompute.refreshTicks = v)
+                        .build());
+                gpuEntries.add(eb.startIntSlider(Text.literal("GPU Max Batch"), gpuCompute.maxBatch, 1, 8)
+                        .setDefaultValue(1)
+                        .setTooltip(Text.literal("Maximum line-of-sight requests processed in one GPU snapshot. One is the safest default because every ray must fit inside the sampled snapshot."))
+                        .setTextGetter(v -> Text.literal(String.valueOf(v)))
+                        .setSaveConsumer(v -> gpuCompute.maxBatch = v)
+                        .build());
+                cat.addEntry(eb.startSubCategory(Text.literal("GPU Compute"), gpuEntries)
+                        .setExpanded(false)
+                        .build());
             }
 
             if (page.key().equals("helium.page.general")) {
