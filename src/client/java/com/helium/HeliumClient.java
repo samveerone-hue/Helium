@@ -30,6 +30,7 @@ import com.helium.threading.EventPoller;
 import com.helium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import com.helium.compat.CrossLoaderCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
@@ -230,6 +231,33 @@ public class HeliumClient implements ClientModInitializer {
             }
         });
 
+        WorldRenderEvents.BEFORE_ENTITIES.register(context -> {
+            if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
+            try {
+                if (com.helium.rentities.RendererCapabilityState.current() == null) {
+                    com.helium.rentities.RendererCapabilityState.probe();
+                }
+                if (com.helium.rentities.RendererCapabilityState.current() != null
+                        && com.helium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)
+                        && com.helium.rentities.entities.EntityBatchRenderer.INSTANCE == null) {
+                    new com.helium.rentities.entities.EntityBatchRenderer();
+                }
+                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.helium.rentities.entities.EntityBatchRenderer.beginCapturedWorldRender();
+                }
+            } catch (Throwable t) {
+                LOGGER.warn("Rentities entity batching preparation failed; using vanilla rendering", t);
+            }
+        });
+        WorldRenderEvents.AFTER_ENTITIES.register(context -> {
+            if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
+            try {
+                com.helium.rentities.entities.EntityBatchRenderer.flushBatch();
+            } catch (Throwable t) {
+                LOGGER.warn("Rentities entity batch flush failed; using vanilla rendering", t);
+            }
+        });
+
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> AsyncPackReloader.shutdown());
 
         long elapsed = (System.nanoTime() - start) / 1_000_000;
@@ -299,6 +327,20 @@ public class HeliumClient implements ClientModInitializer {
         } catch (Throwable t) {
             LOGGER.error("{} failed to initialize, feature disabled", name, t);
             if (onFailure != null) onFailure.run();
+        }
+    }
+
+    public static void setEntityGpuBatching(boolean enabled) {
+        if (config == null) return;
+        config.entityGpuBatching = enabled;
+        if (!enabled) {
+            try {
+                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.helium.rentities.entities.EntityBatchRenderer.INSTANCE.delete();
+                }
+            } catch (Throwable t) {
+                LOGGER.debug("[Rentities] entity batch teardown failed: {}", t.toString());
+            }
         }
     }
 

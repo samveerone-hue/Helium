@@ -25,6 +25,18 @@ public class HeliumConfig {
     public boolean fastStartup = false;
 
     public boolean entityCulling = true;
+    public boolean entityGpuBatching = false;
+    public boolean entityGpuFrustumCulling = true;
+    public boolean rentitiesEntityBatchingDebug = false;
+    public boolean rentitiesEntityBatchingDebugSolid = false;
+    public boolean rentitiesAsyncRenderPreparationEnabled = true;
+    public boolean rentitiesEntityBatchWhitelistOnly = false;
+    public java.util.List<String> rentitiesEntityBatchWhitelist = new java.util.ArrayList<>();
+    public java.util.List<String> rentitiesEntityBatchBlacklist = new java.util.ArrayList<>();
+    public boolean rentitiesAsyncVisibilityEnabled = false;
+    public int rentitiesAsyncVisibilityRefreshFrames = 4;
+    public int rentitiesAsyncVisibilityMaxAgeFrames = 12;
+    public double rentitiesAsyncVisibilityMaxDistance = 0.0;
     public int entityCullDistance = 64;
     public boolean blockEntityCulling = true;
     public int blockEntityCullDistance = 48;
@@ -112,7 +124,7 @@ public class HeliumConfig {
     public boolean reduceRenderDistanceWhenInactive = false;
     public int inactiveRenderDistance = 4;
 
-    public boolean hotbarOptimizer = false;
+    public boolean hotbarOptimizer = true;
     public boolean hotbarMultiSwitch = false;
     public boolean smoothHotbar = true;
 
@@ -235,6 +247,18 @@ public class HeliumConfig {
         this.networkOptimizations = other.networkOptimizations;
         this.fastStartup = other.fastStartup;
         this.entityCulling = other.entityCulling;
+        this.entityGpuBatching = other.entityGpuBatching;
+        this.entityGpuFrustumCulling = other.entityGpuFrustumCulling;
+        this.rentitiesEntityBatchingDebug = other.rentitiesEntityBatchingDebug;
+        this.rentitiesEntityBatchingDebugSolid = other.rentitiesEntityBatchingDebugSolid;
+        this.rentitiesAsyncRenderPreparationEnabled = other.rentitiesAsyncRenderPreparationEnabled;
+        this.rentitiesEntityBatchWhitelistOnly = other.rentitiesEntityBatchWhitelistOnly;
+        this.rentitiesEntityBatchWhitelist = new java.util.ArrayList<>(other.rentitiesEntityBatchWhitelist);
+        this.rentitiesEntityBatchBlacklist = new java.util.ArrayList<>(other.rentitiesEntityBatchBlacklist);
+        this.rentitiesAsyncVisibilityEnabled = other.rentitiesAsyncVisibilityEnabled;
+        this.rentitiesAsyncVisibilityRefreshFrames = other.rentitiesAsyncVisibilityRefreshFrames;
+        this.rentitiesAsyncVisibilityMaxAgeFrames = other.rentitiesAsyncVisibilityMaxAgeFrames;
+        this.rentitiesAsyncVisibilityMaxDistance = other.rentitiesAsyncVisibilityMaxDistance;
         this.entityCullDistance = other.entityCullDistance;
         this.blockEntityCulling = other.blockEntityCulling;
         this.blockEntityCullDistance = other.blockEntityCullDistance;
