@@ -330,6 +330,20 @@ public final class HeliumSharedOptions {
                         }, IMPACT_VARIES)
         )));
 
+        groups.add(new OptGroup("helium.group.gpu_compute", List.of(
+                new BoolOpt("helium.option.gpu_compute", false, () -> c.gpuCompute, v -> c.gpuCompute = v, IMPACT_HIGH),
+                new BoolOpt("helium.option.gpu_line_of_sight", false, () -> c.gpuLineOfSight, v -> c.gpuLineOfSight = v, IMPACT_HIGH,
+                        () -> c.gpuCompute),
+                new BoolOpt("helium.option.gpu_pathfinding", false, () -> c.gpuPathfinding, v -> c.gpuPathfinding = v, IMPACT_HIGH,
+                        () -> c.gpuCompute),
+                new BoolOpt("helium.option.gpu_compute_prefer_integrated", true, () -> c.gpuComputePreferIntegrated, v -> c.gpuComputePreferIntegrated = v, IMPACT_MEDIUM,
+                        () -> c.gpuCompute),
+                new IntOpt("helium.option.gpu_compute_grid_size", 48, 24, 64, 8, "helium.suffix.blocks",
+                        () -> c.gpuComputeGridSize, v -> c.gpuComputeGridSize = v, IMPACT_HIGH),
+                new IntOpt("helium.option.gpu_compute_refresh_ticks", 2, 1, 10, 1, "helium.suffix.ticks",
+                        () -> c.gpuComputeRefreshTicks, v -> c.gpuComputeRefreshTicks = v, IMPACT_MEDIUM)
+        )));
+
         groups.add(new OptGroup("helium.group.performance", List.of(
                 new BoolOpt("helium.option.reflex", true, () -> c.enableReflex, v -> c.enableReflex = v, IMPACT_HIGH),
                 new BoolOpt("helium.option.fast_blit", true, () -> c.fastFramebufferBlit, v -> c.fastFramebufferBlit = v, IMPACT_MEDIUM,
