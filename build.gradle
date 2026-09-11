@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.loom-remap' version "${loom_version}"
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -55,6 +55,6 @@ processResources { inputs.property "version", project.version; filesMatching("fa
 tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
 java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
 jar { inputs.property "archivesName", project.base.archivesName; from("LICENSE") { rename { "${it}_${inputs.properties.archivesName}" } } }
-tasks.register('publishJar', Copy) { dependsOn remapJar; group='helium'; def outputDir=file("${buildDir}/publish"); def jarName="Helium-${project.mod_version}+mc${mcVersion}.jar"; from(remapJar.archiveFile); into(outputDir); rename { jarName }; doFirst { outputDir.mkdirs() } }
+tasks.register('publishJar', Copy) { dependsOn remapJar; group='helium'; description='Builds a release-ready jar'; def outputDir=file("${buildDir}/publish"); def jarName="Helium-${project.mod_version}+mc${mcVersion}.jar"; from(remapJar.archiveFile); into(outputDir); rename { jarName }; doFirst { outputDir.mkdirs() } }
 tasks.register('release') { dependsOn publishJar; group='helium' }
 tasks.register('buildDev') { dependsOn remapJar; group='helium'; outputs.upToDateWhen { false }; doLast { def buildNum=getNextBuildNumber(); def outputDir=file("${buildDir}/dev"); def jarName="Helium-${project.mod_version}+mc${mcVersion}-dev.${buildNum}.jar"; outputDir.mkdirs(); copy { from remapJar.archiveFile; into outputDir; rename { jarName } } } }
