@@ -32,136 +32,54 @@ base {
 repositories {
     mavenCentral()
 
-    maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven'
-        content { includeGroup 'maven.modrinth' }
-    }
-    maven {
-        name = 'Shedaniel'
-        url = 'https://maven.shedaniel.me/'
-        content { includeGroup 'me.shedaniel.cloth' }
-    }
-    maven {
-        name = 'CaffeineMC'
-        url = 'https://maven.caffeinemc.net/releases'
-        content { includeGroup 'net.caffeinemc' }
-    }
-    maven {
-        name = 'Terraformers'
-        url = 'https://maven.terraformersmc.com/'
-        content { includeGroup 'com.terraformersmc' }
-    }
+    maven { name='Modrinth'; url='https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
+    maven { name='Shedaniel'; url='https://maven.shedaniel.me/'; content { includeGroup 'me.shedaniel.cloth' } }
+    maven { name='CaffeineMC'; url='https://maven.caffeinemc.net/releases'; content { includeGroup 'net.caffeinemc' } }
+    maven { name='Terraformers'; url='https://maven.terraformersmc.com/'; content { includeGroup 'com.terraformersmc' } }
 }
 
 loom {
     accessWidenerPath = file("src/main/resources/helium.accesswidener")
     splitEnvironmentSourceSets()
-
-    mods {
-        "helium" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
+    mods { "helium" { sourceSet sourceSets.main; sourceSet sourceSets.client } }
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-    api("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
-        exclude(group: "net.fabricmc.fabric-api")
-    }
-
+    api("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") { exclude(group: "net.fabricmc.fabric-api") }
     compileOnly "maven.modrinth:modmenu:${project.modmenu_version}"
     compileOnly "net.caffeinemc:sodium-fabric-api:${project.sodium_api_version}"
     compileOnly "maven.modrinth:sodium:${project.sodium_version}"
-
-    // Optional GPU compute backend. The system OpenCL ICD/driver remains external.
-    def lwjglVersion = "3.3.3"
-    implementation "org.lwjgl:lwjgl-opencl:${lwjglVersion}"
-    include "org.lwjgl:lwjgl-opencl:${lwjglVersion}"
-    include "org.lwjgl:lwjgl-opencl:${lwjglVersion}:natives-windows"
-    include "org.lwjgl:lwjgl-opencl:${lwjglVersion}:natives-linux"
-    include "org.lwjgl:lwjgl-opencl:${lwjglVersion}:natives-macos"
-
+    implementation "org.lwjgl:lwjgl-opencl:3.4.1"
     localRuntime "maven.modrinth:modmenu:${project.modmenu_version}"
     localRuntime "maven.modrinth:sodium:${project.sodium_version}"
 }
 
 processResources {
     inputs.property "version", project.version
-
-    filesMatching("fabric.mod.json") {
-        expand "version": inputs.properties.version
-    }
-    filesMatching("quilt.mod.json") {
-        expand "version": inputs.properties.version
-    }
+    filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }
+    filesMatching("quilt.mod.json") { expand "version": inputs.properties.version }
 }
 
-tasks.withType(JavaCompile).configureEach {
-    it.options.release = 25
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_25
-    targetCompatibility = JavaVersion.VERSION_25
-}
-
+tasks.withType(JavaCompile).configureEach { it.options.release = 25 }
+java { sourceCompatibility = JavaVersion.VERSION_25; targetCompatibility = JavaVersion.VERSION_25 }
 jar {
     inputs.property "archivesName", project.base.archivesName
-
     from sourceSets.client.output
-
-    from("LICENSE") {
-        rename { "${it}_${inputs.properties.archivesName}" }
-    }
+    from("LICENSE") { rename { "${it}_${inputs.properties.archivesName}" } }
 }
-
 tasks.register('publishJar', Copy) {
-    dependsOn tasks.jar
-    group = 'helium'
-    description = 'Builds a release-ready jar with a professional name'
-
-    def outputDir = file("${buildDir}/publish")
-    def jarName = "Helium-${project.mod_version}+mc${mcVersion}.jar"
-
-    from(tasks.jar.archiveFile)
-    into(outputDir)
-    rename { jarName }
-
-    doFirst { outputDir.mkdirs() }
-    doLast { println "\n  ✦ Published: ${outputDir}/${jarName}\n" }
+    dependsOn tasks.jar; group='helium'; description='Builds a release-ready jar with a professional name'
+    def outputDir=file("${buildDir}/publish"); def jarName="Helium-${project.mod_version}+mc${mcVersion}.jar"
+    from(tasks.jar.archiveFile); into(outputDir); rename { jarName }; doFirst { outputDir.mkdirs() }
 }
-
-tasks.register('release') {
-    dependsOn publishJar
-    group = 'helium'
-    description = 'Alias for publishJar - creates release-ready jar'
-}
-
+tasks.register('release') { dependsOn publishJar; group='helium'; description='Alias for publishJar - creates release-ready jar' }
 tasks.register('buildDev') {
-    dependsOn tasks.jar
-    group = 'helium'
-    description = 'Builds a dev jar with auto-incrementing build number'
-
-    outputs.upToDateWhen { false }
-
+    dependsOn tasks.jar; group='helium'; description='Builds a dev jar with auto-incrementing build number'; outputs.upToDateWhen { false }
     doLast {
-        def buildNum = getNextBuildNumber()
-        def outputDir = file("${buildDir}/dev")
-        def jarName = "Helium-${project.mod_version}+mc${mcVersion}-dev.${buildNum}.jar"
-
-        outputDir.mkdirs()
-        copy {
-            from tasks.jar.archiveFile
-            into outputDir
-            rename { jarName }
-        }
-
-        println "\n  ✦ Dev Build #${buildNum}: ${outputDir}/${jarName}\n"
+        def buildNum=getNextBuildNumber(); def outputDir=file("${buildDir}/dev"); def jarName="Helium-${project.mod_version}+mc${mcVersion}-dev.${buildNum}.jar"; outputDir.mkdirs()
+        copy { from tasks.jar.archiveFile; into outputDir; rename { jarName } }
     }
 }
