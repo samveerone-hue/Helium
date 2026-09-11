@@ -50,7 +50,6 @@ public final class GpuComputeManager {
         generation++;
     }
 
-    /** Clears cached compute results when the client switches to a new world/dimension. */
     public static void clearWorldState() {
         pending.clear();
         results.clear();
@@ -90,12 +89,55 @@ public final class GpuComputeManager {
         }
         if (batch.isEmpty() || backend == null) return;
 
+        // Build the smallest axis-aligned snapshot that contains every ray endpoint,
+        // then pad it by one voxel. Unlike the old anchor-centered cube, this remains
+        // correct when rays travel farther than gridSize/2 from their source.
+        float minFx = Float.POSITIVE_INFINITY, minFy = Float.POSITIVE_INFINITY, minFz = Float.POSITIVE_INFINITY;
+        float maxFx = Float.NEGATIVE_INFINITY, maxFy = Float.NEGATIVE_INFINITY, maxFz = Float.NEGATIVE_INFINITY;
+        for (Request r : batch) {
+            minFx = Math.min(minFx, Math.min(r.ray[0], r.ray[3]));
+            minFy = Math.min(minFy, Math.min(r.ray[1], r.ray[4]));
+            minFz = Math.min(minFz, Math.min(r.ray[2], r.ray[5]));
+            maxFx = Math.max(maxFx, Math.max(r.ray[0], r.ray[3]));
+            maxFy = Math.max(maxFy, Math.max(r.ray[1], r.ray[4]));
+            maxFz = Math.max(maxFz, Math.max(r.ray[2], r.ray[5]));
+        }
+
+        int minX = (int) Math.floor(minFx) - 1;
+        int minY = (int) Math.floor(minFy) - 1;
+        int minZ = (int) Math.floor(minFz) - 1;
+        int maxX = (int) Math.floor(maxFx) + 1;
+        int maxY = (int) Math.floor(maxFy) + 1;
+        int maxZ = (int) Math.floor(maxFz) + 1;
+        int requiredX = maxX - minX + 1;
+        int requiredY = maxY - minY + 1;
+        int requiredZ = maxZ - minZ + 1;
+        int requestedSize = Math.max(16, Math.min(48, config.gridSize));
+        int size = Math.max(requestedSize, Math.max(requiredX, Math.max(requiredY, requiredZ)));
+        if (size > 64) {
+            // A very long ray should not create an unbounded CPU snapshot. Split the
+            // request back into the pending queue so it can be retried without giving
+            // the GPU an invalid partial-world view.
+            for (Request r : batch) pending.putIfAbsent(r.key, r);
+            return;
+        }
+
+        int centerX = (minX + maxX) / 2;
+        int centerY = (minY + maxY) / 2;
+        int centerZ = (minZ + maxZ) / 2;
+        minX = centerX - size / 2;
+        minY = centerY - size / 2;
+        minZ = centerZ - size / 2;
+        maxX = minX + size - 1;
+        maxY = minY + size - 1;
+        maxZ = minZ + size - 1;
+        if (maxX < (int) Math.ceil(maxFx) || maxY < (int) Math.ceil(maxFy) || maxZ < (int) Math.ceil(maxFz)
+                || minX > (int) Math.floor(minFx) || minY > (int) Math.floor(minFy) || minZ > (int) Math.floor(minFz)) {
+            for (Request r : batch) pending.putIfAbsent(r.key, r);
+            return;
+        }
+
         Request anchor = batch.get(0);
-        int size = Math.max(16, Math.min(48, config.gridSize));
-        int half = size / 2;
-        int minX = (int) Math.floor(anchor.ray[0]) - half;
-        int minY = (int) Math.floor(anchor.ray[1]) - half;
-        int minZ = (int) Math.floor(anchor.ray[2]) - half;
         byte[] solid = new byte[size * size * size];
         int i = 0;
         try {
@@ -104,6 +146,7 @@ public final class GpuComputeManager {
             }
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
+            for (Request r : batch) pending.putIfAbsent(r.key, r);
             return;
         }
 
