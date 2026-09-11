@@ -57,7 +57,7 @@ public final class HeliumSharedOptions {
                 new BoolOpt("helium.option.rentities_async_visibility",false,()->c.rentitiesAsyncVisibilityEnabled,v->{c.rentitiesAsyncVisibilityEnabled=v;renderingdirty=true;},IMPACT_HIGH),
                 new IntOpt("helium.option.rentities_async_visibility_refresh",4,1,30,1,null,()->c.rentitiesAsyncVisibilityRefreshFrames,v->{c.rentitiesAsyncVisibilityRefreshFrames=v;renderingdirty=true;},IMPACT_MEDIUM),
                 new IntOpt("helium.option.rentities_async_visibility_max_age",12,1,60,1,null,()->c.rentitiesAsyncVisibilityMaxAgeFrames,v->{c.rentitiesAsyncVisibilityMaxAgeFrames=v;renderingdirty=true;},IMPACT_MEDIUM),
-                new IntOpt("helium.option.rentities_async_visibility_max_distance",128,0,256,8,"helium.suffix.blocks",()->(int)Math.round(c.rentitiesAsyncVisibilityMaxDistance),v->{c.rentitiesAsyncVisibilityMaxDistance=v;renderingdirty=true;},IMPACT_MEDIUM)
+                new IntOpt("helium.option.rentities_async_visibility_max_distance",0,0,256,8,"helium.suffix.blocks",()->(int)Math.round(c.rentitiesAsyncVisibilityMaxDistance),v->{c.rentitiesAsyncVisibilityMaxDistance=v;renderingdirty=true;},IMPACT_MEDIUM)
         )));
         return new OptPage("helium.page.rendering",groups);
     }
