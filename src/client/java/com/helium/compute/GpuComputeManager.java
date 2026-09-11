@@ -7,8 +7,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.pathfinder.Node;
 import net.minecraft.world.level.pathfinder.Path;
-import net.minecraft.world.level.pathfinder.PathNode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -245,11 +245,11 @@ public final class GpuComputeManager {
         int targetIndex = (tz * size + ty) * size + tx;
         if (distances[current] >= 1073741824 || distances[targetIndex] >= 1073741824) return null;
 
-        List<PathNode> nodes = new ArrayList<>();
+        List<Node> nodes = new ArrayList<>();
         int x = sx, y = sy, z = sz;
         int safety = size * size;
         while (safety-- > 0) {
-            nodes.add(new PathNode(x + minX, y + minY, z + minZ));
+            nodes.add(new Node(x + minX, y + minY, z + minZ));
             if (x == tx && y == ty && z == tz) return new Path(nodes, target, true);
 
             int bestX = x, bestY = y, bestZ = z;
