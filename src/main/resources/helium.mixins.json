@@ -96,7 +96,9 @@
     "dedup.ComposterOutputMixin",
     "particle.ParticleLifecycleMixin",
     "crafting.StonecutterScreenCraftingMixin",
-    "render.HeliumSectionRenderDispatcherMixin"
+    "render.HeliumSectionRenderDispatcherMixin",
+    "compute.SensingMixin",
+    "compute.PathNavigationMixin"
   ],
   "injectors": {
     "defaultRequire": 0
