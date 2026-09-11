@@ -21,6 +21,7 @@
   "helium.group.overlay_content": "Overlay Content",
   "helium.group.experimental": "Experimental",
   "helium.group.gpu_specific": "GPU-Specific",
+  "helium.group.gpu_compute": "GPU Compute",
   "helium.group.visual": "Visual",
   "helium.group.window": "Window Style",
   "helium.group.performance": "Performance",
@@ -282,5 +283,17 @@
   "helium.option.particle_lod_distance": "Particle LOD distance",
   "helium.option.particle_lod_distance.tooltip": "Distance beyond which particle LOD reduction is applied.",
   "helium.option.particle_lod_reduction": "Particle LOD reduction",
-  "helium.option.particle_lod_reduction.tooltip": "Percentage of distant particle updates to skip."
+  "helium.option.particle_lod_reduction.tooltip": "Percentage of distant particle updates to skip.",
+  "helium.option.gpu_compute": "GPU Compute",
+  "helium.option.gpu_compute.tooltip": "Enable Helium's optional OpenCL compute backend for AI workloads. Requires an OpenCL-capable unified-memory GPU.",
+  "helium.option.gpu_line_of_sight": "GPU Line of Sight",
+  "helium.option.gpu_line_of_sight.tooltip": "Batch mob line-of-sight checks on the compute GPU. Cold or unsupported results always fall back to vanilla.",
+  "helium.option.gpu_pathfinding": "GPU Pathfinding",
+  "helium.option.gpu_pathfinding.tooltip": "Build cached ground flow-field paths on the compute GPU. Vanilla pathfinding remains the fallback.",
+  "helium.option.gpu_compute_prefer_integrated": "Prefer Integrated GPU",
+  "helium.option.gpu_compute_prefer_integrated.tooltip": "Prefer a unified-memory GPU such as Intel integrated graphics or an AMD APU for compute work.",
+  "helium.option.gpu_compute_grid_size": "Compute Grid Size",
+  "helium.option.gpu_compute_grid_size.tooltip": "3D voxel window used for GPU AI workloads. Larger windows cover more space but cost more memory and compute.",
+  "helium.option.gpu_compute_refresh_ticks": "Compute Refresh Interval",
+  "helium.option.gpu_compute_refresh_ticks.tooltip": "How long GPU AI results may be reused before Helium asks for a fresh result."
 }
