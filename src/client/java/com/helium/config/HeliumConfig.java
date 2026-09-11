@@ -140,6 +140,14 @@ public class HeliumConfig {
     public boolean renderbufferDepth = false;
     public boolean oneClickCrafting = false;
 
+    // Optional Laminar-inspired compute features implemented independently by Helium.
+    public boolean gpuCompute = false;
+    public boolean gpuLineOfSight = false;
+    public boolean gpuPathfinding = false;
+    public boolean gpuComputePreferIntegrated = true;
+    public int gpuComputeGridSize = 48;
+    public int gpuComputeRefreshTicks = 2;
+
     public boolean devMode = false;
 
 
@@ -329,5 +337,11 @@ public class HeliumConfig {
         this.directStateAccess = other.directStateAccess;
         this.renderbufferDepth = other.renderbufferDepth;
         this.oneClickCrafting = other.oneClickCrafting;
+        this.gpuCompute = other.gpuCompute;
+        this.gpuLineOfSight = other.gpuLineOfSight;
+        this.gpuPathfinding = other.gpuPathfinding;
+        this.gpuComputePreferIntegrated = other.gpuComputePreferIntegrated;
+        this.gpuComputeGridSize = other.gpuComputeGridSize;
+        this.gpuComputeRefreshTicks = other.gpuComputeRefreshTicks;
     }
 }
