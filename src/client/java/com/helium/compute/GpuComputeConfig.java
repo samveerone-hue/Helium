@@ -17,7 +17,9 @@ public final class GpuComputeConfig {
     public boolean pathfinding = false;
     public int gridSize = 32;
     public int refreshTicks = 2;
-    public int maxBatch = 32;
+    // Safe default: one ray per world snapshot. Batching multiple rays against an
+    // anchor-centered snapshot can otherwise evaluate distant rays against incomplete data.
+    public int maxBatch = 1;
 
     private GpuComputeConfig() {}
 
