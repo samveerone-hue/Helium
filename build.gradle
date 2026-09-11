@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'net.fabricmc.loom-remap' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -25,42 +25,19 @@ def getCurrentBuildNumber = {
     return 0
 }
 
-base {
-    archivesName = project.archives_base_name
-}
+base { archivesName = project.archives_base_name }
 
 repositories {
-    maven {
-        name = 'Shedaniel'
-        url = 'https://maven.shedaniel.me/'
-    }
-    maven {
-        name = 'Terraformers'
-        url = 'https://maven.terraformersmc.com/releases'
-    }
-    maven {
-        name = 'CaffeineMC'
-        url = 'https://maven.caffeinemc.net/releases'
-    }
-    maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven'
-        content {
-            includeGroup 'maven.modrinth'
-        }
-    }
+    maven { name = 'Shedaniel'; url = 'https://maven.shedaniel.me/' }
+    maven { name = 'Terraformers'; url = 'https://maven.terraformersmc.com/releases' }
+    maven { name = 'CaffeineMC'; url = 'https://maven.caffeinemc.net/releases' }
+    maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
 loom {
     accessWidenerPath = file("src/main/resources/helium.accesswidener")
     splitEnvironmentSourceSets()
-
-    mods {
-        "helium" {
-            sourceSet sourceSets.main
-            sourceSet sourceSets.client
-        }
-    }
+    mods { "helium" { sourceSet sourceSets.main; sourceSet sourceSets.client } }
 }
 
 dependencies {
@@ -68,96 +45,16 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-    // cloth config
-    modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") {
-        exclude(group: "net.fabricmc.fabric-api")
-    }
-
+    implementation "org.lwjgl:lwjgl-opencl:3.3.3"
+    modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") { exclude(group: "net.fabricmc.fabric-api") }
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
-    // Sodium 0.8.14 includes the public Sodium API classes. Keeping the
-    // separate sodium-fabric-api artifact here creates duplicate input classes.
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
 }
 
-processResources {
-    inputs.property "version", project.version
-
-    filesMatching("fabric.mod.json") {
-        expand "version": inputs.properties.version
-    }
-    filesMatching("quilt.mod.json") {
-        expand "version": inputs.properties.version
-    }
-}
-
-tasks.withType(JavaCompile).configureEach {
-    // Minecraft 1.21.11 runs on Java 25, but keep the mod bytecode at Java 21 for broad JVM compatibility.
-    it.options.release = 21
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
-}
-
-jar {
-    inputs.property "archivesName", project.base.archivesName
-
-    from("LICENSE") {
-        rename { "${it}_${inputs.properties.archivesName}" }
-    }
-}
-
-// ─── Publish Jar ───────────────────────────────────────────────────────────────
-// ./gradlew publish - creates a clean, professional release jar
-// Output: build/publish/Helium-${project.mod_version}+mc${mcVersion}.jar
-
-tasks.register('publishJar', Copy) {
-    dependsOn remapJar
-    group = 'helium'
-    description = 'Builds a release-ready jar with a professional name'
-
-    def outputDir = file("${buildDir}/publish")
-    def jarName = "Helium-${project.mod_version}+mc${mcVersion}.jar"
-
-    from(remapJar.archiveFile)
-    into(outputDir)
-    rename { jarName }
-
-    doFirst { outputDir.mkdirs() }
-    doLast { println "\n  ✦ Published: ${outputDir}/${jarName}\n" }
-}
-
-tasks.register('release') {
-    dependsOn publishJar
-    group = 'helium'
-    description = 'Alias for publishJar - creates release-ready jar'
-}
-
-// ─── Dev Build ─────────────────────────────────────────────────────────────────
-// ./gradlew buildDev - creates a dev jar with auto-incrementing build number
-// Output uses the current project.mod_version and build number.
-
-tasks.register('buildDev') {
-    dependsOn remapJar
-    group = 'helium'
-    description = 'Builds a dev jar with auto-incrementing build number'
-
-    outputs.upToDateWhen { false }
-
-    doLast {
-        def buildNum = getNextBuildNumber()
-        def outputDir = file("${buildDir}/dev")
-        def jarName = "Helium-${project.mod_version}+mc${mcVersion}-dev.${buildNum}.jar"
-
-        outputDir.mkdirs()
-        copy {
-            from remapJar.archiveFile
-            into outputDir
-            rename { jarName }
-        }
-
-        println "\n  ✦ Dev Build #${buildNum}: ${outputDir}/${jarName}\n"
-    }
-}
+processResources { inputs.property "version", project.version; filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }; filesMatching("quilt.mod.json") { expand "version": inputs.properties.version } }
+tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
+java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
+jar { inputs.property "archivesName", project.base.archivesName; from("LICENSE") { rename { "${it}_${inputs.properties.archivesName}" } } }
+tasks.register('publishJar', Copy) { dependsOn remapJar; group='helium'; def outputDir=file("${buildDir}/publish"); def jarName="Helium-${project.mod_version}+mc${mcVersion}.jar"; from(remapJar.archiveFile); into(outputDir); rename { jarName }; doFirst { outputDir.mkdirs() } }
+tasks.register('release') { dependsOn publishJar; group='helium' }
+tasks.register('buildDev') { dependsOn remapJar; group='helium'; outputs.upToDateWhen { false }; doLast { def buildNum=getNextBuildNumber(); def outputDir=file("${buildDir}/dev"); def jarName="Helium-${project.mod_version}+mc${mcVersion}-dev.${buildNum}.jar"; outputDir.mkdirs(); copy { from remapJar.archiveFile; into outputDir; rename { jarName } } } }
