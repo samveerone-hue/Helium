@@ -5,9 +5,7 @@ import com.helium.config.HeliumConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.navigation.GroundPathNavigation;
-import net.minecraft.world.entity.ai.sensing.Sensing;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.pathfinder.Path;
 import net.minecraft.world.level.pathfinder.PathNode;
@@ -34,6 +32,7 @@ public final class GpuComputeManager {
     private static volatile HeliumConfig config;
     private static volatile OpenClComputeBackend backend;
     private static volatile boolean initialized;
+    private static volatile boolean attempted;
     private static volatile boolean loggedUnavailable;
 
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
@@ -50,7 +49,16 @@ public final class GpuComputeManager {
 
     private GpuComputeManager() {}
 
+    private static void ensureInitialized() {
+        if (!attempted) {
+            synchronized (GpuComputeManager.class) {
+                if (!attempted) init(HeliumConfig.load());
+            }
+        }
+    }
+
     public static synchronized void init(HeliumConfig cfg) {
+        attempted = true;
         config = cfg;
         initialized = false;
         OpenClComputeBackend old = backend;
@@ -82,15 +90,18 @@ public final class GpuComputeManager {
     }
 
     public static boolean isAvailable() {
+        ensureInitialized();
         return initialized && backend != null;
     }
 
     public static boolean lineOfSightEnabled() {
+        ensureInitialized();
         HeliumConfig cfg = config;
         return isAvailable() && cfg != null && cfg.gpuCompute && cfg.gpuLineOfSight;
     }
 
     public static boolean pathfindingEnabled() {
+        ensureInitialized();
         HeliumConfig cfg = config;
         return isAvailable() && cfg != null && cfg.gpuCompute && cfg.gpuPathfinding;
     }
@@ -99,9 +110,7 @@ public final class GpuComputeManager {
         LosResult result = losResults.get(new LosKey(sourceId, targetId));
         if (result == null) return null;
         HeliumConfig cfg = config;
-        if (cfg == null || tick - result.tick > Math.max(1, cfg.gpuComputeRefreshTicks)) {
-            return null;
-        }
+        if (cfg == null || tick - result.tick > Math.max(1, cfg.gpuComputeRefreshTicks)) return null;
         return result.visible;
     }
 
@@ -241,9 +250,8 @@ public final class GpuComputeManager {
         int safety = size * size;
         while (safety-- > 0) {
             nodes.add(new PathNode(x + minX, y + minY, z + minZ));
-            if (x == tx && y == ty && z == tz) {
-                return new Path(nodes, target, true);
-            }
+            if (x == tx && y == ty && z == tz) return new Path(nodes, target, true);
+
             int bestX = x, bestY = y, bestZ = z;
             int best = distances[current];
             int[][] dirs = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
@@ -279,7 +287,6 @@ public final class GpuComputeManager {
 
     private static byte[] snapshotWalkable(Level level, int minX, int minY, int minZ, int size) {
         byte[] blocked = snapshotSolid(level, minX, minY, minZ, size);
-        BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         for (int z = 0; z < size; z++) {
             for (int y = 1; y < size - 1; y++) {
                 for (int x = 0; x < size; x++) {
