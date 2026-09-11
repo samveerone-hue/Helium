@@ -14,6 +14,8 @@ public final class GLStateCache {
     private static volatile boolean blendEnabled = false;
     private static volatile boolean depthTestEnabled = false;
     private static volatile boolean cullFaceEnabled = false;
+    private static volatile boolean scissorEnabled = false;
+    private static volatile boolean stencilEnabled = false;
 
     private static volatile int blendSrcRgb = -1;
     private static volatile int blendDstRgb = -1;
@@ -51,6 +53,8 @@ public final class GLStateCache {
         blendEnabled = false;
         depthTestEnabled = false;
         cullFaceEnabled = false;
+        scissorEnabled = false;
+        stencilEnabled = false;
         blendSrcRgb = -1;
         blendDstRgb = -1;
         blendSrcAlpha = -1;
@@ -107,6 +111,18 @@ public final class GLStateCache {
     public static boolean shouldEnableCullFace(boolean enable) {
         if (enable == cullFaceEnabled) return false;
         cullFaceEnabled = enable;
+        return true;
+    }
+
+    public static boolean shouldEnableScissor(boolean enable) {
+        if (enable == scissorEnabled) return false;
+        scissorEnabled = enable;
+        return true;
+    }
+
+    public static boolean shouldEnableStencil(boolean enable) {
+        if (enable == stencilEnabled) return false;
+        stencilEnabled = enable;
         return true;
     }
 
