@@ -18,6 +18,7 @@ public final class GpuComputeManager {
         t.setPriority(Thread.NORM_PRIORITY - 1);
         return t;
     });
+    private static final Object BACKEND_LOCK = new Object();
     private static final ConcurrentMap<Key, Request> pending = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Key, Result> results = new ConcurrentHashMap<>();
     private static volatile GpuComputeConfig config;
@@ -34,20 +35,26 @@ public final class GpuComputeManager {
             if (backend != null || !pending.isEmpty() || !results.isEmpty()) closeBackend();
             return false;
         }
-        if (backend == null) backend = OpenClComputeBackend.create();
+        if (backend == null) {
+            synchronized (BACKEND_LOCK) {
+                if (backend == null) backend = OpenClComputeBackend.create();
+            }
+        }
         return backend != null;
     }
 
     private static void closeBackend() {
-        OpenClComputeBackend b = backend;
-        backend = null;
-        if (b != null) {
-            try { b.close(); } catch (Throwable ignored) {}
+        synchronized (BACKEND_LOCK) {
+            OpenClComputeBackend b = backend;
+            backend = null;
+            generation++;
+            if (b != null) {
+                try { b.close(); } catch (Throwable ignored) {}
+            }
         }
         pending.clear();
         results.clear();
         lastFlush = Long.MIN_VALUE;
-        generation++;
     }
 
     public static void clearWorldState() {
@@ -156,28 +163,43 @@ public final class GpuComputeManager {
 
         float[] rays = new float[batch.size() * 6];
         for (i = 0; i < batch.size(); i++) System.arraycopy(batch.get(i).ray, 0, rays, i * 6, 6);
-        OpenClComputeBackend b = backend;
+        final OpenClComputeBackend b;
+        synchronized (BACKEND_LOCK) {
+            b = backend;
+            if (b == null) {
+                for (Request r : batch) pending.putIfAbsent(r.key, r);
+                lastFlush = Long.MIN_VALUE;
+                return;
+            }
+        }
         long batchGeneration = generation;
         EXECUTOR.execute(() -> {
-            try {
-                boolean[] values = b.runLineOfSight(rays, solid, snapshotSize, snapshotMinX, snapshotMinY, snapshotMinZ);
-                if (values == null || batchGeneration != generation) return;
-                for (int n = 0; n < values.length && n < batch.size(); n++) {
-                    Request r = batch.get(n);
-                    if (r.generation == generation) results.put(r.key, new Result(values[n], tick, generation));
+            synchronized (BACKEND_LOCK) {
+                if (b != backend || batchGeneration != generation) return;
+                try {
+                    boolean[] values = b.runLineOfSight(rays, solid, snapshotSize, snapshotMinX, snapshotMinY, snapshotMinZ);
+                    if (values == null || batchGeneration != generation) return;
+                    for (int n = 0; n < values.length && n < batch.size(); n++) {
+                        Request r = batch.get(n);
+                        if (r.generation == generation) results.put(r.key, new Result(values[n], tick, generation));
+                    }
+                } catch (Throwable t) {
+                    HeliumClient.LOGGER.debug("gpu line-of-sight batch failed", t);
                 }
-            } catch (Throwable t) {
-                HeliumClient.LOGGER.debug("gpu line-of-sight batch failed", t);
             }
         });
     }
 
     public static int[] runFlowField(byte[] blocked, int size, int targetX, int targetY, int targetZ) {
         if (!pathfindingEnabled() || backend == null) return null;
-        try { return backend.runFlowField(blocked, size, targetX, targetY, targetZ); }
-        catch (Throwable t) {
-            HeliumClient.LOGGER.debug("gpu flow-field failed", t);
-            return null;
+        synchronized (BACKEND_LOCK) {
+            OpenClComputeBackend b = backend;
+            if (b == null) return null;
+            try { return b.runFlowField(blocked, size, targetX, targetY, targetZ); }
+            catch (Throwable t) {
+                HeliumClient.LOGGER.debug("gpu flow-field failed", t);
+                return null;
+            }
         }
     }
 }
