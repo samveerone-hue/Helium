@@ -115,10 +115,8 @@ public final class GpuComputeManager {
         int requestedSize = Math.max(16, Math.min(48, config.gridSize));
         int size = Math.max(requestedSize, Math.max(requiredX, Math.max(requiredY, requiredZ)));
         if (size > 64) {
-            // A very long ray should not create an unbounded CPU snapshot. Split the
-            // request back into the pending queue so it can be retried without giving
-            // the GPU an invalid partial-world view.
             for (Request r : batch) pending.putIfAbsent(r.key, r);
+            lastFlush = Long.MIN_VALUE;
             return;
         }
 
@@ -134,19 +132,25 @@ public final class GpuComputeManager {
         if (maxX < (int) Math.ceil(maxFx) || maxY < (int) Math.ceil(maxFy) || maxZ < (int) Math.ceil(maxFz)
                 || minX > (int) Math.floor(minFx) || minY > (int) Math.floor(minFy) || minZ > (int) Math.floor(minFz)) {
             for (Request r : batch) pending.putIfAbsent(r.key, r);
+            lastFlush = Long.MIN_VALUE;
             return;
         }
 
+        final int snapshotMinX = minX;
+        final int snapshotMinY = minY;
+        final int snapshotMinZ = minZ;
+        final int snapshotSize = size;
         Request anchor = batch.get(0);
-        byte[] solid = new byte[size * size * size];
+        byte[] solid = new byte[snapshotSize * snapshotSize * snapshotSize];
         int i = 0;
         try {
-            for (int z = 0; z < size; z++) for (int y = 0; y < size; y++) for (int x = 0; x < size; x++, i++) {
-                solid[i] = (byte) (anchor.sampler.isSolid(minX + x, minY + y, minZ + z) ? 1 : 0);
+            for (int z = 0; z < snapshotSize; z++) for (int y = 0; y < snapshotSize; y++) for (int x = 0; x < snapshotSize; x++, i++) {
+                solid[i] = (byte) (anchor.sampler.isSolid(snapshotMinX + x, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
             }
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
             for (Request r : batch) pending.putIfAbsent(r.key, r);
+            lastFlush = Long.MIN_VALUE;
             return;
         }
 
@@ -156,7 +160,7 @@ public final class GpuComputeManager {
         long batchGeneration = generation;
         EXECUTOR.execute(() -> {
             try {
-                boolean[] values = b.runLineOfSight(rays, solid, size, minX, minY, minZ);
+                boolean[] values = b.runLineOfSight(rays, solid, snapshotSize, snapshotMinX, snapshotMinY, snapshotMinZ);
                 if (values == null || batchGeneration != generation) return;
                 for (int n = 0; n < values.length && n < batch.size(); n++) {
                     Request r = batch.get(n);
