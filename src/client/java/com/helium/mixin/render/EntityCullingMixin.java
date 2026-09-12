@@ -39,9 +39,9 @@ public abstract class EntityCullingMixin<T extends Entity> {
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null || client.world == null || entity instanceof PlayerEntity) return;
 
-            double dx = entity.getX() - client.player.getX();
-            double dy = entity.getY() - client.player.getY();
-            double dz = entity.getZ() - client.player.getZ();
+            double dx = entity.getX() - x;
+            double dy = entity.getY() - y;
+            double dz = entity.getZ() - z;
             double distSq = dx * dx + dy * dy + dz * dz;
 
             if (config.entityCulling) {
@@ -51,8 +51,6 @@ public abstract class EntityCullingMixin<T extends Entity> {
                     return;
                 }
 
-                // EntityBatch's proven LOD idea is deliberately opt-in behind the
-                // existing GPU-batching switch, so normal Helium culling is unchanged.
                 if (config.entityGpuBatching && config.entityGpuFrustumCulling) {
                     Box bounds = entity.getBoundingBox();
                     double volume = Math.max(0.0, bounds.getLengthX())
@@ -85,13 +83,10 @@ public abstract class EntityCullingMixin<T extends Entity> {
                     float bottomY = (float) (bounds.minY + 0.05);
                     float leftX = (float) (bounds.minX + 0.05);
                     float rightX = (float) (bounds.maxX - 0.05);
-                    float ox = (float) client.player.getX();
-                    float oy = (float) client.player.getEyeY();
-                    float oz = (float) client.player.getZ();
+                    float ox = (float) x;
+                    float oy = (float) y;
+                    float oz = (float) z;
 
-                    // Test several anatomical/edge points. The entity remains visible when
-                    // any one ray reaches it, so a single blocked center ray cannot hide an
-                    // entity peeking around a wall corner.
                     float[] rays = new float[]{
                             ox, oy, oz, centerX, centerY, centerZ,
                             ox, oy, oz, centerX, topY, centerZ,
