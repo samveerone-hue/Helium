@@ -79,19 +79,6 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
         OptionPageBuilder extraPage = builder.createOptionPage();
         extraPage.setName(Text.literal("Helium Extras"));
 
-        OptionGroupBuilder extraGroup = builder.createOptionGroup();
-        extraGroup.setName(Text.literal("Additional settings"));
-        addIntegerDirect(builder, extraGroup, storage,
-                "leaf_random_rejection", "Leaf Random Rejection",
-                () -> (int) Math.round(config.leafCullingRandomRejection * 100.0f), 20, 0, 100, 5,
-                v -> config.leafCullingRandomRejection = v / 100.0f,
-                "Percentage rejection used by RANDOM leaf culling.", OptionImpact.MEDIUM, false);
-        addBooleanDirect(builder, extraGroup, storage,
-                "reflex_debug", "Reflex Debug", () -> config.reflexDebug, false,
-                v -> config.reflexDebug = v,
-                "Enable NVIDIA Reflex diagnostic logging.", OptionImpact.LOW, () -> true, false);
-        extraPage.addOptionGroup(extraGroup);
-
         OptionGroupBuilder computeGroup = builder.createOptionGroup();
         computeGroup.setName(Text.literal("GPU Compute / OpenCL"));
         addBooleanDirect(builder, computeGroup, () -> gpuCompute.save(),
