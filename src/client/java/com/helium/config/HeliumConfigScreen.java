@@ -6,6 +6,7 @@ import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
 import me.shedaniel.clothconfig2.api.ConfigEntryBuilder;
 import me.shedaniel.clothconfig2.gui.entries.SubCategoryListEntry;
+import me.shedaniel.clothconfig2.api.AbstractConfigListEntry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
@@ -52,12 +53,12 @@ public final class HeliumConfigScreen {
                         .setSaveConsumer(v -> config.modEnabled = v).build());
             }
             for (OptGroup group : page.groups()) {
-                List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> entries = new ArrayList<>();
+                List<AbstractConfigListEntry> entries = new ArrayList<>();
                 for (Opt opt : group.options()) addsharedentry(eb, entries, opt);
                 cat.addEntry(eb.startSubCategory(Text.translatable(group.key()), entries).setExpanded(true).build());
             }
             if (page.key().equals("helium.page.advanced")) {
-                List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> gpu = new ArrayList<>();
+                List<AbstractConfigListEntry> gpu = new ArrayList<>();
                 gpu.add(eb.startBooleanToggle(Text.literal("Enable GPU Compute"), gpuCompute.enabled).setDefaultValue(false)
                         .setTooltip(Text.literal("Enable the optional OpenCL compute backend. Requires a usable OpenCL device."))
                         .setSaveConsumer(v -> gpuCompute.enabled = v).build());
@@ -78,30 +79,52 @@ public final class HeliumConfigScreen {
         }
 
         ConfigCategory experimentalCat = builder.getOrCreateCategory(Text.literal("Experimental"));
-        List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> network = new ArrayList<>();
-        network.add(eb.startBooleanToggle(Text.literal("Network Optimizations"), experimental.networkOptimizations)
+        List<AbstractConfigListEntry> experimentalEntries = new ArrayList<>();
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Fast Startup"), experimental.fastStartup)
+                .setDefaultValue(false)
+                .setTooltip(Text.literal("Preloads Helium's hot classes in parallel without running their static initializers, reducing later startup stalls."))
+                .setSaveConsumer(v -> experimental.fastStartup = v).build());
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Model Cache"), experimental.modelCache)
+                .setDefaultValue(false)
+                .setTooltip(Text.literal("Adds a bounded front-cache to BlockState -> BlockStateModel lookups. Cleared automatically on model reload."))
+                .setSaveConsumer(v -> experimental.modelCache = v).build());
+        experimentalEntries.add(eb.startIntSlider(Text.literal("Model Cache Size (MB)"), experimental.modelCacheMaxMb, 16, 512)
+                .setDefaultValue(64)
+                .setSaveConsumer(v -> experimental.modelCacheMaxMb = v).build());
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("SIMD Math"), experimental.simdMath)
+                .setDefaultValue(false)
+                .setTooltip(Text.literal("Uses Java's Vector API for Helium batch multiplication/dot-product kernels when the runtime exposes it; otherwise uses a scalar fallback."))
+                .setSaveConsumer(v -> experimental.simdMath = v).build());
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Async Light Updates"), experimental.asyncLightUpdates)
+                .setDefaultValue(false)
+                .setTooltip(Text.literal("Prepares and coalesces block-light update work on a background thread; vanilla light propagation remains on its owning thread."))
+                .setSaveConsumer(v -> experimental.asyncLightUpdates = v).build());
+        experimentalEntries.add(eb.startIntSlider(Text.literal("Async Light Batch"), experimental.asyncLightMaxPerTick, 8, 256)
+                .setDefaultValue(64)
+                .setSaveConsumer(v -> experimental.asyncLightMaxPerTick = v).build());
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Network Optimizations"), experimental.networkOptimizations)
                 .setDefaultValue(false)
                 .setTooltip(Text.literal("Experimental network buffer reuse and maintenance. This does not alter protocol semantics."))
                 .setSaveConsumer(v -> experimental.networkOptimizations = v).build());
-        network.add(eb.startBooleanToggle(Text.literal("GL State Cache"), experimental.glStateCache)
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("GL State Cache"), experimental.glStateCache)
                 .setDefaultValue(false)
                 .setTooltip(Text.literal("Experimental GlStateManager state-cache layer. Automatically disabled when ImmediatelyFast is detected."))
                 .setSaveConsumer(v -> experimental.glStateCache = v).build());
-        network.add(eb.startBooleanToggle(Text.literal("Packet Batching"), experimental.packetBatching)
+        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Packet Batching"), experimental.packetBatching)
                 .setDefaultValue(false)
                 .setTooltip(Text.literal("Coalesce outgoing Netty flushes once per connection tick. Can add up to one tick of network latency; disabled by default."))
                 .setSaveConsumer(v -> experimental.packetBatching = v).build());
-        network.add(eb.startIntSlider(Text.literal("Packet Batch Interval"), experimental.packetBatchTicks, 1, 2)
+        experimentalEntries.add(eb.startIntSlider(Text.literal("Packet Batch Interval"), experimental.packetBatchTicks, 1, 2)
                 .setDefaultValue(1)
-                .setTooltip(Text.literal("Reserved experimental batching interval. Current implementation is capped at one connection tick."))
+                .setTooltip(Text.literal("Current runtime is capped at one connection tick."))
                 .setSaveConsumer(v -> experimental.packetBatchTicks = v).build());
-        experimentalCat.addEntry(eb.startSubCategory(Text.literal("Experimental Performance"), network).setExpanded(false).build());
+        experimentalCat.addEntry(eb.startSubCategory(Text.literal("Experimental Performance"), experimentalEntries).setExpanded(false).build());
 
         return builder.build();
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    private static void addsharedentry(ConfigEntryBuilder eb, List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> entries, Opt opt) {
+    private static void addsharedentry(ConfigEntryBuilder eb, List<AbstractConfigListEntry> entries, Opt opt) {
         if (opt instanceof BoolOpt b) {
             entries.add(eb.startBooleanToggle(Text.translatable(b.key()), b.get().get())
                     .setDefaultValue(b.def()).setTooltip(Text.translatable(b.key() + ".tooltip"))
