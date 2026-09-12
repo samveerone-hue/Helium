@@ -1,40 +1,48 @@
 package com.helium.rentities.entities;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.MinecraftClient;
 import org.lwjgl.system.MemoryUtil;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-/** Captures exact vanilla ModelPart rotations for supported model families. */
+/**
+ * Extracts the rotations Minecraft's own model animation code produced for the
+ * current render state and puts the six primary bone rotations into the Rentities
+ * instance payload.
+ *
+ * This deliberately calls Model#setAngles(state) instead of recreating vanilla
+ * animation formulas in the shader. The mesh is already baked in the same bone
+ * coordinate space, so the GPU only needs the resulting Euler rotations.
+ */
 public final class EntityModelPoseExtractor {
-    private static final Object BINDING_LOCK = new Object();
+    private static volatile Field childrenField;
     private static final Map<Model<?>, PoseBinding> BINDINGS = new WeakHashMap<>();
+    private static final Object BINDING_LOCK = new Object();
 
     private EntityModelPoseExtractor() {}
 
-    private static final class PoseBinding {
-        final java.lang.invoke.MethodHandle setAngles;
-        final ModelPart[] parts;
-
-        PoseBinding(java.lang.invoke.MethodHandle setAngles, ModelPart[] parts) {
-            this.setAngles = setAngles;
-            this.parts = parts;
-        }
-    }
-
-    public static boolean writeExactPose(long ptr, EntityRenderState renderState, EntityAnimationCategory category) {
-        if (renderState == null || category == null) return false;
-        if (!isSupported(category)) return false;
+    /**
+     * Writes exact model rotations into the existing six pose slots. Returns true
+     * only when all six slots were resolved, so unsupported model families keep their
+     * existing category-specific animation path.
+     */
+    public static boolean writeExactPose(long ptr, Object state, EntityAnimationCategory category) {
+        if (!(state instanceof EntityRenderState renderState)) return false;
+        if (!supportsExactPose(category)) return false;
 
         try {
-            EntityRenderDispatcher dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
+            EntityRenderManager dispatcher = MinecraftClient.getInstance().getEntityRenderDispatcher();
+            if (dispatcher == null) return false;
+
             EntityRenderer<?, ?> renderer = dispatcher.getRenderer(renderState);
             if (!(renderer instanceof LivingEntityRenderer<?, ?, ?> livingRenderer)) return false;
 
@@ -49,15 +57,13 @@ public final class EntityModelPoseExtractor {
                 binding.setAngles.invoke(model, renderState);
                 for (int bone = 0; bone < 6; bone++) {
                     ModelPart part = binding.parts[bone];
-                    if (part == null) return false;
-                    writePose(
-                            ptr + EntityInstance.OFFSET_ARMOR_STAND_HEAD_POSE + bone * 16L,
-                            part.pitch,
-                            part.yaw,
-                            part.roll);
+                    writePose(ptr + EntityInstance.OFFSET_ARMOR_STAND_HEAD_POSE + bone * 16L,
+                            part.pitch, part.yaw, part.roll);
                 }
                 return true;
             } finally {
+                // Entity models are shared renderer instances. Never leave the temporary
+                // extracted pose behind for the next vanilla or batched draw.
                 model.resetTransforms();
             }
         } catch (Throwable ignored) {
@@ -65,7 +71,38 @@ public final class EntityModelPoseExtractor {
         }
     }
 
-    private static boolean isSupported(EntityAnimationCategory category) {
+    private static PoseBinding getBinding(Model<?> model, Class<?> stateClass, EntityAnimationCategory category) {
+        synchronized (BINDING_LOCK) {
+            PoseBinding existing = BINDINGS.get(model);
+            if (existing != null && existing.category == category && existing.stateClass == stateClass) {
+                return existing;
+            }
+
+            try {
+                Method setAngles = findSetAngles(model.getClass(), stateClass);
+                if (setAngles == null) return null;
+                setAngles.setAccessible(true);
+
+                ModelPart root = model.getRootPart();
+                if (root == null) return null;
+
+                String[][] candidates = candidates(category);
+                ModelPart[] parts = new ModelPart[6];
+                for (int bone = 0; bone < 6; bone++) {
+                    parts[bone] = findPart(root, candidates[bone]);
+                    if (parts[bone] == null) return null;
+                }
+
+                PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
+                BINDINGS.put(model, binding);
+                return binding;
+            } catch (Throwable ignored) {
+                return null;
+            }
+        }
+    }
+
+    private static boolean supportsExactPose(EntityAnimationCategory category) {
         return category == EntityAnimationCategory.BIPED
                 || category == EntityAnimationCategory.QUADRUPED
                 || category == EntityAnimationCategory.HORSE
@@ -73,97 +110,103 @@ public final class EntityModelPoseExtractor {
                 || category == EntityAnimationCategory.CREEPER;
     }
 
-    private static PoseBinding getBinding(Model<?> model, Class<?> stateClass, EntityAnimationCategory category) {
-        synchronized (BINDING_LOCK) {
-            PoseBinding binding = BINDINGS.get(model);
-            if (binding != null) return binding;
-
-            java.lang.invoke.MethodHandle setAngles = resolveSetAngles(model);
-            if (setAngles == null) return null;
-
-            ModelPart[] parts = resolveParts(model, category);
-            if (parts == null) return null;
-            binding = new PoseBinding(setAngles, parts);
-            BINDINGS.put(model, binding);
-            return binding;
-        }
+    private static String[][] candidates(EntityAnimationCategory category) {
+        return switch (category) {
+            case BIPED -> new String[][] {
+                    {"head"}, {"body"}, {"left_arm"}, {"right_arm"}, {"left_leg"}, {"right_leg"}
+            };
+            case QUADRUPED -> new String[][] {
+                    {"head"}, {"body", "upper_body"},
+                    {"left_front_leg", "leg1"}, {"right_front_leg", "leg2"},
+                    {"left_hind_leg", "leg3"}, {"right_hind_leg", "leg4"}
+            };
+            case HORSE -> new String[][] {
+                    {"head"}, {"body"},
+                    {"front_left_leg"}, {"front_right_leg"},
+                    {"back_left_leg"}, {"back_right_leg"}
+            };
+            case BIRD -> new String[][] {
+                    {"head"}, {"body"}, {"left_wing"}, {"right_wing"}, {"left_leg"}, {"right_leg"}
+            };
+            case CREEPER -> new String[][] {
+                    {"head"}, {"body"}, {"leg1"}, {"leg2"}, {"leg3"}, {"leg4"}
+            };
+            default -> throw new IllegalArgumentException("Unsupported exact pose category: " + category);
+        };
     }
 
-    private static java.lang.invoke.MethodHandle resolveSetAngles(Model<?> model) {
-        try {
-            for (Class<?> cls = model.getClass(); cls != null; cls = cls.getSuperclass()) {
-                for (var method : cls.getDeclaredMethods()) {
-                    if (!method.getName().equals("setAngles") || method.getParameterCount() != 1) continue;
-                    method.setAccessible(true);
-                    return java.lang.invoke.MethodHandles.lookup()
-                            .unreflect(method)
-                            .asType(java.lang.invoke.MethodType.methodType(void.class, Object.class));
-                }
+    private static Method findSetAngles(Class<?> cls, Class<?> stateClass) {
+        for (Class<?> c = cls; c != null && c != Object.class; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                if (!m.getName().equals("setAngles") || m.getParameterCount() != 1) continue;
+                if (m.getParameterTypes()[0].isAssignableFrom(stateClass)) return m;
             }
-        } catch (Throwable ignored) {}
+        }
         return null;
     }
 
-    private static ModelPart[] resolveParts(Model<?> model, EntityAnimationCategory category) {
+    private static ModelPart findPart(ModelPart root, String[] names) {
+        for (String name : names) {
+            ModelPart part = findPartRecursive(root, name);
+            if (part != null) return part;
+        }
+        return null;
+    }
+
+    private static ModelPart findPartRecursive(ModelPart part, String wanted) {
+        if (part == null) return null;
         try {
-            ModelPart[] parts = new ModelPart[6];
-            switch (category) {
-                case BIPED -> {
-                    parts[0] = findPart(model, "head");
-                    parts[1] = findPart(model, "body");
-                    parts[2] = findPart(model, "left_arm", "leftArm");
-                    parts[3] = findPart(model, "right_arm", "rightArm");
-                    parts[4] = findPart(model, "left_leg", "leftLeg");
-                    parts[5] = findPart(model, "right_leg", "rightLeg");
-                }
-                case QUADRUPED, HORSE, BIRD -> {
-                    parts[0] = findPart(model, "head");
-                    parts[1] = findPart(model, "body");
-                    parts[2] = findPart(model, "left_front_leg", "leftFrontLeg", "left_wing", "leftWing");
-                    parts[3] = findPart(model, "right_front_leg", "rightFrontLeg", "right_wing", "rightWing");
-                    parts[4] = findPart(model, "left_hind_leg", "leftHindLeg", "left_leg", "leftLeg");
-                    parts[5] = findPart(model, "right_hind_leg", "rightHindLeg", "right_leg", "rightLeg");
-                }
-                case CREEPER -> {
-                    parts[0] = findPart(model, "head");
-                    parts[1] = findPart(model, "body");
-                    parts[2] = findPart(model, "right_hind_leg", "rightLeg");
-                    parts[3] = findPart(model, "left_hind_leg", "leftLeg");
-                    parts[4] = parts[2];
-                    parts[5] = parts[3];
-                }
-                default -> {
-                    return null;
-                }
+            Field field = childrenField;
+            if (field == null) {
+                field = findChildrenField(part.getClass());
+                if (field == null) return null;
+                childrenField = field;
             }
-            for (ModelPart part : parts) if (part == null) return null;
-            return parts;
+
+            @SuppressWarnings("unchecked")
+            Map<String, ModelPart> children = (Map<String, ModelPart>) field.get(part);
+            if (children == null) return null;
+
+            ModelPart direct = children.get(wanted);
+            if (direct != null) return direct;
+
+            for (ModelPart child : children.values()) {
+                ModelPart found = findPartRecursive(child, wanted);
+                if (found != null) return found;
+            }
         } catch (Throwable ignored) {
-            return null;
         }
-    }
-
-    private static ModelPart findPart(Model<?> model, String... names) {
-        try {
-            for (String name : names) {
-                try {
-                    return model.getRootPart().getChild(name);
-                } catch (Throwable ignored) {}
-                for (ModelPart part : model.getParts()) {
-                    try {
-                        if (part == model.getRootPart()) continue;
-                        if (part.equals(model.getRootPart().getChild(name))) return part;
-                    } catch (Throwable ignored) {}
-                }
-            }
-        } catch (Throwable ignored) {}
         return null;
     }
 
-    private static void writePose(long address, float pitch, float yaw, float roll) {
-        MemoryUtil.memPutFloat(address, pitch);
-        MemoryUtil.memPutFloat(address + 4L, yaw);
-        MemoryUtil.memPutFloat(address + 8L, roll);
-        MemoryUtil.memPutFloat(address + 12L, 0.0f);
+    private static Field findChildrenField(Class<?> cls) {
+        for (String name : new String[]{"children", "field_3661", "n"}) {
+            Class<?> c = cls;
+            while (c != null && c != Object.class) {
+                try {
+                    Field f = c.getDeclaredField(name);
+                    if (Map.class.isAssignableFrom(f.getType())) {
+                        f.setAccessible(true);
+                        return f;
+                    }
+                } catch (NoSuchFieldException ignored) {
+                }
+                c = c.getSuperclass();
+            }
+        }
+        return null;
     }
+
+    private static void writePose(long ptr, float pitch, float yaw, float roll) {
+        MemoryUtil.memPutFloat(ptr, pitch);
+        MemoryUtil.memPutFloat(ptr + 4L, yaw);
+        MemoryUtil.memPutFloat(ptr + 8L, roll);
+        MemoryUtil.memPutFloat(ptr + 12L, 0.0f);
+    }
+
+    private record PoseBinding(
+            EntityAnimationCategory category,
+            Class<?> stateClass,
+            Method setAngles,
+            ModelPart[] parts) {}
 }
