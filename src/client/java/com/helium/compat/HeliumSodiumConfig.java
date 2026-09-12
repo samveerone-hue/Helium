@@ -126,7 +126,7 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
             EnumOptionBuilder o = builder.createEnumOption(VersionCompat.createIdentifier(NAMESPACE, id), e.clazz());
             o.setName(Text.translatable(e.key())).setTooltip(Text.translatable(e.key() + ".tooltip"));
             o.setImpact(IMPACTS[Math.min(e.impact(), IMPACTS.length - 1)]).setDefaultValue(e.def()).setStorageHandler(storage);
-            boolean enabled = e.enabled().get();
+            boolean enabled = (Boolean) e.enabled().get();
             o.setEnabled(enabled);
             o.setBinding(enabled ? v -> e.set().accept(v) : v -> {}, enabled ? e.get() : () -> e.def());
             if (reload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
