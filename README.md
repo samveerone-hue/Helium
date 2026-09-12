@@ -23,17 +23,17 @@ lightweight client-side performance mod for Minecraft
 
 The `1.21.11` branch includes the current Rentities integration work and the following fixes:
 
-- **Armor Stand render-state population fixed.** Rentities previously set the Armor Stand flag but did not populate the six per-instance pose slots used by the GPU shader. The render path now copies head, body, left/right arm, and left/right leg rotations from `ArmorStandEntityRenderState` into the instance buffer. citeturn597048search1turn597048search6
-- **Armor Stand yaw fixed.** The Rentities instance now uses the Armor Stand render state's authoritative `yaw` when writing the GPU rotation, keeping it aligned with the existing `180 - yaw` shader transform. citeturn597048search6
+- **Armor Stand render-state population fixed.** Rentities previously set the Armor Stand flag but did not populate the six per-instance pose slots used by the GPU shader. The render path now copies head, body, left/right arm, and left/right leg rotations from `ArmorStandEntityRenderState` into the instance buffer.
+- **Armor Stand yaw fixed.** The Rentities instance now uses the Armor Stand render state's authoritative `yaw` when writing the GPU rotation, keeping it aligned with the existing `180 - yaw` shader transform.
 - **Armor Stand head pivot fixed.** The missing per-instance head pivot is now populated for the baked entity coordinate system so head rotations use the correct rotation centre.
-- **Armor Stand state mixin enabled.** The new `RentitiesArmorStandStateMixin` is registered in the client mixin configuration so the fix is actually applied at runtime.
+- **Armor Stand state mixin enabled.** `RentitiesArmorStandStateMixin` is registered in the client mixin configuration so the Armor Stand state fix is actually applied at runtime.
 - **GPU batching fallback hardened.** Standard SSBO uploads remain the default backend, while indirect/culling failures fall back to normal ordered instanced rendering instead of silently dropping entities.
 - **Entity error fallback retained.** Failed entity mesh paths can use the magenta error renderer while the normal queue remains available for recovery.
 - **Queue rollback/compaction hardened.** Failed direct extraction reservations are removed safely and cancelled queue slots are compacted before drawing.
 
-These fixes are intended to keep Rentities visually consistent with vanilla rendering while retaining the performance benefits of GPU entity batching.
+These changes are intended to keep Rentities visually consistent with vanilla rendering while retaining the performance benefits of GPU entity batching.
 
-> **Verification status:** the Armor Stand state fix is committed, but the `1.21.11` GitHub Actions build still needs to complete before this is considered CI-verified.
+> **Verification status:** the Armor Stand state fix is committed. The `1.21.11` GitHub Actions build still needs to complete before this is considered CI-verified.
 
 ---
 
