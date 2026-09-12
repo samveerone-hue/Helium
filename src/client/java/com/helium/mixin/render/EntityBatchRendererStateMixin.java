@@ -17,56 +17,44 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * packed instance with the authoritative 1.21.11 render-state values.
  *
  * Minecraft has already prepared these values for the current render tick, so
- * interpolating previous/current entity fields again can visibly double-lerp
- * rotation and movement. This mixin also carries the render state's packed light
- * and Armor Stand's six exact Euler poses into the GPU instance payload.
+ * interpolating previous/current fields again can visibly double-lerp rotation
+ * and movement. The mixin also carries render-state light and exact Armor Stand
+ * Euler poses into the GPU instance payload.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererStateMixin {
 
     @Inject(method = "writeEntityInstance", at = @At("RETURN"))
-    private void helium$applyRenderState(Object ptrState, Object state, double x, double y, double z,
+    private void helium$applyRenderState(long ptr, Object state, double x, double y, double z,
                                          CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValueZ() || state == null) return;
-
-        // The first argument is a long native address in the target method.
-        final long ptr = (long) ptrState;
 
         if (state instanceof EntityRenderState renderState) {
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_PACKED_LIGHT, renderState.light);
 
             if (state instanceof LivingEntityRenderState living) {
-                // These are render-state values for this frame. Do not lerp them again.
-                float bodyYaw = living.bodyYaw;
-                float relativeHeadYaw = living.relativeHeadYaw;
-                float pitch = living.pitch;
-                float limbSwing = living.limbSwingAnimationProgress;
-                float limbAmount = clamp01(living.limbSwingAmplitude);
-
+                // These are authoritative values for this rendered frame. Do not
+                // interpolate previous/current entity fields a second time.
                 MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y,
-                        (float) Math.toRadians(180.0f - bodyYaw));
+                        (float) Math.toRadians(180.0f - living.bodyYaw));
                 MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_YAW,
-                        (float) Math.toRadians(relativeHeadYaw));
+                        (float) Math.toRadians(living.relativeHeadYaw));
                 MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PITCH,
-                        (float) Math.toRadians(pitch));
-                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING, limbSwing);
-                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING_AMT, limbAmount);
-                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_DEATH_TIME, living.deathTime);
+                        (float) Math.toRadians(living.pitch));
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING,
+                        living.limbSwingAnimationProgress);
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_LIMB_SWING_AMT,
+                        clamp01(living.limbSwingAmplitude));
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_DEATH_TIME,
+                        living.deathTime);
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SNEAK_PROGRESS,
+                        renderState.sneaking ? 1.0f : 0.0f);
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HURT_TIME,
+                        living.hurt ? 10.0f : 0.0f);
 
                 int flags = MemoryUtil.memGetInt(ptr + EntityInstance.OFFSET_FLAGS);
-                if (living.sneaking) {
-                    flags |= EntityInstance.FLAG_ON_GROUND;
-                    MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SNEAK_PROGRESS, 1.0f);
-                }
-                if (living.touchingWater) {
-                    flags |= EntityInstance.FLAG_IS_IN_WATER;
-                }
-                if (living.invisibleToPlayer) {
-                    flags |= EntityInstance.FLAG_IS_INVISIBLE;
-                }
-                if (living instanceof LivingEntityRenderState && living.hurt()) {
-                    MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HURT_TIME, 10.0f);
-                }
+                if (living.touchingWater) flags |= EntityInstance.FLAG_IS_IN_WATER;
+                if (living.invisibleToPlayer) flags |= EntityInstance.FLAG_IS_INVISIBLE;
                 MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
             }
         }
