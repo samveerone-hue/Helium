@@ -29,22 +29,28 @@ public final class ExperimentalConfig {
 
     private ExperimentalConfig() {}
 
-    public static synchronized ExperimentalConfig load() {
-        if (INSTANCE != null) return INSTANCE;
-        ExperimentalConfig cfg = new ExperimentalConfig();
-        if (Files.exists(PATH)) {
-            try {
-                ExperimentalConfig loaded = GSON.fromJson(Files.readString(PATH), ExperimentalConfig.class);
-                if (loaded != null) cfg = loaded;
-            } catch (IOException ignored) {
+    public static ExperimentalConfig load() {
+        ExperimentalConfig cached = INSTANCE;
+        if (cached != null) return cached;
+        synchronized (ExperimentalConfig.class) {
+            cached = INSTANCE;
+            if (cached != null) return cached;
+
+            ExperimentalConfig cfg = new ExperimentalConfig();
+            if (Files.exists(PATH)) {
+                try {
+                    ExperimentalConfig loaded = GSON.fromJson(Files.readString(PATH), ExperimentalConfig.class);
+                    if (loaded != null) cfg = loaded;
+                } catch (IOException ignored) {
+                }
             }
+            cfg.packetBatchTicks = Math.max(1, Math.min(2, cfg.packetBatchTicks));
+            cfg.modelCacheMaxMb = Math.max(16, Math.min(512, cfg.modelCacheMaxMb));
+            cfg.asyncLightMaxPerTick = Math.max(8, Math.min(256, cfg.asyncLightMaxPerTick));
+            INSTANCE = cfg;
+            cfg.save();
+            return cfg;
         }
-        cfg.packetBatchTicks = Math.max(1, Math.min(2, cfg.packetBatchTicks));
-        cfg.modelCacheMaxMb = Math.max(16, Math.min(512, cfg.modelCacheMaxMb));
-        cfg.asyncLightMaxPerTick = Math.max(8, Math.min(256, cfg.asyncLightMaxPerTick));
-        INSTANCE = cfg;
-        cfg.save();
-        return cfg;
     }
 
     public void save() {
