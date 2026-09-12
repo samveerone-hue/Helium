@@ -1,5 +1,6 @@
 package com.helium.mixin.render;
 
+import com.helium.rentities.entities.RentitiesBodyModelSuppression;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.state.CameraRenderState;
