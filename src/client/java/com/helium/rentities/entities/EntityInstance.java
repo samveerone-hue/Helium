@@ -5,7 +5,8 @@ public final class EntityInstance {
 
     /*
      * Base instance payload: 160 bytes, including the 16-byte head-pivot slot.
-     * Armor-stand pose payload: 6 x 16 bytes = 96 bytes.
+     * The six pose slots are shared by Armor Stand state and exact vanilla model
+     * animation capture. Their physical layout is unchanged.
      *
      * Total SSBO instance stride: 272 bytes.
      */
@@ -69,13 +70,11 @@ public final class EntityInstance {
     public static final int OFFSET_HEAD_PIVOT_Z      = 152;
 
     /*
-     * Armor-stand rotations.
+     * Six per-instance Euler rotation slots.
      *
-     * Each slot is four floats:
-     *   x = pitch, y = yaw, z = roll, w = padding
-     *
-     * All three rotation components are already converted to radians by
-     * EntityDirectExtractor.
+     * For Armor Stands these contain their explicit vanilla pose.
+     * For supported model families they can instead contain the exact ModelPart
+     * rotations produced by Minecraft's own model#setAngles(state) call.
      */
     public static final int OFFSET_ARMOR_STAND_HEAD_POSE       = 160;
     public static final int OFFSET_ARMOR_STAND_BODY_POSE       = 176;
@@ -104,10 +103,11 @@ public final class EntityInstance {
     public static final int FLAG_SLIME        = 1024;
 
     /**
-     * Entity is an ArmorStand and must use the six explicit armor-stand pose slots
-     * instead of the generic biped animation.
+     * The shader's existing pose path is reused for both Armor Stands and exact
+     * vanilla ModelPart rotations. Keeping the same bit preserves the 272-byte ABI.
      */
-    public static final int FLAG_ARMOR_STAND = 512;
+    public static final int FLAG_EXACT_MODEL_POSE = 512;
+    public static final int FLAG_ARMOR_STAND = FLAG_EXACT_MODEL_POSE;
 
     // Sentinel values
     public static final int NO_MOUNT = -1;
