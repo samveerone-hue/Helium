@@ -1,5 +1,6 @@
 package com.helium.rentities.entities;
 
+import com.helium.math.SimdMath;
 import net.minecraft.client.render.VertexConsumer;
 
 import java.util.ArrayList;
@@ -49,12 +50,52 @@ public final class EntityMeshCapturingConsumer implements VertexConsumer {
     public float[] bakeAndReset() {
         // Preserve Minecraft's vertex order exactly. UVs are attached to the
         // corresponding vertex, so reversing a quad here mirrors the texture.
-        float[] result = new float[captured.size() * 9];
+        int vertexCount = captured.size();
+        float[] result = new float[vertexCount * 9];
         int offset = 0;
         for (float[] vertex : captured) {
             System.arraycopy(vertex, 0, result, offset, 9);
             offset += 9;
         }
+
+        // Rentities uploads large contiguous mesh batches. Normalize the captured
+        // vertex normals once here so the shader does not need to compensate for
+        // malformed model-space normals. The inverse lengths are scalar because
+        // Java's Vector API does not make a 3-float AoS stride cheap; the expensive
+        // contiguous component-wise multiply is delegated to the actual SIMD path.
+        if (vertexCount >= 32) {
+            SimdMath.init();
+            if (SimdMath.isVectorApiAvailable()) {
+                float[] normals = new float[vertexCount * 3];
+                float[] scale = new float[normals.length];
+                for (int i = 0; i < vertexCount; i++) {
+                    int src = i * 9;
+                    int dst = i * 3;
+                    float x = result[src + 3];
+                    float y = result[src + 4];
+                    float z = result[src + 5];
+                    normals[dst] = x;
+                    normals[dst + 1] = y;
+                    normals[dst + 2] = z;
+                    float lenSq = x * x + y * y + z * z;
+                    float invLen = lenSq > 1.0e-8f ? (float) (1.0 / Math.sqrt(lenSq)) : 0.0f;
+                    scale[dst] = invLen;
+                    scale[dst + 1] = invLen;
+                    scale[dst + 2] = invLen;
+                }
+
+                float[] normalized = new float[normals.length];
+                SimdMath.batchMultiply(normals, scale, normalized, normalized.length);
+                for (int i = 0; i < vertexCount; i++) {
+                    int src = i * 3;
+                    int dst = i * 9;
+                    result[dst + 3] = normalized[src];
+                    result[dst + 4] = normalized[src + 1];
+                    result[dst + 5] = normalized[src + 2];
+                }
+            }
+        }
+
         reset();
         return result;
     }
