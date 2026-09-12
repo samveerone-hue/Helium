@@ -19,7 +19,7 @@ public final class FastStartup {
     private FastStartup() {}
 
     public static synchronized void init() {
-        if (startupPool != null) return;
+        if (startupPool != null && !startupPool.isShutdown()) return;
         int threads = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
         AtomicInteger counter = new AtomicInteger(0);
         ThreadFactory factory = r -> {
@@ -37,9 +37,11 @@ public final class FastStartup {
      * bytecode verification spikes from the render thread while preserving normal initialization order.
      */
     public static synchronized void prepare() {
-        if (prepared) return;
+        if (prepared && startupPool != null && !startupPool.isShutdown()) return;
         init();
+        pendingTasks.clear();
         started = true;
+        prepared = false;
         String[] classes = {
                 "com.helium.math.FastMath",
                 "com.helium.math.SimdMath",
@@ -48,7 +50,7 @@ public final class FastStartup {
                 "com.helium.render.AsyncChunkMeshing",
                 "com.helium.render.FastWorldLoadingOptimizer",
                 "com.helium.rentities.entities.EntityBatchRenderer",
-                "com.helium.rentities.entities.EntityMeshBaker",
+                "com.heium.rentities.entities.EntityMeshBaker",
                 "com.helium.network.BufferOptimizer",
                 "com.helium.lighting.AsyncLightEngine",
                 "com.helium.compute.GpuComputeManager"
@@ -66,12 +68,12 @@ public final class FastStartup {
     }
 
     public static <T> CompletableFuture<T> submit(Supplier<T> task) {
-        if (startupPool == null) init();
+        if (startupPool == null || startupPool.isShutdown()) init();
         return CompletableFuture.supplyAsync(task, startupPool);
     }
 
     public static CompletableFuture<Void> submit(Runnable task) {
-        if (startupPool == null) init();
+        if (startupPool == null || startupPool.isShutdown()) init();
         return CompletableFuture.runAsync(task, startupPool);
     }
 
@@ -84,17 +86,18 @@ public final class FastStartup {
     }
 
     /** Drains completed preload tasks without blocking the client thread. */
-    public static void pollCompleted() {
+    public static synchronized void pollCompleted() {
         if (pendingTasks.isEmpty()) return;
         pendingTasks.removeIf(Future::isDone);
     }
 
-    public static void shutdown() {
+    public static synchronized void shutdown() {
         if (startupPool != null) {
             startupPool.shutdown();
             startupPool = null;
         }
         pendingTasks.clear();
         started = false;
+        prepared = false;
     }
 }
