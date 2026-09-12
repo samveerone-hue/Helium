@@ -93,7 +93,8 @@
     "dedup.BakedQuadDedupMixin",
     "dedup.NbtCompoundDedupMixin",
     "render.RentitiesEntityRenderManagerMixin",
-    "render.EntityBatchRendererStateMixin"
+    "render.EntityBatchRendererStateMixin",
+    "render.RentitiesResourceReloadMixin"
   ],
   "injectors": {
     "defaultRequire": 0
