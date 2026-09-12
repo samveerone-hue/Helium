@@ -16,8 +16,14 @@ public final class ExperimentalConfig {
     public boolean networkOptimizations = false;
     public boolean glStateCache = false;
     public boolean packetBatching = false;
+    public boolean fastStartup = false;
+    public boolean modelCache = false;
+    public boolean simdMath = false;
+    public boolean asyncLightUpdates = false;
 
     public int packetBatchTicks = 1;
+    public int modelCacheMaxMb = 64;
+    public int asyncLightMaxPerTick = 64;
 
     private static volatile ExperimentalConfig INSTANCE;
 
@@ -34,6 +40,8 @@ public final class ExperimentalConfig {
             }
         }
         cfg.packetBatchTicks = Math.max(1, Math.min(2, cfg.packetBatchTicks));
+        cfg.modelCacheMaxMb = Math.max(16, Math.min(512, cfg.modelCacheMaxMb));
+        cfg.asyncLightMaxPerTick = Math.max(8, Math.min(256, cfg.asyncLightMaxPerTick));
         INSTANCE = cfg;
         cfg.save();
         return cfg;
