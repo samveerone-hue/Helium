@@ -31,7 +31,7 @@ public abstract class EntityBatchRendererSpecialPoseShaderMixin {
 
         String exactFunction = """
 
-mat4 exactModelBone(int b, EntityInstance inst) {
+mat4 exactLocalBone(int b, EntityInstance inst) {
     vec4 pose = inst.armorStandHeadPose;
     if (b == 1) pose = inst.armorStandBodyPose;
     else if (b == 2) pose = inst.armorStandLeftArmPose;
@@ -43,6 +43,41 @@ mat4 exactModelBone(int b, EntityInstance inst) {
     else if (b == 8) pose = inst.exactPose8;
     else if (b == 9) pose = inst.exactPose9;
     return pivotRot(getP(inst, b), rotX(pose.x) * rotY(pose.y) * rotZ(pose.z));
+}
+
+int exactParentBone(int bone, int category) {
+    // The mesh baker keeps child geometry in the parent-relative pivot layout.
+    // Reapply the vanilla ModelPart hierarchy in the shader so child bones move
+    // with an animated parent instead of orbiting independently around fixed pivots.
+    if (bone <= 1) return -1;
+
+    if (category == ANIM_BIRD) {
+        // Standard bird parts are children of the body. Phantom adds wing tips
+        // and a tail tip one level deeper in the hierarchy.
+        if (bone == 7) return 4;      // Phantom tail tip -> tail base
+        if (bone == 6) return 2;      // Phantom left wing tip -> left wing base
+        if (bone == 8 || bone == 9) return 1;
+        return 1;
+    }
+
+    if (category == ANIM_FROG && bone == 6) return 0; // tongue -> head
+    return 1; // biped/quadruped/horse/arthropod/insect/fish/ghast/creeper families
+}
+
+mat4 exactModelBone(int b, EntityInstance inst) {
+    int category = inst.animationCategory;
+    mat4 result = exactLocalBone(b, inst);
+    int parent = exactParentBone(b, category);
+    if (parent >= 0) {
+        result = exactLocalBone(parent, inst) * result;
+    }
+
+    // Two-level Phantom / multi-part bird rigs need one more composition step.
+    if (category == ANIM_BIRD && (b == 7 || b == 6)) {
+        int grandParent = (b == 7) ? 1 : 1;
+        result = exactLocalBone(grandParent, inst) * result;
+    }
+    return result;
 }
 """;
 
@@ -63,16 +98,26 @@ mat4 exactModelBone(int b, EntityInstance inst) {
         String poseBranch = """
     if ((inst.flags & 4096) != 0) {
         int c = inst.animationCategory;
-        // Only use the exact-pose path for rigs that are currently represented
-        // as flat independent bones. Hierarchical rigs stay on the mature
-        // category-specific animation path until their parent transforms are
-        // represented explicitly in the SSBO.
+        // The mesh baker preserves ModelPart hierarchy pivots. Reconstruct that
+        // hierarchy here so renderer-authored poses remain faithful to vanilla.
         if (c == ANIM_BIPED
-                || c == ANIM_CREEPER
+                || c == ANIM_QUADRUPED
+                || c == ANIM_HORSE
+                || c == ANIM_BIRD
                 || c == ANIM_ARTHROPOD
                 || c == ANIM_INSECT
+                || c == ANIM_WORM
                 || c == ANIM_FISH
-                || c == ANIM_GHAST) {
+                || c == ANIM_AQUATIC_LEGS
+                || c == ANIM_SWIMMING
+                || c == ANIM_FLOATING
+                || c == ANIM_FLOATING_SPINNING
+                || c == ANIM_GHAST
+                || c == ANIM_FROG
+                || c == ANIM_GOAT
+                || c == ANIM_SNIFFER
+                || c == ANIM_ARMADILLO
+                || c == ANIM_CREEPER) {
             return exactModelBone(bone, inst);
         }
     }
