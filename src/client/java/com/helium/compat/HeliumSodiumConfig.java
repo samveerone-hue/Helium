@@ -64,6 +64,18 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
         experimentalPage.setName(Text.literal("Experimental"));
         OptionGroupBuilder experimentalGroup = builder.createOptionGroup();
         experimentalGroup.setName(Text.literal("Experimental Performance"));
+        addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_fast_startup", "Fast Startup", () -> experimental.fastStartup, false,
+                v -> experimental.fastStartup = v, "Preloads Helium hot classes in parallel without running static initializers.", OptionImpact.MEDIUM, () -> true);
+        addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_model_cache", "Model Cache", () -> experimental.modelCache, false,
+                v -> experimental.modelCache = v, "Adds a bounded front-cache to BlockState model lookups and clears it on model reload.", OptionImpact.MEDIUM, () -> true);
+        addIntegerDirect(builder, experimentalGroup, experimental::save, "experimental_model_cache_mb", "Model Cache Size (MB)", () -> experimental.modelCacheMaxMb, 64, 16, 512, 16,
+                v -> experimental.modelCacheMaxMb = v, "Maximum memory budget for the experimental block-model front-cache.", OptionImpact.LOW, false);
+        addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_simd_math", "SIMD Math", () -> experimental.simdMath, false,
+                v -> experimental.simdMath = v, "Use the Java Vector API for Helium batch math kernels when available.", OptionImpact.MEDIUM, () -> true);
+        addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_async_light", "Async Light Updates", () -> experimental.asyncLightUpdates, false,
+                v -> experimental.asyncLightUpdates = v, "Prepare and coalesce light-update work off-thread; vanilla propagation remains on its owning thread.", OptionImpact.HIGH, () -> true);
+        addIntegerDirect(builder, experimentalGroup, experimental::save, "experimental_async_light_batch", "Async Light Batch", () -> experimental.asyncLightMaxPerTick, 64, 8, 256, 8,
+                v -> experimental.asyncLightMaxPerTick = v, "Maximum prepared light-update entries handled by the background worker per batch.", OptionImpact.LOW, false);
         addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_network_optimizations", "Network Optimizations", () -> experimental.networkOptimizations, false,
                 v -> experimental.networkOptimizations = v, "Experimental network buffer reuse and maintenance; protocol semantics are unchanged.", OptionImpact.MEDIUM, () -> true);
         addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_gl_state_cache", "GL State Cache", () -> experimental.glStateCache, false,
@@ -71,7 +83,7 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
         addBooleanDirect(builder, experimentalGroup, experimental::save, "experimental_packet_batching", "Packet Batching", () -> experimental.packetBatching, false,
                 v -> experimental.packetBatching = v, "Coalesces outgoing Netty flushes once per connection tick and can add up to one tick of latency.", OptionImpact.HIGH, () -> true);
         addIntegerDirect(builder, experimentalGroup, experimental::save, "experimental_packet_batch_ticks", "Packet Batch Interval", () -> experimental.packetBatchTicks, 1, 1, 2, 1,
-                v -> experimental.packetBatchTicks = v, "Experimental batching interval; current runtime is capped at one connection tick.", OptionImpact.LOW, false);
+                v -> experimental.packetBatchTicks = v, "Current runtime is capped at one connection tick.", OptionImpact.LOW, false);
         experimentalPage.addOptionGroup(experimentalGroup);
         mod.addPage(experimentalPage);
 
