@@ -45,15 +45,15 @@ public final class EntityBatchRegistry {
         reg(EntityType.FOX,                 EntityAnimationCategory.QUADRUPED);
         reg(EntityType.HOGLIN,              EntityAnimationCategory.QUADRUPED);
         reg(EntityType.ZOGLIN,              EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.DONKEY,              EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.MULE,                EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.SKELETON_HORSE,      EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.ZOMBIE_HORSE,        EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.LLAMA,               EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.TRADER_LLAMA,        EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.PANDA,               EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.POLAR_BEAR,          EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.RABBIT,              EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.DONKEY,               EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.MULE,                 EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.SKELETON_HORSE,       EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.ZOMBIE_HORSE,         EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.LLAMA,                EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.TRADER_LLAMA,         EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.PANDA,                EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.POLAR_BEAR,           EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.RABBIT,               EntityAnimationCategory.QUADRUPED);
 
         reg(EntityType.HORSE,               EntityAnimationCategory.HORSE);
         reg(EntityType.CAMEL,               EntityAnimationCategory.HORSE);
@@ -61,6 +61,8 @@ public final class EntityBatchRegistry {
         reg(EntityType.CHICKEN,             EntityAnimationCategory.BIRD);
         reg(EntityType.PARROT,              EntityAnimationCategory.BIRD);
         reg(EntityType.BAT,                 EntityAnimationCategory.BIRD);
+        // Phantom is a wing/tail rig, not a generic six-limb floating rig.
+        reg(EntityType.PHANTOM,             EntityAnimationCategory.BIRD);
 
         reg(EntityType.SPIDER,              EntityAnimationCategory.ARTHROPOD);
         reg(EntityType.CAVE_SPIDER,         EntityAnimationCategory.ARTHROPOD);
@@ -68,7 +70,7 @@ public final class EntityBatchRegistry {
         reg(EntityType.BEE,                 EntityAnimationCategory.INSECT);
 
         reg(EntityType.SILVERFISH,          EntityAnimationCategory.WORM);
-        reg(EntityType.ENDERMITE,           EntityAnimationCategory.WORM);
+        reg(EntityType.ENDERMITE,            EntityAnimationCategory.WORM);
 
         reg(EntityType.COD,                 EntityAnimationCategory.FISH);
         reg(EntityType.SALMON,              EntityAnimationCategory.FISH);
@@ -87,7 +89,6 @@ public final class EntityBatchRegistry {
 
         reg(EntityType.ALLAY,               EntityAnimationCategory.FLOATING);
         reg(EntityType.VEX,                 EntityAnimationCategory.FLOATING);
-        reg(EntityType.PHANTOM,             EntityAnimationCategory.FLOATING);
 
         reg(EntityType.BLAZE,               EntityAnimationCategory.FLOATING_SPINNING);
         reg(EntityType.BREEZE,              EntityAnimationCategory.FLOATING_SPINNING);
@@ -147,4 +148,3 @@ public final class EntityBatchRegistry {
         return getCategory(type) != EntityAnimationCategory.CPU_ANIMATED;
     }
 }
-
