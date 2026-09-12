@@ -42,7 +42,7 @@ public final class EntityModelPoseExtractor {
                 for (int bone = 0; bone < 10; bone++) writePose(ptr + poseOffset(bone), 0.0f, 0.0f, 0.0f);
                 for (int bone = 0; bone < requiredBones; bone++) {
                     ModelPart part = binding.parts[bone];
-                    writePose(ptr + poseOffset(bone), part.pitch, part.yaw, part.roll);
+                    writePose(ptr + poseOffset(bone), part.getPitch(), part.getYaw(), part.getRoll());
                 }
                 return true;
             } finally {
