@@ -22,11 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * State-based Rentities interception for Yarn 1.21.11.
  *
- * Rentities normally replaces the whole entity render call. Living entities are
- * slightly different when they have feature renderers (armor, held items,
- * saddles, capes, custom heads, etc.): those features still need vanilla's
- * feature pipeline for correctness. In that case Rentities replaces only the
- * base body model command and lets the rest of the vanilla renderer continue.
+ * Living entities keep their vanilla feature pipeline, while Rentities suppresses only
+ * the body model submission. The thread-local equipment marker allows safe feature-layer
+ * substitutions without affecting unrelated entity renders nested inside this call.
  */
 @Mixin(EntityRenderManager.class)
 public abstract class RentitiesEntityRenderManagerMixin {
@@ -57,16 +55,11 @@ public abstract class RentitiesEntityRenderManagerMixin {
         if (!RentitiesRenderStatePolicy.canBatch(state, type)) return;
 
         try {
-            // A cache miss is recoverable. Build the missing base mesh on the render
-            // thread, let this frame fall through to vanilla, then batch from the
-            // completed cache on subsequent frames.
             if (!renderer.hasMeshFor(type)) {
                 renderer.getMeshBaker().ensureMeshFor(type);
                 return;
             }
 
-            // These checks remain immediately before cancellation/substitution so a
-            // texture/shader failure or async rejection can never make an entity disappear.
             if (!renderer.canBatchEntity(type) || !renderer.asyncAllowsBatch(type)) return;
             if (!EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) return;
 
@@ -75,15 +68,16 @@ public abstract class RentitiesEntityRenderManagerMixin {
                 Model<?> model = livingRenderer.getModel();
                 if (model != null) {
                     RentitiesBodyModelSuppression.mark(state, model);
+                    RentitiesEquipmentContext.mark(state);
                     return;
                 }
             }
 
-            // Non-living entities have no feature pipeline to preserve, so the
-            // existing full-render replacement remains appropriate for them.
+            // Non-living entities have no feature pipeline to preserve.
             ci.cancel();
         } catch (Throwable t) {
             RentitiesBodyModelSuppression.clear();
+            RentitiesEquipmentContext.clear();
             HeliumClient.LOGGER.debug(
                     "[Rentities] Entity state batching rejected; falling back to vanilla: {}",
                     t.toString());
@@ -105,5 +99,6 @@ public abstract class RentitiesEntityRenderManagerMixin {
             OrderedRenderCommandQueue queue,
             CallbackInfo ci) {
         RentitiesBodyModelSuppression.clear();
+        RentitiesEquipmentContext.clear();
     }
 }
