@@ -38,12 +38,12 @@ public final class EntityBatchRegistry {
         reg(EntityType.PIG,                 EntityAnimationCategory.QUADRUPED);
         reg(EntityType.SHEEP,               EntityAnimationCategory.QUADRUPED);
         reg(EntityType.MOOSHROOM,           EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.WOLF,                EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.CAT,                 EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.OCELOT,              EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.FOX,                 EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.HOGLIN,              EntityAnimationCategory.QUADRUPED);
-        reg(EntityType.ZOGLIN,              EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.WOLF,                 EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.CAT,                  EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.OCELOT,               EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.FOX,                  EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.HOGLIN,               EntityAnimationCategory.QUADRUPED);
+        reg(EntityType.ZOGLIN,               EntityAnimationCategory.QUADRUPED);
         reg(EntityType.DONKEY,               EntityAnimationCategory.QUADRUPED);
         reg(EntityType.MULE,                 EntityAnimationCategory.QUADRUPED);
         reg(EntityType.SKELETON_HORSE,       EntityAnimationCategory.QUADRUPED);
@@ -54,35 +54,35 @@ public final class EntityBatchRegistry {
         reg(EntityType.POLAR_BEAR,           EntityAnimationCategory.QUADRUPED);
         reg(EntityType.RABBIT,               EntityAnimationCategory.QUADRUPED);
 
-        reg(EntityType.HORSE,               EntityAnimationCategory.HORSE);
-        reg(EntityType.CAMEL,               EntityAnimationCategory.HORSE);
+        reg(EntityType.HORSE,                EntityAnimationCategory.HORSE);
+        reg(EntityType.CAMEL,                EntityAnimationCategory.HORSE);
 
-        reg(EntityType.CHICKEN,             EntityAnimationCategory.BIRD);
-        reg(EntityType.PARROT,              EntityAnimationCategory.BIRD);
-        reg(EntityType.BAT,                 EntityAnimationCategory.BIRD);
-        reg(EntityType.PHANTOM,             EntityAnimationCategory.BIRD);
+        reg(EntityType.CHICKEN,              EntityAnimationCategory.BIRD);
+        reg(EntityType.PARROT,               EntityAnimationCategory.BIRD);
+        reg(EntityType.BAT,                  EntityAnimationCategory.BIRD);
+        reg(EntityType.PHANTOM,              EntityAnimationCategory.BIRD);
 
-        reg(EntityType.SPIDER,              EntityAnimationCategory.ARTHROPOD);
-        reg(EntityType.CAVE_SPIDER,         EntityAnimationCategory.ARTHROPOD);
-        reg(EntityType.BEE,                 EntityAnimationCategory.INSECT);
+        reg(EntityType.SPIDER,               EntityAnimationCategory.ARTHROPOD);
+        reg(EntityType.CAVE_SPIDER,          EntityAnimationCategory.ARTHROPOD);
+        reg(EntityType.BEE,                  EntityAnimationCategory.INSECT);
 
         // Segmented models intentionally remain vanilla until their individual
         // segments have a dedicated GPU pose mapping.
 
-        reg(EntityType.COD,                 EntityAnimationCategory.FISH);
-        reg(EntityType.SALMON,              EntityAnimationCategory.FISH);
-        reg(EntityType.TROPICAL_FISH,       EntityAnimationCategory.FISH);
-        reg(EntityType.PUFFERFISH,          EntityAnimationCategory.FISH);
+        reg(EntityType.COD,                  EntityAnimationCategory.FISH);
+        reg(EntityType.SALMON,               EntityAnimationCategory.FISH);
+        reg(EntityType.TROPICAL_FISH,        EntityAnimationCategory.FISH);
+        reg(EntityType.PUFFERFISH,           EntityAnimationCategory.FISH);
 
-        reg(EntityType.AXOLOTL,             EntityAnimationCategory.AQUATIC_LEGS);
-        reg(EntityType.DOLPHIN,             EntityAnimationCategory.SWIMMING);
-        reg(EntityType.TADPOLE,             EntityAnimationCategory.SWIMMING);
+        reg(EntityType.AXOLOTL,              EntityAnimationCategory.AQUATIC_LEGS);
+        reg(EntityType.DOLPHIN,              EntityAnimationCategory.SWIMMING);
+        reg(EntityType.TADPOLE,              EntityAnimationCategory.SWIMMING);
 
-        reg(EntityType.SLIME,               EntityAnimationCategory.SLIME);
-        reg(EntityType.MAGMA_CUBE,          EntityAnimationCategory.SLIME);
+        reg(EntityType.SLIME,                EntityAnimationCategory.SLIME);
+        reg(EntityType.MAGMA_CUBE,           EntityAnimationCategory.SLIME);
 
-        reg(EntityType.ALLAY,               EntityAnimationCategory.FLOATING);
-        reg(EntityType.VEX,                 EntityAnimationCategory.FLOATING);
+        reg(EntityType.ALLAY,                EntityAnimationCategory.FLOATING);
+        reg(EntityType.VEX,                  EntityAnimationCategory.FLOATING);
 
         // Blaze (12 rods), Breeze (dedicated wind pieces), Squid/Glow Squid
         // (8 tentacles), Shulker (head/lid/base) and Strider (six animated
@@ -116,6 +116,13 @@ public final class EntityBatchRegistry {
 
     private static void reg(EntityType<?> type, EntityAnimationCategory category) {
         REGISTRY.put(type, category);
+    }
+
+    /** Registers a runtime-discovered model rig without overwriting an existing mapping. */
+    public static boolean registerDynamic(EntityType<?> type, EntityAnimationCategory category) {
+        if (type == null || category == null || category == EntityAnimationCategory.CPU_ANIMATED) return false;
+        EntityAnimationCategory existing = REGISTRY.putIfAbsent(type, category);
+        return existing == null || existing == category;
     }
 
     public static EntityAnimationCategory getCategory(EntityType<?> type) {
