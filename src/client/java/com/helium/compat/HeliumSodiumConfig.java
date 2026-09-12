@@ -14,11 +14,12 @@ import net.caffeinemc.mods.sodium.api.config.structure.*;
 import net.minecraft.text.Text;
 
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class HeliumSodiumConfig implements ConfigEntryPoint {
 
     private static final String NAMESPACE = "helium";
-
     private static final OptionImpact[] IMPACTS = {
             OptionImpact.LOW, OptionImpact.MEDIUM, OptionImpact.HIGH, OptionImpact.VARIES
     };
@@ -44,88 +45,86 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
         mod.setIcon(VersionCompat.createIdentifier(NAMESPACE, "textures/icon-only.png"));
 
         OptionPageBuilder corePage = builder.createOptionPage();
-        corePage.setName(Text.translatable("helium.page.general"));
+        corePage.setName(Text.literal("Helium Core"));
         OptionGroupBuilder coreGroup = builder.createOptionGroup();
-        coreGroup.setName(Text.translatable("helium.config.category.general"));
+        coreGroup.setName(Text.literal("General"));
         addBooleanDirect(builder, coreGroup, storage,
-                "helium.option.mod_enabled", config.modEnabled, true,
+                "helium_mod_enabled", "Enable Helium", () -> config.modEnabled, true,
                 v -> config.modEnabled = v,
-                "Enable or disable Helium. Restart Minecraft after changing this setting.", OptionImpact.MEDIUM, false);
+                "Enable or disable Helium. Restart Minecraft after changing this setting.", OptionImpact.MEDIUM, () -> true, false);
         addBooleanDirect(builder, coreGroup, storage,
-                "helium.config.dev_mode", config.devMode, false,
+                "helium_dev_mode", "Developer Mode", () -> config.devMode, false,
                 v -> config.devMode = v,
-                "Enable developer-mode optimizations and diagnostics. Restart Minecraft after changing this setting.", OptionImpact.VARIES, false);
+                "Enable developer-mode optimizations and diagnostics. Restart Minecraft after changing this setting.", OptionImpact.VARIES, () -> true, false);
         corePage.addOptionGroup(coreGroup);
         mod.addPage(corePage);
 
         List<OptPage> pages = HeliumSharedOptions.pages(config);
-
         for (OptPage page : pages) {
-            OptionPageBuilder sodiumpage = builder.createOptionPage();
-            sodiumpage.setName(Text.translatable(page.key()));
-            boolean needsreload = page.key().equals("helium.page.rendering");
+            OptionPageBuilder sodiumPage = builder.createOptionPage();
+            sodiumPage.setName(Text.translatable(page.key()));
+            boolean needsReload = page.key().equals("helium.page.rendering");
 
             for (OptGroup group : page.groups()) {
-                OptionGroupBuilder sodiumgroup = builder.createOptionGroup();
-                sodiumgroup.setName(Text.translatable(group.key()));
-
+                OptionGroupBuilder sodiumGroup = builder.createOptionGroup();
+                sodiumGroup.setName(Text.translatable(group.key()));
                 for (Opt opt : group.options()) {
-                    addoption(builder, sodiumgroup, storage, opt, needsreload);
+                    addoption(builder, sodiumGroup, storage, opt, needsReload);
                 }
-
-                sodiumpage.addOptionGroup(sodiumgroup);
+                sodiumPage.addOptionGroup(sodiumGroup);
             }
-
-            mod.addPage(sodiumpage);
+            mod.addPage(sodiumPage);
         }
 
         OptionPageBuilder extraPage = builder.createOptionPage();
         extraPage.setName(Text.literal("Helium Extras"));
 
-        OptionGroupBuilder renderingExtra = builder.createOptionGroup();
-        renderingExtra.setName(Text.translatable("helium.group.experimental"));
-        addIntegerDirect(builder, renderingExtra, storage,
-                "helium.option.leaf_random_rejection", "Leaf Random Rejection", 
-                (int)Math.round(config.leafCullingRandomRejection * 100.0f), 20, 0, 100, 5,
+        OptionGroupBuilder extraGroup = builder.createOptionGroup();
+        extraGroup.setName(Text.literal("Additional settings"));
+        addIntegerDirect(builder, extraGroup, storage,
+                "leaf_random_rejection", "Leaf Random Rejection",
+                () -> (int) Math.round(config.leafCullingRandomRejection * 100.0f), 20, 0, 100, 5,
                 v -> config.leafCullingRandomRejection = v / 100.0f,
-                "Percentage rejection used by RANDOM leaf culling.", OptionImpact.MEDIUM, true, false);
-        addBooleanDirect(builder, renderingExtra, storage,
-                "helium.option.reflex_debug", config.reflexDebug, false,
+                "Percentage rejection used by RANDOM leaf culling.", OptionImpact.MEDIUM, false);
+        addBooleanDirect(builder, extraGroup, storage,
+                "reflex_debug", "Reflex Debug", () -> config.reflexDebug, false,
                 v -> config.reflexDebug = v,
-                "Enable NVIDIA Reflex diagnostic logging.", OptionImpact.LOW, false);
-        extraPage.addOptionGroup(renderingExtra);
+                "Enable NVIDIA Reflex diagnostic logging.", OptionImpact.LOW, () -> true, false);
+        extraPage.addOptionGroup(extraGroup);
 
         OptionGroupBuilder computeGroup = builder.createOptionGroup();
         computeGroup.setName(Text.literal("GPU Compute / OpenCL"));
         addBooleanDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_compute_enabled", gpuCompute.enabled, false,
+                "gpu_compute_enabled", "Enable GPU Compute", () -> gpuCompute.enabled, false,
                 v -> gpuCompute.enabled = v,
-                "Enable the optional OpenCL compute backend. Requires a usable OpenCL driver/device.", OptionImpact.HIGH, false);
+                "Enable the optional OpenCL compute backend. Requires a usable OpenCL driver/device.", OptionImpact.HIGH, () -> true, false);
         addBooleanDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_line_of_sight", gpuCompute.lineOfSight, false,
+                "gpu_line_of_sight", "GPU Line of Sight", () -> gpuCompute.lineOfSight, false,
                 v -> gpuCompute.lineOfSight = v,
-                "Use OpenCL for cached entity line-of-sight tests. Falls back safely when unavailable.", OptionImpact.HIGH, true);
+                "Use OpenCL for cached entity line-of-sight tests. Falls back safely when unavailable.", OptionImpact.HIGH, () -> gpuCompute.enabled, false);
         addBooleanDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_pathfinding", gpuCompute.pathfinding, false,
+                "gpu_pathfinding", "GPU Pathfinding", () -> gpuCompute.pathfinding, false,
                 v -> gpuCompute.pathfinding = v,
-                "Enable the OpenCL flow-field pathfinding kernel. This does not replace Minecraft navigation.", OptionImpact.HIGH, true);
+                "Enable the OpenCL flow-field pathfinding kernel. This does not replace Minecraft navigation.", OptionImpact.HIGH, () -> gpuCompute.enabled, false);
         addIntegerDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_grid_size", "GPU Grid Size", gpuCompute.gridSize, 32, 16, 48, 1,
+                "gpu_grid_size", "GPU Grid Size", () -> gpuCompute.gridSize, 32, 16, 48, 1,
                 v -> gpuCompute.gridSize = v,
-                "World-snapshot cube edge length used by GPU compute.", OptionImpact.MEDIUM, true, false);
+                "World-snapshot cube edge length used by GPU compute.", OptionImpact.MEDIUM, false);
         addIntegerDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_refresh_ticks", "GPU Refresh Ticks", gpuCompute.refreshTicks, 2, 1, 10, 1,
+                "gpu_refresh_ticks", "GPU Refresh Ticks", () -> gpuCompute.refreshTicks, 2, 1, 10, 1,
                 v -> gpuCompute.refreshTicks = v,
-                "Client ticks for reusing cached GPU line-of-sight results.", OptionImpact.MEDIUM, true, false);
+                "Client ticks for reusing cached GPU line-of-sight results.", OptionImpact.MEDIUM, false);
         addIntegerDirect(builder, computeGroup, () -> gpuCompute.save(),
-                "helium.option.gpu_max_batch", "GPU Max Batch", gpuCompute.maxBatch, 1, 1, 8, 1,
+                "gpu_max_batch", "GPU Max Batch", () -> gpuCompute.maxBatch, 1, 1, 8, 1,
                 v -> gpuCompute.maxBatch = v,
-                "Maximum line-of-sight requests submitted in one GPU snapshot.", OptionImpact.MEDIUM, true, false);
+                "Maximum line-of-sight requests submitted in one GPU snapshot.", OptionImpact.MEDIUM, false);
         extraPage.addOptionGroup(computeGroup);
         mod.addPage(extraPage);
     }
 
-    private void addoption(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage, Opt opt, boolean needsreload) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private void addoption(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage,
+                            Opt opt, boolean needsReload) {
         if (opt instanceof BoolOpt b) {
             String id = b.key().replace("helium.option.", "").replace(".", "_");
             BooleanOptionBuilder o = builder.createBooleanOption(VersionCompat.createIdentifier(NAMESPACE, id));
@@ -135,14 +134,13 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
             o.setDefaultValue(b.def());
             o.setStorageHandler(storage);
             o.setEnabled(b.enabled().get());
-            if (needsreload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
+            if (needsReload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
             if (!b.enabled().get()) {
                 o.setBinding(v -> {}, () -> b.def());
             } else {
-                o.setBinding(v -> b.set().accept(v), () -> b.get().get());
+                o.setBinding(v -> b.set().accept(v), b.get());
             }
             group.addOption(o);
-
         } else if (opt instanceof IntOpt i) {
             String id = i.key().replace("helium.option.", "").replace(".", "_");
             IntegerOptionBuilder o = builder.createIntegerOption(VersionCompat.createIdentifier(NAMESPACE, id));
@@ -152,9 +150,8 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
             o.setDefaultValue(i.def());
             o.setRange(i.min(), i.max(), i.step());
             o.setStorageHandler(storage);
-            o.setBinding(v -> i.set().accept(v), () -> i.get().get());
-            if (needsreload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
-
+            o.setBinding(v -> i.set().accept(v), i.get());
+            if (needsReload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
             if (i.key().contains("display_sync")) {
                 o.setValueFormatter(v -> {
                     String fmt = HeliumSharedOptions.formatdisplaysync(v);
@@ -171,11 +168,9 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
                 o.setValueFormatter(v -> Text.of(String.valueOf(v)));
             }
             group.addOption(o);
-
         } else if (opt instanceof EnumOpt e) {
             String id = e.key().replace("helium.option.", "").replace(".", "_");
-            EnumOptionBuilder o = builder.createEnumOption(
-                    VersionCompat.createIdentifier(NAMESPACE, id), e.clazz());
+            EnumOptionBuilder o = builder.createEnumOption(VersionCompat.createIdentifier(NAMESPACE, id), e.clazz());
             o.setName(Text.translatable(e.key()));
             o.setTooltip(Text.translatable(e.key() + ".tooltip"));
             o.setImpact(IMPACTS[Math.min(e.impact(), IMPACTS.length - 1)]);
@@ -187,46 +182,34 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
                 return Text.translatable(e.namePrefix() + enumid);
             });
             o.setStorageHandler(storage);
-            if (needsreload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
-            boolean enumEnabled = (Boolean) e.enabled().get();
-            o.setEnabled(enumEnabled);
-            if (!enumEnabled) {
-                o.setBinding(v -> {}, () -> e.def());
-            } else {
-                o.setBinding(v -> e.set().accept(v), () -> e.get().get());
-            }
+            if (needsReload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
+            boolean enabled = (Boolean) e.enabled().get();
+            o.setEnabled(enabled);
+            o.setBinding(enabled ? v -> e.set().accept(v) : v -> {}, enabled ? e.get() : () -> e.def());
             group.addOption(o);
         }
     }
 
     private void addBooleanDirect(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage,
-                                  String key, boolean current, boolean def,
-                                  java.util.function.Consumer<Boolean> setter,
-                                  String tooltip, OptionImpact impact, boolean enabled) {
-        String id = key.replace("helium.option.", "").replace(".", "_");
+                                  String id, String name, Supplier<Boolean> getter, boolean def,
+                                  Consumer<Boolean> setter, String tooltip, OptionImpact impact,
+                                  Supplier<Boolean> enabled, boolean ignored) {
         BooleanOptionBuilder o = builder.createBooleanOption(VersionCompat.createIdentifier(NAMESPACE, id));
-        o.setName(Text.translatable(key));
+        o.setName(Text.literal(name));
         o.setTooltip(Text.literal(tooltip));
         o.setImpact(impact);
         o.setDefaultValue(def);
         o.setStorageHandler(storage);
-        o.setEnabled(enabled);
-        o.setBinding(setter, () -> current || setter == null ? current : current);
+        boolean active = enabled.get();
+        o.setEnabled(active);
+        o.setBinding(active ? setter : v -> {}, active ? getter : () -> def);
         group.addOption(o);
     }
 
-    private void addBooleanDirect(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage,
-                                  String key, boolean current, boolean def,
-                                  java.util.function.Consumer<Boolean> setter,
-                                  String tooltip, OptionImpact impact, boolean enabled, boolean ignored) {
-        addBooleanDirect(builder, group, storage, key, current, def, setter, tooltip, impact, enabled);
-    }
-
     private void addIntegerDirect(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage,
-                                  String key, String name, int current, int def, int min, int max, int step,
-                                  java.util.function.Consumer<Integer> setter, String tooltip,
-                                  OptionImpact impact, boolean needsReload, boolean ignored) {
-        String id = key.replace("helium.option.", "").replace(".", "_");
+                                  String id, String name, Supplier<Integer> getter, int def,
+                                  int min, int max, int step, Consumer<Integer> setter,
+                                  String tooltip, OptionImpact impact, boolean needsReload) {
         IntegerOptionBuilder o = builder.createIntegerOption(VersionCompat.createIdentifier(NAMESPACE, id));
         o.setName(Text.literal(name));
         o.setTooltip(Text.literal(tooltip));
@@ -234,15 +217,8 @@ public class HeliumSodiumConfig implements ConfigEntryPoint {
         o.setDefaultValue(def);
         o.setRange(min, max, step);
         o.setStorageHandler(storage);
-        o.setBinding(setter, () -> current);
+        o.setBinding(setter, getter);
         if (needsReload) o.setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD);
         group.addOption(o);
-    }
-
-    private void addIntegerDirect(ConfigBuilder builder, OptionGroupBuilder group, StorageEventHandler storage,
-                                  String key, int current, int def, int min, int max, int step,
-                                  java.util.function.Consumer<Integer> setter, String tooltip,
-                                  OptionImpact impact, boolean needsReload) {
-        addIntegerDirect(builder, group, storage, key, key, current, def, min, max, step, setter, tooltip, impact, needsReload, false);
     }
 }
