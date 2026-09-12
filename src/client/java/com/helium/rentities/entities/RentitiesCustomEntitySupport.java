@@ -70,9 +70,11 @@ public final class RentitiesCustomEntitySupport {
             return EntityAnimationCategory.BIPED;
         }
 
-        if (hasAll(names, "head", "body", "front_left_leg", "front_right_leg",
+        // Horses/camel-style rigs get their dedicated seven-bone binding only when
+        // a tail is present. Ordinary four-legged custom mobs use QUADRUPED instead.
+        if (hasAll(names, "head", "body", "tail", "front_left_leg", "front_right_leg",
                 "back_left_leg", "back_right_leg")
-                || hasAll(names, "head", "body", "left_front_leg", "right_front_leg",
+                || hasAll(names, "head", "body", "tail", "left_front_leg", "right_front_leg",
                 "left_hind_leg", "right_hind_leg")) {
             return EntityAnimationCategory.HORSE;
         }
