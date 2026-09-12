@@ -76,7 +76,7 @@
     "memory.FramebufferCleanerMixin",
     "lang.LanguageReloadMixin",
     "lang.LanguageScreenMixin",
-    "reflex.GameRendererMixin",
+    "reflex.GameRendererReflexMixin",
     "math.GivensPairMixin",
     "math.MatrixStackEntryMixin",
     "random.CheckedRandomMixin",
