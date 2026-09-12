@@ -96,7 +96,8 @@
     "render.EntityBatchRendererStateMixin",
     "render.RentitiesResourceReloadMixin",
     "render.EntityBatchRendererHealthMixin",
-    "render.EntityBatchRendererInvoker"
+    "render.EntityBatchRendererInvoker",
+    "render.RentitiesArmorStandStateMixin"
   ],
   "injectors": {
     "defaultRequire": 0
