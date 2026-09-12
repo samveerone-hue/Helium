@@ -1,6 +1,5 @@
 package com.helium.rentities;
 
-
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import net.fabricmc.loader.api.FabricLoader;
@@ -81,10 +80,14 @@ public final class RendererCapabilityState {
                 s.customShaderHealthy = false;
                 s.customShaderReason = "Iris detected; custom Rentities shader backend is disabled for compatibility";
             }
-            s.meshGpu = isAtLeast(4, 5, version);
+
+            // The stable Rentities batching backend uses ordinary SSBO uploads, which only
+            // require OpenGL 4.3. Keep the 4.5+ test for optional DSA/persistent-mapping
+            // acceleration instead of incorrectly blocking the baseline renderer.
+            s.meshGpu = s.gl43 && s.ssbo;
             if (!s.meshGpu) {
                 s.meshHealthy = false;
-                s.meshReason = "OpenGL 4.5+ DSA unavailable";
+                s.meshReason = "OpenGL 4.3+ SSBO support unavailable";
             }
         } catch (Throwable t) {
             s.gpuBatchingHealthy = false;
