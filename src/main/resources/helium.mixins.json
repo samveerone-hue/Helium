@@ -10,6 +10,7 @@
     "math.MathHelperDoubleMixin",
     "render.GlStateManagerMixin",
     "render.GlStateManagerLegacyMixin",
+    "render.BlockModelsCacheMixin",
     "render.EntityCullingMixin",
     "render.DisplayEntityCullingMixin",
     "render.BlockEntityCullingMixin",
