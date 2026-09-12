@@ -28,21 +28,33 @@ public final class SimdMath {
         try {
             vectorClass = Class.forName("jdk.incubator.vector.FloatVector");
             speciesClass = Class.forName("jdk.incubator.vector.VectorSpecies");
+            Class<?> vectorBaseClass = Class.forName("jdk.incubator.vector.Vector");
             Class<?> operatorsClass = Class.forName("jdk.incubator.vector.VectorOperators");
+            Class<?> associativeClass = Class.forName("jdk.incubator.vector.VectorOperators$Associative");
             Field speciesField = vectorClass.getField("SPECIES_PREFERRED");
             species = speciesField.get(null);
             speciesLength = speciesClass.getMethod("length");
             fromArray = vectorClass.getMethod("fromArray", speciesClass, float[].class, int.class);
-            mul = vectorClass.getMethod("mul", vectorClass);
+            mul = findMethod(vectorClass, "mul", vectorBaseClass);
             intoArray = vectorClass.getMethod("intoArray", float[].class, int.class);
-            reduceLanes = vectorClass.getMethod("reduceLanes", Class.forName("jdk.incubator.vector.VectorOperators$Associative"));
+            reduceLanes = findMethod(vectorClass, "reduceLanes", associativeClass);
             addOperator = operatorsClass.getField("ADD").get(null);
-            vectorApiAvailable = true;
-            HeliumClient.LOGGER.info("simd math initialized - Vector API batch backend available");
+            vectorApiAvailable = mul != null && reduceLanes != null;
+            HeliumClient.LOGGER.info("simd math initialized - Vector API batch backend available={}", vectorApiAvailable);
         } catch (Throwable t) {
             vectorApiAvailable = false;
             HeliumClient.LOGGER.info("simd math initialized - Vector API unavailable, scalar fallback active");
         }
+    }
+
+    private static Method findMethod(Class<?> owner, String name, Class<?> parameter) {
+        for (Method method : owner.getMethods()) {
+            if (!method.getName().equals(name) || method.getParameterCount() != 1) continue;
+            if (method.getParameterTypes()[0].isAssignableFrom(parameter) || parameter.isAssignableFrom(method.getParameterTypes()[0])) {
+                return method;
+            }
+        }
+        return null;
     }
 
     public static boolean isInitialized() { return initialized; }
