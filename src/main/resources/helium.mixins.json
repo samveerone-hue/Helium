@@ -28,7 +28,6 @@
     "particle.ParticleManagerMixin",
     "particle.ParticleLifecycleMixin",
     "tick.ClientWorldMixin",
-    "tick.ClientTickMixin",
     "network.ClientConnectionMixin",
     "multiplayer.ServerListWidgetMixin",
     "multiplayer.MultiplayerScreenMixin",
