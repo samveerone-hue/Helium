@@ -5,7 +5,6 @@ import net.minecraft.client.model.Model;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.equipment.EquipmentModel;
 import net.minecraft.client.render.entity.equipment.EquipmentRenderer;
-import net.minecraft.client.render.entity.state.BipedEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.ItemStack;
@@ -18,12 +17,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Converts simple armor layer submissions into Rentities GPU geometry.
- *
- * Trimmed, dyed, enchanted or otherwise material-special armor is deliberately
- * left to vanilla so the equipment renderer can preserve its full material pipeline.
- */
+/** Converts simple equipment layer submissions into Rentities GPU geometry. */
 @Mixin(EquipmentRenderer.class)
 public abstract class EquipmentRendererMixin {
     @Inject(
@@ -45,11 +39,10 @@ public abstract class EquipmentRendererMixin {
             int outlineColor,
             int initialOrder,
             CallbackInfo ci) {
-        if (!(state instanceof BipedEntityRenderState)) return;
         if (!RentitiesEquipmentContext.isCurrent(state)) return;
         if (stack == null || stack.isEmpty()) return;
 
-        // These cases need the vanilla material/trim/glint pipeline.
+        // Trim, dye, glint and outline passes need vanilla's full material pipeline.
         if (textureId == null) return;
         if (stack.get(DataComponentTypes.TRIM) != null) return;
         if (stack.get(DataComponentTypes.DYED_COLOR) != null) return;
