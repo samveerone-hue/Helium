@@ -1,66 +1,62 @@
 package com.helium.render;
 
 import com.helium.HeliumClient;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.render.model.BlockStateModel;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/** Small front-cache for repeated BlockState -> BlockStateModel lookups. */
 public final class ModelCache {
-
-    private static volatile ConcurrentHashMap<Long, Object> cache;
-    private static volatile boolean initialized = false;
+    private static final ConcurrentHashMap<BlockState, BlockStateModel> cache = new ConcurrentHashMap<>();
+    private static volatile boolean initialized;
     private static volatile int maxEntries = 8192;
-    private static final AtomicInteger hits = new AtomicInteger(0);
-    private static final AtomicInteger misses = new AtomicInteger(0);
+    private static final AtomicInteger hits = new AtomicInteger();
+    private static final AtomicInteger misses = new AtomicInteger();
 
     private ModelCache() {}
 
-    public static void init(int maxSizeMb) {
-        if (initialized) return;
-
-        maxEntries = Math.max(1024, (maxSizeMb * 1024 * 1024) / 512);
-
-        cache = new ConcurrentHashMap<>(1024, 0.75f, Runtime.getRuntime().availableProcessors());
-
+    public static synchronized void init(int maxSizeMb) {
+        int requested = Math.max(16, Math.min(512, maxSizeMb));
+        maxEntries = Math.max(1024, (requested * 1024 * 1024) / 256);
+        cache.clear();
+        hits.set(0);
+        misses.set(0);
         initialized = true;
-        HeliumClient.LOGGER.info("model cache initialized (max {} entries, ~{}mb)", maxEntries, maxSizeMb);
+        HeliumClient.LOGGER.info("experimental block model front-cache initialized (max {} entries)", maxEntries);
     }
 
     public static boolean isInitialized() {
         return initialized;
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T get(long key) {
-        if (!initialized) return null;
-        Object val = cache.get(key);
-        if (val != null) {
+    public static BlockStateModel get(BlockState state) {
+        if (!initialized || state == null) return null;
+        BlockStateModel model = cache.get(state);
+        if (model != null) {
             hits.incrementAndGet();
-            return (T) val;
+            return model;
         }
         misses.incrementAndGet();
         return null;
     }
 
-    public static void put(long key, Object value) {
-        if (!initialized || value == null) return;
-        cache.put(key, value);
+    public static void put(BlockState state, BlockStateModel model) {
+        if (!initialized || state == null || model == null) return;
+        cache.put(state, model);
         if (cache.size() > maxEntries) {
-            var it = cache.entrySet().iterator();
-            int toRemove = cache.size() - maxEntries;
-            while (it.hasNext() && toRemove > 0) {
+            int remove = Math.max(1, cache.size() - maxEntries);
+            var it = cache.keySet().iterator();
+            while (remove-- > 0 && it.hasNext()) {
                 it.next();
                 it.remove();
-                toRemove--;
             }
         }
     }
 
-    public static void invalidate(long key) {
-        if (!initialized) return;
-        cache.remove(key);
+    public static void invalidate(BlockState state) {
+        if (initialized && state != null) cache.remove(state);
     }
 
     public static void invalidateAll() {
@@ -71,7 +67,6 @@ public final class ModelCache {
     }
 
     public static int size() {
-        if (!initialized) return 0;
         return cache.size();
     }
 
@@ -85,6 +80,6 @@ public final class ModelCache {
 
     public static float getHitRate() {
         int total = hits.get() + misses.get();
-        return total > 0 ? (float) hits.get() / total : 0f;
+        return total == 0 ? 0.0f : (float) hits.get() / total;
     }
 }
