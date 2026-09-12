@@ -6,10 +6,10 @@ lightweight client-side performance mod for Minecraft
 
 [![Modrinth](https://img.shields.io/modrinth/dt/heliummc?color=00AF5C&logo=modrinth&label=modrinth)](https://modrinth.com/mod/heliummc)
 [![GitHub](https://img.shields.io/github/stars/qborder/Helium?style=flat&logo=github&label=stars)](https://github.com/qborder/Helium)
-[![Build](https://img.shields.io/github/actions/workflow/status/qborder/Helium/build.yml?logo=github&label=build)](https://github.com/qborder/Helium/actions)
+[![Build](https://img.shields.io/github/actions/workflow/status/qborder/Helium/build.yml?logo=github&label=build)](https://github.com/samveerone-hue/Helium/actions)
 [![License](https://img.shields.io/github/license/qborder/Helium?cacheSeconds=36000)](https://github.com/qborder/Helium/blob/HEAD/LICENSE)
 
-**[Download on Modrinth](https://modrinth.com/mod/heliummc)** · **[Report Issues](https://github.com/qborder/Helium/issues)**
+**[Download on Modrinth](https://modrinth.com/mod/heliummc)** · **[Report Issues](https://github.com/samveerone-hue/Helium/issues)**
 
 </div>
 
@@ -27,6 +27,7 @@ The `1.21.11` branch contains the current Rentities integration and the followin
 - **Armor Stand facing fixed.** Armor Stand yaw now comes from its authoritative render-state `yaw` and uses the same `180 - yaw` convention as the shader path.
 - **Entity facing direction fixed.** Living entity rotation is populated from the prepared render state's `bodyYaw` instead of re-interpolating the live entity fields, avoiding the previous double-interpolation/sign mismatch path.
 - **Head rotation centre fixed.** The per-instance head pivot is now populated from the baked model's actual pivot table, rather than leaving ordinary entities at an implicit zero pivot.
+- **Exact vanilla animation path added.** Biped, quadruped, horse, bird, and creeper entities now use Minecraft's own `EntityModel#setAngles(state)` output for their six primary bones when the model layout is supported. Rentities no longer has to approximate their main walk/head/limb rotations in the shader for those families.
 - **Render-state animation inputs improved.** Limb swing, limb amplitude, head rotation, death time, hurt state, water state, sneaking state, and hand-swing progress are taken from the already-prepared 1.21.11 render state instead of being interpolated a second time.
 - **Iris compatibility made safe.** Rentities' custom GPU shader path is automatically disabled when Iris is loaded, allowing vanilla rendering instead of attempting to draw entities through an incompatible custom shader path.
 - **GPU batching fallback hardened.** Standard SSBO uploads remain the default backend, while indirect/culling failures fall back to the normal ordered instanced path instead of silently dropping entities.
@@ -35,13 +36,13 @@ The `1.21.11` branch contains the current Rentities integration and the followin
 
 ### Remaining Rentities limitations
 
-- **Animations are still approximate.** Walk cycles and several special animations are GPU approximations of vanilla model animation. They are functional, but not yet guaranteed to be pixel-for-pixel identical to every entity's renderer.
-- **Texture/UV issues remain under investigation.** Some less-common entity models can still show mirrored or incorrectly oriented texture regions. The mesh consumer preserves Minecraft's source UVs verbatim, so the remaining problem is likely in model-specific extraction/texture handling rather than a blanket UV flip.
+- **Specialized animations are not all exact yet.** Models with more than six independently animated bones (for example multi-segment insects, arthropods, ghast tentacles, and other specialized rigs) still use their category-specific GPU animation path. The next extension is to feed more than six animated bones without enlarging the common instance ABI.
+- **Texture/UV issues remain under investigation.** The mesh consumer preserves Minecraft's source UVs verbatim. Some less-common models can still expose model-specific texture orientation problems, so a blanket UV flip is intentionally not applied.
 - **Unscanned/failed entities may show the magenta error cube.** When a mesh cannot be baked or recovered, Rentities uses its visible error fallback. Normally the missing mesh can be rebuilt by returning to a world where the entity is available so the cache can be refreshed.
 
 These changes are intended to keep Rentities visually close to vanilla while retaining the performance benefits of GPU entity batching.
 
-> **Verification status:** the fixes are committed to `1.21.11`. GitHub Actions has not yet reported a successful verification for the latest commit, so runtime/CI confirmation is still pending.
+> **Verification status:** GitHub Actions is currently building the latest `1.21.11` animation commits. CI must pass before the changes are considered build-verified.
 
 ---
 
@@ -50,7 +51,7 @@ These changes are intended to keep Rentities visually close to vanilla while ret
 you'll need **Java 21** installed. that's it. gradle wrapper handles everything else.
 
 ```bash
-git clone https://github.com/qborder/Helium.git
+git clone https://github.com/samveerone-hue/Helium.git
 cd Helium
 ```
 
