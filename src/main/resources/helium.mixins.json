@@ -86,13 +86,14 @@
     "random.Xoroshiro128PlusPlusRandomMixin",
     "dsa.FramebufferDSAMixin",
     "crafting.ClientPlayNetworkHandlerCraftingMixin",
-    "crafting.StonecutterScreenCraftingMixin",
-    "crafting.RecipeBookWidgetCraftingMixin",
+    "crafting.StonecutterScreenMixin",
+    "crafting.RecipeBookScreenMixin",
     "dedup.IdentifierDedupMixin",
     "dedup.RegistryKeyDedupMixin",
     "dedup.BakedQuadDedupMixin",
     "dedup.NbtCompoundDedupMixin",
-    "render.RentitiesEntityRenderManagerMixin"
+    "render.RentitiesEntityRenderManagerMixin",
+    "render.EntityBatchRendererStateMixin"
   ],
   "injectors": {
     "defaultRequire": 0
