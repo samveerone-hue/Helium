@@ -76,7 +76,7 @@
     "memory.FramebufferCleanerMixin",
     "lang.LanguageReloadMixin",
     "lang.LanguageScreenMixin",
-    "reflex.GameRendererReflexMixin",
+    "reflex.GameRendererMixin",
     "math.GivensPairMixin",
     "math.MatrixStackEntryMixin",
     "random.CheckedRandomMixin",
@@ -99,7 +99,9 @@
     "render.OrderedRenderCommandQueueImplMixin",
     "render.EquipmentRendererMixin",
     "render.EntityBatchRendererEquipmentMixin",
-    "render.RentitiesEquipmentItemQueueMixin"
+    "render.RentitiesEquipmentItemQueueMixin",
+    "render.EntityMeshBakerBoneAliasMixin",
+    "render.EntityBatchRendererSpecialPoseShaderMixin"
   ],
   "injectors": {
     "defaultRequire": 0
