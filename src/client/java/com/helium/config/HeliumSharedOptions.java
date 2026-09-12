@@ -50,11 +50,13 @@ public final class HeliumSharedOptions {
         cullingopts.add(new IntOpt("helium.option.item_frame_lod_range",128,32,256,16,"helium.suffix.blocks",()->c.itemFrameLODRange,v->{c.itemFrameLODRange=v;renderingdirty=true;},IMPACT_MEDIUM));
         groups.add(new OptGroup("helium.group.culling",cullingopts));
         groups.add(new OptGroup("helium.group.rentities",List.of(
+                new BoolOpt("helium.option.rentities_entity_batching",false,()->c.entityGpuBatching,v->{com.helium.HeliumClient.setEntityGpuBatching(v);renderingdirty=true;},IMPACT_HIGH),
+                new BoolOpt("helium.option.rentities_gpu_frustum_culling",true,()->c.entityGpuFrustumCulling,v->{c.entityGpuFrustumCulling=v;renderingdirty=true;},IMPACT_HIGH,()->c.entityGpuBatching),
                 new BoolOpt("helium.option.rentities_batching_debug",false,()->c.rentitiesEntityBatchingDebug,v->{c.rentitiesEntityBatchingDebug=v;renderingdirty=true;},IMPACT_LOW),
                 new BoolOpt("helium.option.rentities_batching_debug_solid",false,()->c.rentitiesEntityBatchingDebugSolid,v->{c.rentitiesEntityBatchingDebugSolid=v;renderingdirty=true;},IMPACT_LOW),
-                new BoolOpt("helium.option.rentities_async_render_preparation",true,()->c.rentitiesAsyncRenderPreparationEnabled,v->{c.rentitiesAsyncRenderPreparationEnabled=v;renderingdirty=true;},IMPACT_HIGH),
-                new BoolOpt("helium.option.rentities_batch_whitelist_only",false,()->c.rentitiesEntityBatchWhitelistOnly,v->{c.rentitiesEntityBatchWhitelistOnly=v;renderingdirty=true;},IMPACT_MEDIUM),
-                new BoolOpt("helium.option.rentities_async_visibility",false,()->c.rentitiesAsyncVisibilityEnabled,v->{c.rentitiesAsyncVisibilityEnabled=v;renderingdirty=true;},IMPACT_HIGH),
+                new BoolOpt("helium.option.rentities_async_render_preparation",true,()->c.rentitiesAsyncRenderPreparationEnabled,v->{c.rentitiesAsyncRenderPreparationEnabled=v;renderingdirty=true;},IMPACT_HIGH,()->c.entityGpuBatching),
+                new BoolOpt("helium.option.rentities_batch_whitelist_only",false,()->c.rentitiesEntityBatchWhitelistOnly,v->{c.rentitiesEntityBatchWhitelistOnly=v;renderingdirty=true;},IMPACT_MEDIUM,()->c.entityGpuBatching),
+                new BoolOpt("helium.option.rentities_async_visibility",false,()->c.rentitiesAsyncVisibilityEnabled,v->{c.rentitiesAsyncVisibilityEnabled=v;renderingdirty=true;},IMPACT_HIGH,()->c.entityGpuBatching),
                 new IntOpt("helium.option.rentities_async_visibility_refresh",4,1,30,1,null,()->c.rentitiesAsyncVisibilityRefreshFrames,v->{c.rentitiesAsyncVisibilityRefreshFrames=v;renderingdirty=true;},IMPACT_MEDIUM),
                 new IntOpt("helium.option.rentities_async_visibility_max_age",12,1,60,1,null,()->c.rentitiesAsyncVisibilityMaxAgeFrames,v->{c.rentitiesAsyncVisibilityMaxAgeFrames=v;renderingdirty=true;},IMPACT_MEDIUM),
                 new IntOpt("helium.option.rentities_async_visibility_max_distance",0,0,256,8,"helium.suffix.blocks",()->(int)Math.round(c.rentitiesAsyncVisibilityMaxDistance),v->{c.rentitiesAsyncVisibilityMaxDistance=v;renderingdirty=true;},IMPACT_MEDIUM)
