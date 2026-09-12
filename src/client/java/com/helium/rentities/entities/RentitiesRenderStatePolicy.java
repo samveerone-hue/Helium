@@ -1,9 +1,6 @@
 package com.helium.rentities.entities;
 
-import net.minecraft.client.render.entity.state.ArmadilloEntityRenderState;
 import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
-import net.minecraft.client.render.entity.state.BatEntityRenderState;
-import net.minecraft.client.render.entity.state.BeeEntityRenderState;
 import net.minecraft.client.render.entity.state.CreeperEntityRenderState;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.entity.state.SheepEntityRenderState;
@@ -20,7 +17,7 @@ public final class RentitiesRenderStatePolicy {
         if (!EntityBatchRegistry.isGpuBatchable(type)) return false;
         if (type == EntityType.PLAYER) return false;
 
-        // The current GPU ABI represents adult/base-scale geometry only.
+        // The common GPU ABI represents adult/base-scale geometry only.
         // Let vanilla handle baby/scaled/upside-down variants rather than drawing
         // a correctly animated model at the wrong transform.
         if (state instanceof LivingEntityRenderState living) {
@@ -31,18 +28,16 @@ public final class RentitiesRenderStatePolicy {
             return !stand.small && !stand.marker && stand.showArms && stand.showBasePlate;
         }
 
-        // Sheep variants change baked geometry/material state (sheared/rainbow),
-        // Creeper uses special swell scaling, and Warden/Wither exceed the current
-        // generic ten-bone model ABI. Preserve exact vanilla rendering for them.
+        // Sheep variants change baked geometry/material state and Warden/Wither
+        // exceed the current generic ten-bone model ABI. Creeper is no longer
+        // rejected here because fuseTime-driven renderer scale is carried into
+        // the GPU instance state by EntityBatchRendererStateMixin.
         if (state instanceof SheepEntityRenderState
-                || state instanceof CreeperEntityRenderState
                 || state instanceof WardenEntityRenderState
                 || state instanceof WitherEntityRenderState) {
             return false;
         }
 
-        // Bat/Bee/Armadillo are supported by the exact-pose path: their model
-        // rotations are captured from Minecraft's own setAngles implementation.
         return true;
     }
 }
