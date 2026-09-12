@@ -12,6 +12,7 @@ import org.lwjgl.system.MemoryUtil;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * Extracts the rotations Minecraft's own model animation code produced for the
@@ -24,6 +25,8 @@ import java.util.Map;
  */
 public final class EntityModelPoseExtractor {
     private static volatile Field childrenField;
+    private static final Map<Model<?>, PoseBinding> BINDINGS = new WeakHashMap<>();
+    private static final Object BINDING_LOCK = new Object();
 
     private EntityModelPoseExtractor() {}
 
@@ -46,20 +49,14 @@ public final class EntityModelPoseExtractor {
             Model<?> model = livingRenderer.getModel();
             if (model == null) return false;
 
+            PoseBinding binding = getBinding(model, renderState.getClass(), category);
+            if (binding == null) return false;
+
             model.resetTransforms();
             try {
-                Method setAngles = findSetAngles(model.getClass(), renderState.getClass());
-                if (setAngles == null) return false;
-                setAngles.setAccessible(true);
-                setAngles.invoke(model, renderState);
-
-                ModelPart root = model.getRootPart();
-                if (root == null) return false;
-
-                String[][] candidates = candidates(category);
+                binding.setAngles.invoke(model, renderState);
                 for (int bone = 0; bone < 6; bone++) {
-                    ModelPart part = findPart(root, candidates[bone]);
-                    if (part == null) return false;
+                    ModelPart part = binding.parts[bone];
                     writePose(ptr + EntityInstance.OFFSET_ARMOR_STAND_HEAD_POSE + bone * 16L,
                             part.xRot, part.yRot, part.zRot);
                 }
@@ -71,6 +68,37 @@ public final class EntityModelPoseExtractor {
             }
         } catch (Throwable ignored) {
             return false;
+        }
+    }
+
+    private static PoseBinding getBinding(Model<?> model, Class<?> stateClass, EntityAnimationCategory category) {
+        synchronized (BINDING_LOCK) {
+            PoseBinding existing = BINDINGS.get(model);
+            if (existing != null && existing.category == category && existing.stateClass == stateClass) {
+                return existing;
+            }
+
+            try {
+                Method setAngles = findSetAngles(model.getClass(), stateClass);
+                if (setAngles == null) return null;
+                setAngles.setAccessible(true);
+
+                ModelPart root = model.getRootPart();
+                if (root == null) return null;
+
+                String[][] candidates = candidates(category);
+                ModelPart[] parts = new ModelPart[6];
+                for (int bone = 0; bone < 6; bone++) {
+                    parts[bone] = findPart(root, candidates[bone]);
+                    if (parts[bone] == null) return null;
+                }
+
+                PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
+                BINDINGS.put(model, binding);
+                return binding;
+            } catch (Throwable ignored) {
+                return null;
+            }
         }
     }
 
@@ -175,4 +203,10 @@ public final class EntityModelPoseExtractor {
         MemoryUtil.memPutFloat(ptr + 8L, roll);
         MemoryUtil.memPutFloat(ptr + 12L, 0.0f);
     }
+
+    private record PoseBinding(
+            EntityAnimationCategory category,
+            Class<?> stateClass,
+            Method setAngles,
+            ModelPart[] parts) {}
 }
