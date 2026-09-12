@@ -11,6 +11,7 @@
     "render.GlStateManagerMixin",
     "render.GlStateManagerLegacyMixin",
     "render.EntityCullingMixin",
+    "render.DisplayEntityCullingMixin",
     "render.BlockEntityCullingMixin",
     "render.InGameHudMixin",
     "render.TextRendererGlyphMixin",
