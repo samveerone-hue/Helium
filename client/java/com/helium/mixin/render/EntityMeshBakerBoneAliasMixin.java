@@ -3,7 +3,9 @@ package com.helium.mixin.render;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.util.math.MatrixStack;
 import com.helium.rentities.entities.EntityAnimationCategory;
+import com.helium.rentities.entities.EntityMeshCapturingConsumer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -11,10 +13,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.modify.ModifyConstant;
 
 import java.lang.reflect.Field;
-import java.util.List;
 import java.util.Map;
 
 @Mixin(targets = "com.helium.rentities.entities.EntityMeshBaker")
@@ -86,8 +86,8 @@ public abstract class EntityMeshBakerBoneAliasMixin {
     @Inject(method = "extractFromLivingRenderer", at = @At("RETURN"), require = 1)
     private void helium$recordBoneParents(LivingEntityRenderer renderer,
                                            EntityAnimationCategory category,
-                                           Object consumer,
-                                           Object poseStack,
+                                           EntityMeshCapturingConsumer consumer,
+                                           MatrixStack poseStack,
                                            CallbackInfoReturnable<float[]> cir) {
         if (cir.getReturnValue() == null || cir.getReturnValue().length == 0) return;
         if (renderer == null || category == EntityAnimationCategory.CPU_ANIMATED) return;
@@ -103,8 +103,8 @@ public abstract class EntityMeshBakerBoneAliasMixin {
             if (boneMap == null) return;
             helium$walkHierarchy(root, boneMap, -1, true);
         } catch (Throwable ignored) {
-            // Hierarchy metadata is an optimization/correctness refinement; leave
-            // the already-valid pivot rotations intact if reflection/mappings vary.
+            // Hierarchy metadata is a correctness refinement; keep valid pivot
+            // positions if an optional reflective mapping is unavailable.
         }
     }
 
@@ -182,12 +182,12 @@ public abstract class EntityMeshBakerBoneAliasMixin {
     }
 
     /** Keep the on-disk mesh format compatible with the new parent metadata. */
-    @ModifyConstant(method = "saveToCacheInternal", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 7))
+    @org.spongepowered.asm.mixin.injection.ModifyConstant(method = "saveToCacheInternal", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 7))
     private static int helium$cacheWriteVersion(int original) {
         return 8;
     }
 
-    @ModifyConstant(method = "loadFromCache", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 7))
+    @org.spongepowered.asm.mixin.injection.ModifyConstant(method = "loadFromCache", constant = @org.spongepowered.asm.mixin.injection.Constant(intValue = 7))
     private static int helium$cacheReadVersion(int original) {
         return 8;
     }
