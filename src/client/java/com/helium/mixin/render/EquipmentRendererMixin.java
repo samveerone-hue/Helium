@@ -1,6 +1,7 @@
 package com.helium.mixin.render;
 
 import com.helium.rentities.entities.RentitiesEquipmentBatcher;
+import com.helium.rentities.entities.RentitiesEquipmentContext;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.equipment.EquipmentModel;
