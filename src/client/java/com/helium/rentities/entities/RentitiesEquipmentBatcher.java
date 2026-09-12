@@ -3,9 +3,7 @@ package com.helium.rentities.entities;
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.rentities.gl.GlShader;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.Model;
-import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import org.lwjgl.BufferUtils;
@@ -49,7 +47,7 @@ public final class RentitiesEquipmentBatcher {
         if (!enabled() || model == null || matrices == null || textureId == null) return false;
         if (!(model instanceof Model<?> genericModel)) return false;
 
-        int texture = resolveTexture(textureId);
+        int texture = EntityGlTextureResolver.resolveGlId(textureId);
         if (texture <= 0) return false;
 
         try {
@@ -88,16 +86,21 @@ public final class RentitiesEquipmentBatcher {
         boolean oldDepth = glIsEnabled(GL_DEPTH_TEST);
         boolean oldBlend = glIsEnabled(GL_BLEND);
         boolean oldDepthMask = glGetBoolean(GL_DEPTH_WRITEMASK);
+        int oldActiveTexture = glGetInteger(GL_ACTIVE_TEXTURE);
+        glActiveTexture(GL_TEXTURE0);
+        int oldTexture0 = glGetInteger(GL_TEXTURE_BINDING_2D);
+        int oldBlendSrc = glGetInteger(GL_BLEND_SRC_RGB);
+        int oldBlendDst = glGetInteger(GL_BLEND_DST_RGB);
 
         try {
             glBindVertexArray(vao);
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
             glUseProgram(shader.id);
 
-            try (FloatBuffer matrix = BufferUtils.createFloatBuffer(16)) {
-                viewProjection.get(matrix);
-                glUniformMatrix4fv(uViewProjection, false, matrix);
-            }
+            FloatBuffer matrix = BufferUtils.createFloatBuffer(16);
+            viewProjection.get(matrix);
+            matrix.flip();
+            glUniformMatrix4fv(uViewProjection, false, matrix);
 
             glUniform1i(uTexture, 0);
             glDisable(GL_CULL_FACE);
@@ -132,22 +135,16 @@ public final class RentitiesEquipmentBatcher {
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("[Rentities] equipment batch flush failed: {}", t.toString());
         } finally {
+            glBindTexture(GL_TEXTURE_2D, oldTexture0);
+            glBlendFunc(oldBlendSrc, oldBlendDst);
             glDepthMask(oldDepthMask);
             if (oldCull) glEnable(GL_CULL_FACE); else glDisable(GL_CULL_FACE);
             if (oldDepth) glEnable(GL_DEPTH_TEST); else glDisable(GL_DEPTH_TEST);
             if (oldBlend) glEnable(GL_BLEND); else glDisable(GL_BLEND);
+            glActiveTexture(oldActiveTexture);
             glBindVertexArray(0);
             glBindBuffer(GL_ARRAY_BUFFER, 0);
             glUseProgram(0);
-        }
-    }
-
-    private static int resolveTexture(Identifier id) {
-        try {
-            AbstractTexture texture = MinecraftClient.getInstance().getTextureManager().getTexture(id);
-            return texture == null ? -1 : texture.getGlId();
-        } catch (Throwable ignored) {
-            return -1;
         }
     }
 
@@ -223,14 +220,12 @@ public final class RentitiesEquipmentBatcher {
         public net.minecraft.client.render.VertexConsumer overlay(int u, int v) { return this; }
         @Override
         public net.minecraft.client.render.VertexConsumer light(int u, int v) { return this; }
-
         @Override
         public net.minecraft.client.render.VertexConsumer normal(float nx, float ny, float nz) {
             this.nx = nx; this.ny = ny; this.nz = nz;
             capture(fallbackPackedLight);
             return this;
         }
-
         @Override
         public net.minecraft.client.render.VertexConsumer lineWidth(float width) { return this; }
 
@@ -250,10 +245,8 @@ public final class RentitiesEquipmentBatcher {
             float r = ((color >>> 16) & 255) / 255.0f;
             float g = ((color >>> 8) & 255) / 255.0f;
             float b = (color & 255) / 255.0f;
-            captured.add(new float[]{
-                    vx, vy, vz, nx, ny, nz, u, v,
-                    r, g, b, a, Float.intBitsToFloat(packedLight)
-            });
+            captured.add(new float[]{vx, vy, vz, nx, ny, nz, u, v, r, g, b, a,
+                    Float.intBitsToFloat(packedLight)});
         }
 
         float[] toTriangulatedArray() {
