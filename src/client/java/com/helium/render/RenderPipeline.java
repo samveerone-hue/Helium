@@ -24,7 +24,7 @@ public final class RenderPipeline {
     public static void init() {
         if (initialized.getAndSet(true)) return;
         lastFrameTime.set(System.nanoTime());
-        HeliumClient.LOGGER.info("render pipeline initialized (frame pacing mode)");
+        HeliumClient.LOGGER.info("render pipeline initialized (frame budget tracking mode)");
     }
 
     public static boolean isInitialized() {
@@ -33,11 +33,11 @@ public final class RenderPipeline {
 
     public static void onFrameStart() {
         if (!initialized.get()) return;
-        
+
         long now = System.nanoTime();
         long last = lastFrameTime.getAndSet(now);
         long delta = now - last;
-        
+
         if (delta > 0 && delta < 1_000_000_000L) {
             long old = frameTimes[frameIndex];
             if (old > 0) {
@@ -54,25 +54,20 @@ public final class RenderPipeline {
                 smoothedFrameTime = (double) frameTimeSumNs / frameSampleCount / 1_000_000.0;
             }
         }
-        
+
         frameCount.incrementAndGet();
     }
 
+    /**
+     * Records the end of a frame without blocking the render thread. Minecraft/driver frame
+     * limiting owns present pacing; Helium only exposes the measured budget to schedulers.
+     */
     public static void onFrameEnd() {
         if (!initialized.get() || !adaptivePacing) return;
-        
-        long budget = frameBudgetNs.get();
-        if (budget <= 0L) return;
         long elapsed = System.nanoTime() - lastFrameTime.get();
-        long remaining = budget - elapsed;
-        
-        if (remaining > 500_000L && remaining < 8_000_000L) {
-            try {
-                Thread.sleep(0, (int) Math.min(remaining / 2, 999_999L));
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        if (elapsed < 0) return;
+        // Intentionally no sleep: sleeping here can add input latency and fight Minecraft's
+        // own frame limiter. The frame budget remains available through getFrameBudgetMs().
     }
 
     public static void setTargetFps(int fps) {
