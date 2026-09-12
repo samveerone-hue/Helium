@@ -55,15 +55,11 @@ public final class RendererCapabilityState {
             String vendor = glGetString(GL_VENDOR);
             s.gl43 = isAtLeast43(version);
             s.ssbo = s.gl43 && glGetInteger(GL_MAX_COMBINED_SHADER_STORAGE_BLOCKS) > 0;
-
-            // Compute shaders and multi-draw indirect are core in OpenGL 4.3.
-            // Extension strings are used only as a compatibility fallback for unusual drivers.
             s.compute = s.gl43 || hasExtension("GL_ARB_compute_shader");
             s.indirect = s.gl43 || hasExtension("GL_ARB_multi_draw_indirect");
-            // Buffer storage / persistent mapping became core in 4.4.
             s.persistentMapping = isAtLeast(4, 4, version) || hasExtension("GL_ARB_buffer_storage");
 
-             s.irisLoaded = FabricLoader.getInstance().isModLoaded("iris");
+            s.irisLoaded = FabricLoader.getInstance().isModLoaded("iris");
             s.customShader = s.gl43
                     && glGetInteger(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS) > 0
                     && !s.irisLoaded;
@@ -120,16 +116,7 @@ public final class RendererCapabilityState {
             int minor = Integer.parseInt(minorText);
             return major > requiredMajor || (major == requiredMajor && minor >= requiredMinor);
         } catch (RuntimeException ignored) {
-            try {
-                String token = version.trim().split("\\s+", 2)[0];
-                String[] parts = token.split("\\.", 3);
-                if (parts.length < 2) return false;
-                int major = Integer.parseInt(parts[0].replaceAll("[^0-9]", ""));
-                int minor = Integer.parseInt(parts[1].replaceAll("[^0-9].*", ""));
-                return major > requiredMajor || (major == requiredMajor && minor >= requiredMinor);
-            } catch (RuntimeException ignoredAgain) {
-                return false;
-            }
+            return false;
         }
     }
 
@@ -140,7 +127,6 @@ public final class RendererCapabilityState {
                 if (name.equals(glGetStringi(GL_EXTENSIONS, i))) return true;
             }
         } catch (Throwable ignored) {
-            // Conservative false: inability to inspect extensions must not enable an unsafe path.
         }
         return false;
     }
@@ -149,6 +135,7 @@ public final class RendererCapabilityState {
     public boolean customShaderAllowed() { return customShader && customShaderHealthy; }
     public boolean meshGpuAllowed() { return meshGpu && meshHealthy; }
     public boolean persistentMappingAllowed() { return persistentMapping && persistentHealthy; }
+    public boolean stateCacheAllowed() { return stateCacheHealthy; }
 
     public boolean gpuBatchingAllowed(HeliumConfig cfg) {
         return cfg != null && cfg.entityGpuBatching && gpuBatchingHealthy && customShaderAllowed() && meshGpuAllowed();
@@ -161,6 +148,19 @@ public final class RendererCapabilityState {
     public RenderPath choosePath(HeliumConfig cfg) {
         if (!gpuBatchingAllowed(cfg)) return RenderPath.VANILLA;
         return RenderPath.GPU_BATCHING;
+    }
+
+    public String describe() {
+        return "GPU batching=" + status(gpuBatchingHealthy, gpuBatchingReason)
+                + ", indirect=" + status(indirectHealthy && indirect, indirectReason)
+                + ", persistent=" + status(persistentHealthy && persistentMapping, persistentReason)
+                + ", shader=" + status(customShaderAllowed(), customShaderReason)
+                + ", mesh=" + status(meshGpuAllowed(), meshReason)
+                + ", stateCache=" + status(stateCacheHealthy, stateCacheReason);
+    }
+
+    private static String status(boolean healthy, String reason) {
+        return healthy ? "ready" : "disabled(" + reason + ")";
     }
 
     public void markFailed(Feature feature, Throwable error) {
@@ -178,12 +178,4 @@ public final class RendererCapabilityState {
     }
 
     public void resetTransientHealth() { }
-
-    public String describe() {
-        return "batching=" + gpuBatchingHealthy + " (" + gpuBatchingReason + ")" +
-                ", culling=" + indirectHealthy + " (" + indirectReason + ")" +
-                ", persistent=" + persistentHealthy + " (" + persistentReason + ")" +
-                ", shader=" + customShaderHealthy + " (" + customShaderReason + ")" +
-                ", mesh=" + meshHealthy + " (" + meshReason + ")";
-    }
 }
