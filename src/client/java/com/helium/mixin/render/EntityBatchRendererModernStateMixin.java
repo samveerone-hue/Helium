@@ -7,11 +7,14 @@ import com.helium.rentities.entities.EntityInstance;
 import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.entity.EntityType;
 import org.lwjgl.system.MemoryUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.lang.reflect.Field;
 
 /** Bypasses obsolete 1.21.11 render-state reflection for modern EntityRenderState objects. */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
@@ -21,13 +24,8 @@ public abstract class EntityBatchRendererModernStateMixin {
                                          CallbackInfoReturnable<Boolean> cir) {
         if (!(state instanceof EntityRenderState renderState)) return;
 
-        EntityTypeHolder typeHolder;
-        try {
-            typeHolder = new EntityTypeHolder(EntityBatchRenderer.getEntityType(state));
-        } catch (Throwable ignored) {
-            return;
-        }
-        if (typeHolder.type == null) return;
+        EntityType<?> type = helium$resolveEntityType(state);
+        if (type == null) return;
 
         try {
             MemoryUtil.memSet(ptr, 0, EntityInstance.STRIDE);
@@ -38,8 +36,8 @@ public abstract class EntityBatchRendererModernStateMixin {
 
             int flags = 0;
             if (renderState.invisible) flags |= EntityInstance.FLAG_IS_INVISIBLE;
-            if (typeHolder.type == net.minecraft.entity.EntityType.PLAYER) flags |= EntityInstance.FLAG_IS_PLAYER;
-            if (EntityBatchRegistry.hasZombieArms(typeHolder.type)) flags |= EntityInstance.FLAG_ZOMBIE_ARMS;
+            if (type == EntityType.PLAYER) flags |= EntityInstance.FLAG_IS_PLAYER;
+            if (EntityBatchRegistry.hasZombieArms(type)) flags |= EntityInstance.FLAG_ZOMBIE_ARMS;
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
 
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y,
@@ -71,9 +69,9 @@ public abstract class EntityBatchRendererModernStateMixin {
                         armed.handSwingProgress);
             }
 
-            EntityAnimationCategory category = EntityBatchRegistry.getCategory(typeHolder.type);
+            EntityAnimationCategory category = EntityBatchRegistry.getCategory(type);
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ENTITY_TYPE,
-                    EntityBatchRegistry.getEntityTypeIndex(typeHolder.type));
+                    EntityBatchRegistry.getEntityTypeIndex(type));
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_ANIM_CATEGORY, category.glslId);
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_TEXTURE_LAYER, 0);
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_HELD_MAIN, EntityInstance.NO_ITEM);
@@ -89,8 +87,8 @@ public abstract class EntityBatchRendererModernStateMixin {
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_X, 1.0f);
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_Y, 1.0f);
 
-            // The existing EntityBatchRendererStateMixin runs after this and writes
-            // exact model poses, special renderer scale and the authoritative lighting.
+            // EntityBatchRendererStateMixin runs at RETURN and adds exact model poses,
+            // special renderer scale and the final authoritative state values.
             cir.setReturnValue(true);
         } catch (Throwable t) {
             MemoryUtil.memSet(ptr, 0, EntityInstance.STRIDE);
@@ -98,17 +96,39 @@ public abstract class EntityBatchRendererModernStateMixin {
         }
     }
 
+    @Inject(method = "getEntityType", at = @At("HEAD"), cancellable = true, require = 0)
+    private static void helium$resolveModernEntityType(Object state,
+                                                        CallbackInfoReturnable<EntityType<?>> cir) {
+        if (!(state instanceof EntityRenderState)) return;
+        EntityType<?> type = helium$resolveEntityType(state);
+        if (type != null) cir.setReturnValue(type);
+    }
+
     @Inject(method = "getEntityId", at = @At("HEAD"), cancellable = true, require = 0)
     private static void helium$modernStateHasNoLegacyId(Object state,
                                                          CallbackInfoReturnable<Integer> cir) {
         if (state instanceof EntityRenderState) {
             // Modern render states are not the live Entity object and do not expose the
-            // legacy integer id used by the old fallback extractor. Returning -1 keeps
-            // that optional path on its safe vanilla fallback instead of probing stale
-            // pre-1.21.11 field names every time a state class appears.
+            // legacy integer id used by the old fallback extractor.
             cir.setReturnValue(-1);
         }
     }
 
-    private record EntityTypeHolder(net.minecraft.entity.EntityType<?> type) {}
+    private static EntityType<?> helium$resolveEntityType(Object state) {
+        for (Class<?> cls = state.getClass(); cls != null; cls = cls.getSuperclass()) {
+            for (String name : new String[]{"field_58171", "entityType", "H"}) {
+                try {
+                    Field field = cls.getDeclaredField(name);
+                    if (!EntityType.class.isAssignableFrom(field.getType())) continue;
+                    field.setAccessible(true);
+                    Object value = field.get(state);
+                    if (value instanceof EntityType<?> type) return type;
+                } catch (NoSuchFieldException ignored) {
+                } catch (Throwable ignored) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
 }
