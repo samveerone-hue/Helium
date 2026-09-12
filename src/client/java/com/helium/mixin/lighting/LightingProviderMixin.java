@@ -1,34 +1,46 @@
 package com.helium.mixin.lighting;
 
-import com.helium.HeliumClient;
-import com.helium.config.HeliumConfig;
+import com.helium.config.ExperimentalConfig;
 import com.helium.lighting.AsyncLightEngine;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.chunk.light.LightingProvider;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(LightingProvider.class)
 public abstract class LightingProviderMixin {
-
-    @Unique
-    private static boolean helium$failed = false;
-
-    @Inject(method = "doLightUpdates", at = @At("HEAD"), cancellable = false, require = 0)
-    private void helium$trackLightUpdates(CallbackInfoReturnable<Integer> cir) {
-        if (helium$failed) return;
+    private static boolean helium$enabled() {
         try {
-            HeliumConfig config = HeliumClient.getConfig();
-            if (config == null || !config.modEnabled || !config.asyncLightUpdates) return;
-            if (!AsyncLightEngine.isInitialized()) return;
+            return ExperimentalConfig.load().asyncLightUpdates;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
 
-            AsyncLightEngine.onLightUpdateBatch();
-        } catch (Throwable t) {
-            helium$failed = true;
-            HeliumClient.LOGGER.warn("async light tracking disabled ({})", t.getClass().getSimpleName());
+    @Inject(method = "checkBlock", at = @At("HEAD"))
+    private void helium$prepareBlockUpdate(BlockPos pos, CallbackInfo ci) {
+        if (!helium$enabled()) return;
+        try {
+            ExperimentalConfig cfg = ExperimentalConfig.load();
+            if (!AsyncLightEngine.isInitialized()) AsyncLightEngine.init(cfg.asyncLightMaxPerTick);
+            AsyncLightEngine.queueBlock(pos.asLong());
+        } catch (Throwable ignored) {
+            // Never interfere with vanilla lighting if preparation fails.
+        }
+    }
+
+    @Inject(method = "doLightUpdates", at = @At("HEAD"))
+    private void helium$prepareBeforeVanillaLightPass(CallbackInfoReturnable<Integer> cir) {
+        if (!helium$enabled()) return;
+        try {
+            if (!AsyncLightEngine.isInitialized()) {
+                ExperimentalConfig cfg = ExperimentalConfig.load();
+                AsyncLightEngine.init(cfg.asyncLightMaxPerTick);
+            }
+        } catch (Throwable ignored) {
         }
     }
 }
