@@ -4,9 +4,9 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.entities.EntityBatchRenderer;
+import com.helium.rentities.entities.RentitiesRenderStatePolicy;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.EntityRenderManager;
-import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
@@ -49,19 +49,12 @@ public abstract class RentitiesEntityRenderManagerMixin {
         if (caps == null || !caps.gpuBatchingAllowed(config) || renderer == null || state == null) return;
 
         EntityType<?> type = EntityBatchRenderer.getEntityType(state);
-        if (type == null || type == EntityType.PLAYER) return;
-
-        // Special Armor Stand variants change model visibility/scale in ways that
-        // the shared cached mesh does not encode yet. Keep those exact vanilla paths.
-        if (state instanceof ArmorStandEntityRenderState stand
-                && (stand.small || !stand.showArms || !stand.showBasePlate || stand.marker)) {
-            return;
-        }
+        if (!RentitiesRenderStatePolicy.canBatch(state, type)) return;
 
         try {
             // This is deliberately before queueEntityState()/ci.cancel(). A cache miss,
-            // unresolved texture, disabled render path, failed shader, or async rejection
-            // therefore cannot make an entity disappear for a frame.
+            // unresolved texture, disabled render path, unsupported render state, or
+            // async rejection therefore cannot make an entity disappear for a frame.
             if (!renderer.canBatchEntity(type) || !renderer.asyncAllowsBatch(type)) return;
 
             if (EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) {
