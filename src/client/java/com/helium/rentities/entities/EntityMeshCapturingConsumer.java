@@ -1,5 +1,6 @@
 package com.helium.rentities.entities;
 
+import com.helium.config.ExperimentalConfig;
 import com.helium.math.SimdMath;
 import net.minecraft.client.render.VertexConsumer;
 
@@ -48,8 +49,6 @@ public final class EntityMeshCapturingConsumer implements VertexConsumer {
     }
 
     public float[] bakeAndReset() {
-        // Preserve Minecraft's vertex order exactly. UVs are attached to the
-        // corresponding vertex, so reversing a quad here mirrors the texture.
         int vertexCount = captured.size();
         float[] result = new float[vertexCount * 9];
         int offset = 0;
@@ -58,12 +57,15 @@ public final class EntityMeshCapturingConsumer implements VertexConsumer {
             offset += 9;
         }
 
-        // Rentities uploads large contiguous mesh batches. Normalize the captured
-        // vertex normals once here so the shader does not need to compensate for
-        // malformed model-space normals. The inverse lengths are scalar because
-        // Java's Vector API does not make a 3-float AoS stride cheap; the expensive
-        // contiguous component-wise multiply is delegated to the actual SIMD path.
-        if (vertexCount >= 32) {
+        // Normalize large meshes only when the user has explicitly enabled the
+        // experimental SIMD backend. The Vector API path accelerates the dense
+        // component multiply while retaining the scalar fallback in SimdMath.
+        boolean simdEnabled = false;
+        try {
+            simdEnabled = ExperimentalConfig.load().simdMath;
+        } catch (Throwable ignored) {
+        }
+        if (simdEnabled && vertexCount >= 32) {
             SimdMath.init();
             if (SimdMath.isVectorApiAvailable()) {
                 float[] normals = new float[vertexCount * 3];
