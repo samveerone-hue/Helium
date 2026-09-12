@@ -26,7 +26,9 @@ import java.lang.reflect.Field;
  *
  * The same mixin asks Minecraft's own EntityModel#setAngles(state) to produce
  * exact ModelPart rotations and captures renderer-specific scale state when a
- * renderer changes model size outside EntityModel#setAngles.
+ * renderer changes model size outside EntityModel#setAngles. A living entity
+ * is rejected from the GPU path when exact pose extraction cannot be proven,
+ * so the caller can safely fall back to vanilla rendering.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererStateMixin {
@@ -116,10 +118,16 @@ public abstract class EntityBatchRendererStateMixin {
             writeBakedHeadPivot(ptr, typeHolder.type);
 
             EntityAnimationCategory category = EntityBatchRegistry.getCategory(typeHolder.type);
-            if (EntityModelPoseExtractor.writeExactPose(ptr, state, category)) {
-                // The existing shader's Armor Stand pose branch is now the generic
-                // exact-pose branch. Armor Stand rendering remains compatible because
-                // its six vanilla rotations are written to the same slots above.
+            if (state instanceof LivingEntityRenderState && category != EntityAnimationCategory.CPU_ANIMATED) {
+                if (!EntityModelPoseExtractor.writeExactPose(ptr, state, category)) {
+                    // queueEntityState() must fail so RentitiesEntityRenderManagerMixin
+                    // never suppresses the vanilla body when an exact custom/vanilla
+                    // model pose could not be represented.
+                    MemoryUtil.memSet(ptr, 0, EntityInstance.STRIDE);
+                    cir.setReturnValue(false);
+                    return;
+                }
+
                 int flags = MemoryUtil.memGetInt(ptr + EntityInstance.OFFSET_FLAGS);
                 flags |= EntityInstance.FLAG_EXACT_MODEL_POSE;
                 MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
