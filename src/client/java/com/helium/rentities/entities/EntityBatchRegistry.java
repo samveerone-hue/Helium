@@ -64,11 +64,10 @@ public final class EntityBatchRegistry {
 
         reg(EntityType.SPIDER,              EntityAnimationCategory.ARTHROPOD);
         reg(EntityType.CAVE_SPIDER,         EntityAnimationCategory.ARTHROPOD);
-
         reg(EntityType.BEE,                 EntityAnimationCategory.INSECT);
 
-        // Deliberately vanilla: Silverfish and Endermite use multiple segmented
-        // ModelParts; one generic worm bone would collapse their animation.
+        // Segmented models intentionally remain vanilla until their individual
+        // segments have a dedicated GPU pose mapping.
 
         reg(EntityType.COD,                 EntityAnimationCategory.FISH);
         reg(EntityType.SALMON,              EntityAnimationCategory.FISH);
@@ -76,10 +75,7 @@ public final class EntityBatchRegistry {
         reg(EntityType.PUFFERFISH,          EntityAnimationCategory.FISH);
 
         reg(EntityType.AXOLOTL,             EntityAnimationCategory.AQUATIC_LEGS);
-
         reg(EntityType.DOLPHIN,             EntityAnimationCategory.SWIMMING);
-        // Squid/Glow Squid use eight independently animated tentacles; they remain vanilla
-        // until a dedicated tentacle ABI is added.
         reg(EntityType.TADPOLE,             EntityAnimationCategory.SWIMMING);
 
         reg(EntityType.SLIME,               EntityAnimationCategory.SLIME);
@@ -88,23 +84,15 @@ public final class EntityBatchRegistry {
         reg(EntityType.ALLAY,               EntityAnimationCategory.FLOATING);
         reg(EntityType.VEX,                 EntityAnimationCategory.FLOATING);
 
-        // Blaze has 12 independently animated rods and Breeze has dedicated wind parts;
-        // neither fits the current generic six-bone floating ABI.
+        // Blaze (12 rods), Breeze (dedicated wind pieces), Squid/Glow Squid
+        // (8 tentacles), Shulker (head/lid/base) and Strider (six animated
+        // bristles plus specialized body/legs) deliberately fall back to vanilla.
 
         reg(EntityType.GHAST,               EntityAnimationCategory.GHAST);
-
-        reg(EntityType.SHULKER,             EntityAnimationCategory.SHULKER);
-
-        reg(EntityType.STRIDER,             EntityAnimationCategory.STRIDER);
-
         reg(EntityType.FROG,                EntityAnimationCategory.FROG);
-
         reg(EntityType.GOAT,                EntityAnimationCategory.GOAT);
-
         reg(EntityType.SNIFFER,             EntityAnimationCategory.SNIFFER);
-
         reg(EntityType.ARMADILLO,           EntityAnimationCategory.ARMADILLO);
-
         reg(EntityType.CREEPER,             EntityAnimationCategory.CREEPER);
 
         reg(EntityType.ENDER_DRAGON,        EntityAnimationCategory.CPU_ANIMATED);
