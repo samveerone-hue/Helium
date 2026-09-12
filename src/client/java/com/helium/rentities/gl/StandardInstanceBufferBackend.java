@@ -8,17 +8,13 @@ import static org.lwjgl.opengl.GL44C.GL_DYNAMIC_STORAGE_BIT;
 import static org.lwjgl.opengl.GL43C.GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT;
 import static org.lwjgl.opengl.GL11C.glGetInteger;
 
-/**
- * Portable SSBO backend. CPU writes into a direct ring staging area and uploads only the
- * used slot before the draw. It is slower than persistent mapping but provides a real
- * GPU-batching fallback without changing the instance format.
- */
+/** Portable SSBO backend. */
 public final class StandardInstanceBufferBackend implements InstanceBufferBackend {
-    private final int id;
+    private int id;
     private final int slots;
     private final long slotSize;
     private final long stride;
-    private final long stagingAddr;
+    private long stagingAddr;
 
     public StandardInstanceBufferBackend(long bytesPerSlot, int slots) {
         if (bytesPerSlot <= 0 || slots <= 0) {
@@ -53,20 +49,22 @@ public final class StandardInstanceBufferBackend implements InstanceBufferBacken
     public long addrOf(int slot) { return stagingAddr + stride * slot; }
     public boolean persistent() { return false; }
 
-    /** Uploads the exact active instance range; renderer synchronizes shader visibility. */
     public void upload(int slot, long bytes) {
+        if (id == 0 || stagingAddr == 0L) throw new IllegalStateException("instance buffer is deleted");
         if (bytes <= 0) return;
-        if (slot < 0 || slot >= slots) {
-            throw new IndexOutOfBoundsException("slot=" + slot + ", slots=" + slots);
-        }
-        if (bytes > slotSize) {
-            throw new IllegalArgumentException("upload exceeds slot size: " + bytes + " > " + slotSize);
-        }
+        if (slot < 0 || slot >= slots) throw new IndexOutOfBoundsException("slot=" + slot + ", slots=" + slots);
+        if (bytes > slotSize) throw new IllegalArgumentException("upload exceeds slot size: " + bytes + " > " + slotSize);
         org.lwjgl.opengl.GL45C.nglNamedBufferSubData(id, offsetOf(slot), bytes, addrOf(slot));
     }
 
     public void delete() {
-        if (stagingAddr != 0) MemoryUtil.nmemFree(stagingAddr);
-        glDeleteBuffers(id);
+        if (stagingAddr != 0L) {
+            MemoryUtil.nmemFree(stagingAddr);
+            stagingAddr = 0L;
+        }
+        if (id != 0) {
+            glDeleteBuffers(id);
+            id = 0;
+        }
     }
 }
