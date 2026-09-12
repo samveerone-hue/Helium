@@ -60,11 +60,12 @@ public final class EntityModelPoseExtractor {
         return switch (category) {
             case BIPED, QUADRUPED, CREEPER,
                  FLOATING, FLOATING_SPINNING, SHULKER, STRIDER,
-                 AQUATIC_LEGS, SWIMMING, FROG, GOAT, SNIFFER, ARMADILLO -> 6;
+                 AQUATIC_LEGS, SWIMMING, GOAT, SNIFFER, ARMADILLO -> 6;
+            case FROG -> 7; // head/body/arms/legs + independently animated tongue
             case HORSE -> 7;
             case BIRD -> 8;
             case ARTHROPOD -> 8;
-            case INSECT -> 4;
+            case INSECT -> 6; // body + 2 wings + 3 independently posed leg groups
             case WORM, SLIME -> 1;
             case FISH -> 2;
             case GHAST -> 10;
@@ -90,8 +91,7 @@ public final class EntityModelPoseExtractor {
                     if (parts[bone] != null) found++;
                     if (parts[bone] == null && !optionalBone(category, bone)) {
                         // Bird families intentionally allow sparse rigs: chickens/parrots use
-                        // slots 0-5 while Phantom uses slots 2-7. Requiring every slot would
-                        // reject a valid exact-pose model merely because it lacks head/body parts.
+                        // slots 0-5 while bats/Phantoms use wing/tip or wing/tail layouts.
                         if (category != EntityAnimationCategory.BIRD) return null;
                     }
                 }
@@ -105,7 +105,6 @@ public final class EntityModelPoseExtractor {
     }
 
     private static boolean optionalBone(EntityAnimationCategory category, int bone) {
-        // Chicken/parrot models have no separate wing-tip children; bats and phantoms do.
         return category == EntityAnimationCategory.BIRD && (bone == 6 || bone == 7);
     }
 
@@ -115,10 +114,14 @@ public final class EntityModelPoseExtractor {
                     {"head", "neck"}, {"body", "torso"}, {"left_arm", "leftArm", "left_wing"},
                     {"right_arm", "rightArm", "right_wing"}, {"left_leg", "leftLeg"}, {"right_leg", "rightLeg"}
             };
-            case QUADRUPED, GOAT, SNIFFER, ARMADILLO, AQUATIC_LEGS, SWIMMING, FROG -> new String[][] {
+            case QUADRUPED, GOAT, SNIFFER, ARMADILLO, AQUATIC_LEGS, SWIMMING -> new String[][] {
                     {"head"}, {"body", "upper_body"},
                     {"left_front_leg", "left_arm", "leftArm", "leg1"}, {"right_front_leg", "right_arm", "rightArm", "leg2"},
                     {"left_hind_leg", "left_leg", "leftLeg", "leg3"}, {"right_hind_leg", "right_leg", "rightLeg", "leg4"}
+            };
+            case FROG -> new String[][] {
+                    {"head"}, {"body", "croaking_body"}, {"left_arm", "leftArm"}, {"right_arm", "rightArm"},
+                    {"left_leg", "leftLeg"}, {"right_leg", "rightLeg"}, {"tongue"}
             };
             case HORSE -> new String[][] {
                     {"head"}, {"body", "upper_body"}, {"front_left_leg", "left_front_leg"}, {"front_right_leg", "right_front_leg"},
@@ -131,10 +134,13 @@ public final class EntityModelPoseExtractor {
                     {"left_wing_tip"}, {"right_wing_tip"}
             };
             case ARTHROPOD -> new String[][] {
-                    {"head"}, {"body"}, {"right_middle_front_leg"}, {"left_middle_front_leg"}, {"right_middle_leg"}, {"left_middle_leg"},
-                    {"right_back_leg", "right_middle_hind_leg", "right_hind_leg"}, {"left_back_leg", "left_middle_hind_leg", "left_hind_leg"}
+                    {"head"}, {"body"}, {"right_middle_front_leg", "right_front_leg"}, {"left_middle_front_leg", "left_front_leg"},
+                    {"right_middle_leg"}, {"left_middle_leg"}, {"right_back_leg", "right_middle_hind_leg", "right_hind_leg"},
+                    {"left_back_leg", "left_middle_hind_leg", "left_hind_leg"}
             };
-            case INSECT -> new String[][] {{"body", "torso"}, {"right_wing"}, {"left_wing"}, {"front_legs", "middle_legs", "back_legs"}};
+            case INSECT -> new String[][] {
+                    {"body", "torso"}, {"right_wing"}, {"left_wing"}, {"front_legs"}, {"middle_legs"}, {"back_legs"}
+            };
             case WORM -> new String[][] {{"body", "segment"}};
             case FISH -> new String[][] {{"body"}, {"tail"}};
             case SLIME -> new String[][] {{"cube", "inside_cube"}};
