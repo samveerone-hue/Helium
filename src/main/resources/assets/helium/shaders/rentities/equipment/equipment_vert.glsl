@@ -10,14 +10,13 @@ uniform mat4 uViewProjection;
 
 out vec2 vTexCoord;
 out vec4 vColor;
-out float vLight;
+out flat int vPackedLight;
+out float vLightEmission;
 
 void main() {
-    int packedLight = floatBitsToInt(aPackedLightBits);
-    float blockLight = float((packedLight >> 4) & 15) / 15.0;
-    float skyLight = float((packedLight >> 20) & 15) / 15.0;
-    vLight = max(blockLight, skyLight);
     vTexCoord = aTexCoord;
     vColor = aColor;
+    vPackedLight = floatBitsToInt(aPackedLightBits);
+    vLightEmission = 0.0;
     gl_Position = uViewProjection * vec4(aPosition, 1.0);
 }
