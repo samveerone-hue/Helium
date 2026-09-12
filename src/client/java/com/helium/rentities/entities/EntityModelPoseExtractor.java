@@ -57,10 +57,11 @@ public final class EntityModelPoseExtractor {
 
     private static int requiredBoneCount(EntityAnimationCategory category) {
         return switch (category) {
-            case BIPED, QUADRUPED, BIRD, CREEPER,
+            case BIPED, QUADRUPED, CREEPER,
                  FLOATING, FLOATING_SPINNING, SHULKER, STRIDER,
                  AQUATIC_LEGS, SWIMMING, FROG, GOAT, SNIFFER, ARMADILLO -> 6;
             case HORSE -> 7;
+            case BIRD -> 8;
             case ARTHROPOD -> 8;
             case INSECT -> 4;
             case WORM, SLIME -> 1;
@@ -108,10 +109,13 @@ public final class EntityModelPoseExtractor {
                     {"head"}, {"body", "upper_body"}, {"front_left_leg", "left_front_leg"}, {"front_right_leg", "right_front_leg"},
                     {"back_left_leg", "left_hind_leg"}, {"back_right_leg", "right_hind_leg"}, {"tail"}
             };
-            case BIRD -> new String[][] {{"head"}, {"body"}, {"left_wing"}, {"right_wing"}, {"left_leg"}, {"right_leg"}};
+            case BIRD -> new String[][] {
+                    {"head"}, {"body"}, {"left_wing"}, {"right_wing"}, {"left_leg"}, {"right_leg"},
+                    {"left_wing_tip"}, {"right_wing_tip"}
+            };
             case ARTHROPOD -> new String[][] {
                     {"head"}, {"body"}, {"right_middle_front_leg"}, {"left_middle_front_leg"}, {"right_middle_leg"}, {"left_middle_leg"},
-                    {"right_back_leg", "right_middle_hind_leg"}, {"left_back_leg", "left_middle_hind_leg"}
+                    {"right_back_leg", "right_middle_hind_leg", "right_hind_leg"}, {"left_back_leg", "left_middle_hind_leg", "left_hind_leg"}
             };
             case INSECT -> new String[][] {{"body", "torso"}, {"right_wing"}, {"left_wing"}, {"front_legs", "middle_legs", "back_legs"}};
             case WORM -> new String[][] {{"body", "segment"}};
