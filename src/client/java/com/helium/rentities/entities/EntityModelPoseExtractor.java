@@ -42,7 +42,8 @@ public final class EntityModelPoseExtractor {
                 for (int bone = 0; bone < 10; bone++) writePose(ptr + poseOffset(bone), 0.0f, 0.0f, 0.0f);
                 for (int bone = 0; bone < requiredBones; bone++) {
                     ModelPart part = binding.parts[bone];
-                    writePose(ptr + poseOffset(bone), part.getPitch(), part.getYaw(), part.getRoll());
+                    if (part == null) continue;
+                    writePose(ptr + poseOffset(bone), part.pitch, part.yaw, part.roll);
                 }
                 return true;
             } finally {
@@ -85,13 +86,18 @@ public final class EntityModelPoseExtractor {
                 ModelPart[] parts = new ModelPart[requiredBones];
                 for (int bone = 0; bone < requiredBones; bone++) {
                     parts[bone] = findPart(root, candidates[bone]);
-                    if (parts[bone] == null) return null;
+                    if (parts[bone] == null && !optionalBone(category, bone)) return null;
                 }
                 PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
                 BINDINGS.put(model, binding);
                 return binding;
             } catch (Throwable ignored) { return null; }
         }
+    }
+
+    private static boolean optionalBone(EntityAnimationCategory category, int bone) {
+        // Chicken/parrot models have no separate wing-tip children; bats and phantoms do.
+        return category == EntityAnimationCategory.BIRD && (bone == 6 || bone == 7);
     }
 
     private static String[][] candidates(EntityAnimationCategory category) {
@@ -110,8 +116,14 @@ public final class EntityModelPoseExtractor {
                     {"back_left_leg", "left_hind_leg"}, {"back_right_leg", "right_hind_leg"}, {"tail"}
             };
             case BIRD -> new String[][] {
-                    {"head"}, {"body"}, {"left_wing"}, {"right_wing"}, {"left_leg"}, {"right_leg"},
-                    {"left_wing_tip"}, {"right_wing_tip"}
+                    {"head"},
+                    {"body"},
+                    {"left_wing", "left_wing_base"},
+                    {"right_wing", "right_wing_base"},
+                    {"left_leg", "tail_base"},
+                    {"right_leg", "tail_tip"},
+                    {"left_wing_tip"},
+                    {"right_wing_tip"}
             };
             case ARTHROPOD -> new String[][] {
                     {"head"}, {"body"}, {"right_middle_front_leg"}, {"left_middle_front_leg"}, {"right_middle_leg"}, {"left_middle_leg"},
