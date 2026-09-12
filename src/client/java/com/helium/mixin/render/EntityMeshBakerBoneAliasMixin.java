@@ -18,6 +18,9 @@ public abstract class EntityMeshBakerBoneAliasMixin {
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
     private static void helium$addSpecialAliases(CallbackInfo ci) {
+        // Quadruped tails are independent ModelParts on many vanilla animals.
+        QUADRUPED_BONES.put("tail", 6);
+
         // FrogEntityModel uses camelCase child keys and has an independently animated tongue.
         QUADRUPED_BONES.put("leftArm", 2);
         QUADRUPED_BONES.put("rightArm", 3);
