@@ -7,8 +7,10 @@ import com.helium.rentities.entities.EntityInstance;
 import com.helium.rentities.entities.EntityModelPoseExtractor;
 import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
+import net.minecraft.client.render.entity.state.CreeperEntityRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.client.render.entity.state.PhantomEntityRenderState;
 import net.minecraft.util.math.EulerAngle;
 import org.lwjgl.system.MemoryUtil;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,9 +24,9 @@ import java.lang.reflect.Field;
  * Replaces the legacy/reflection interpolation values in EntityBatchRenderer's
  * packed instance with authoritative 1.21.11 render-state values.
  *
- * The same mixin also asks Minecraft's own EntityModel#setAngles(state) to produce
- * exact ModelPart rotations for the six-bone model families supported by the GPU ABI.
- * This removes the old hand-written walk/attack approximation for those entities.
+ * The same mixin asks Minecraft's own EntityModel#setAngles(state) to produce
+ * exact ModelPart rotations and captures renderer-specific scale state when a
+ * renderer changes model size outside EntityModel#setAngles.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererStateMixin {
@@ -91,6 +93,25 @@ public abstract class EntityBatchRendererStateMixin {
             writePose(ptr, EntityInstance.OFFSET_ARMOR_STAND_RIGHT_LEG_POSE, stand.rightLegRotation);
         }
 
+        if (state instanceof CreeperEntityRenderState creeper) {
+            // CreeperEntityRenderer applies this renderer-level swell scale after
+            // model animation. Carry the same state into the GPU path instead of
+            // falling back to the vanilla renderer.
+            float fuse = Math.max(0.0f, Math.min(1.0f, creeper.fuseTime));
+            float pulse = 1.0f + (float) Math.sin(creeper.fuseTime * 100.0f) * fuse * 0.01f;
+            float eased = fuse * fuse;
+            eased *= eased;
+            float scaleXZ = (1.0f + eased * 0.4f) * pulse;
+            float scaleY = (1.0f + eased * 0.1f) / pulse;
+            writeModelScale(ptr, scaleXZ, scaleY);
+        } else if (state instanceof PhantomEntityRenderState phantom) {
+            // PhantomEntityRenderer scales the whole model by
+            // 1.0 + size * 0.15. The render state's size must survive the
+            // Rentities body-model substitution or larger phantoms render tiny.
+            float scale = 1.0f + Math.max(0, phantom.size) * 0.15f;
+            writeModelScale(ptr, scale, scale);
+        }
+
         if (typeHolder.type != null) {
             writeBakedHeadPivot(ptr, typeHolder.type);
 
@@ -104,6 +125,14 @@ public abstract class EntityBatchRendererStateMixin {
                 MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
             }
         }
+    }
+
+    private static void writeModelScale(long ptr, float scaleXZ, float scaleY) {
+        MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SLIME_SCALE_XZ, scaleXZ);
+        MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_SLIME_SCALE_Y, scaleY);
+        int flags = MemoryUtil.memGetInt(ptr + EntityInstance.OFFSET_FLAGS);
+        flags |= EntityInstance.FLAG_MODEL_SCALE;
+        MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
     }
 
     private static EntityTypeHolder resolveType(Object state) {
