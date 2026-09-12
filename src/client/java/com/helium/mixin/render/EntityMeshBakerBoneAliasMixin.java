@@ -28,6 +28,12 @@ public abstract class EntityMeshBakerBoneAliasMixin {
         BIRD_BONES.put("left_wing_tip", 6);
         BIRD_BONES.put("right_wing_tip", 7);
 
+        // PhantomEntityModel is a wing-base/wing-tip + tail-base/tail-tip rig.
+        BIRD_BONES.put("left_wing_base", 2);
+        BIRD_BONES.put("right_wing_base", 3);
+        BIRD_BONES.put("tail_base", 4);
+        BIRD_BONES.put("tail_tip", 5);
+
         // SpiderEntityModel uses front/hind names plus distinct middle-hind keys.
         ARTHROPOD_BONES.put("right_front_leg", 2);
         ARTHROPOD_BONES.put("left_front_leg", 3);
