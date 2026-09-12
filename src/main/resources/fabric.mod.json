@@ -17,7 +17,7 @@
       "com.helium.compat.HeliumModMenuIntegration"
     ],
     "sodium:config_api_user": [
-      "com.helium.compat.HeliumSodiumConfig"
+      "com.helium.compat.HeliumSodiumBooleanConfig"
     ]
   },
   "mixins": [
