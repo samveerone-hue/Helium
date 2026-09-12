@@ -98,7 +98,8 @@
     "render.EntityBatchRendererInvoker",
     "render.OrderedRenderCommandQueueImplMixin",
     "render.EquipmentRendererMixin",
-    "render.EntityBatchRendererEquipmentMixin"
+    "render.EntityBatchRendererEquipmentMixin",
+    "render.RentitiesEquipmentItemQueueMixin"
   ],
   "injectors": {
     "defaultRequire": 0
