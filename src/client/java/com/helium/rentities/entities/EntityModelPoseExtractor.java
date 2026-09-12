@@ -60,8 +60,8 @@ public final class EntityModelPoseExtractor {
         return switch (category) {
             case BIPED, CREEPER,
                  FLOATING, FLOATING_SPINNING, SHULKER, STRIDER,
-                 AQUATIC_LEGS, SWIMMING, GOAT, SNIFFER, ARMADILLO -> 6;
-            case QUADRUPED -> 7; // head/body/four legs + independent tail when present
+                 AQUATIC_LEGS, SWIMMING -> 6;
+            case QUADRUPED, GOAT, SNIFFER, ARMADILLO -> 7; // tail slot when present
             case FROG -> 7;     // head/body/arms/legs + independently animated tongue
             case HORSE -> 7;
             case BIRD -> 8;
@@ -91,15 +91,19 @@ public final class EntityModelPoseExtractor {
                     parts[bone] = findPart(root, candidates[bone]);
                     if (parts[bone] != null) found++;
                     if (parts[bone] == null && !optionalBone(category, bone)) {
-                        // Bird and quadruped families intentionally allow sparse rigs.
-                        // The required body/limb bones still have to exist; an absent
-                        // tail/wing tip simply stays at zero instead of disabling the
-                        // exact-pose path for the whole model.
-                        if (category != EntityAnimationCategory.BIRD && category != EntityAnimationCategory.QUADRUPED) return null;
+                        // Bird and quadruped-family rigs intentionally allow sparse tails/tips.
+                        if (category != EntityAnimationCategory.BIRD
+                                && category != EntityAnimationCategory.QUADRUPED
+                                && category != EntityAnimationCategory.GOAT
+                                && category != EntityAnimationCategory.SNIFFER
+                                && category != EntityAnimationCategory.ARMADILLO) return null;
                     }
                 }
-                int minimum = (category == EntityAnimationCategory.BIRD || category == EntityAnimationCategory.QUADRUPED)
-                        ? 6 : requiredBones;
+                int minimum = (category == EntityAnimationCategory.BIRD
+                        || category == EntityAnimationCategory.QUADRUPED
+                        || category == EntityAnimationCategory.GOAT
+                        || category == EntityAnimationCategory.SNIFFER
+                        || category == EntityAnimationCategory.ARMADILLO) ? 6 : requiredBones;
                 if (found < minimum) return null;
                 PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
                 BINDINGS.put(model, binding);
@@ -110,7 +114,10 @@ public final class EntityModelPoseExtractor {
 
     private static boolean optionalBone(EntityAnimationCategory category, int bone) {
         if (category == EntityAnimationCategory.BIRD) return bone == 6 || bone == 7;
-        return category == EntityAnimationCategory.QUADRUPED && bone == 6;
+        return (category == EntityAnimationCategory.QUADRUPED
+                || category == EntityAnimationCategory.GOAT
+                || category == EntityAnimationCategory.SNIFFER
+                || category == EntityAnimationCategory.ARMADILLO) && bone == 6;
     }
 
     private static String[][] candidates(EntityAnimationCategory category) {
