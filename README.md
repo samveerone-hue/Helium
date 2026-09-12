@@ -21,19 +21,27 @@ lightweight client-side performance mod for Minecraft
 
 ## Rentities / GPU Entity Batching Fixes
 
-The `1.21.11` branch includes the current Rentities integration work and the following fixes:
+The `1.21.11` branch contains the current Rentities integration and the following rendering fixes:
 
-- **Armor Stand render-state population fixed.** Rentities previously set the Armor Stand flag but did not populate the six per-instance pose slots used by the GPU shader. The render path now copies head, body, left/right arm, and left/right leg rotations from `ArmorStandEntityRenderState` into the instance buffer.
-- **Armor Stand yaw fixed.** The Rentities instance now uses the Armor Stand render state's authoritative `yaw` when writing the GPU rotation, keeping it aligned with the existing `180 - yaw` shader transform.
-- **Armor Stand head pivot fixed.** The missing per-instance head pivot is now populated for the baked entity coordinate system so head rotations use the correct rotation centre.
-- **Armor Stand state mixin enabled.** `RentitiesArmorStandStateMixin` is registered in the client mixin configuration so the Armor Stand state fix is actually applied at runtime.
-- **GPU batching fallback hardened.** Standard SSBO uploads remain the default backend, while indirect/culling failures fall back to normal ordered instanced rendering instead of silently dropping entities.
-- **Entity error fallback retained.** Failed entity mesh paths can use the magenta error renderer while the normal queue remains available for recovery.
-- **Queue rollback/compaction hardened.** Failed direct extraction reservations are removed safely and cancelled queue slots are compacted before drawing.
+- **Armor Stand poses fixed.** The GPU instance now receives the exact head, body, left/right arm, and left/right leg `EulerAngle` poses from `ArmorStandEntityRenderState`, so `/data` custom poses are no longer discarded.
+- **Armor Stand facing fixed.** Armor Stand yaw now comes from its authoritative render-state `yaw` and uses the same `180 - yaw` convention as the shader path.
+- **Entity facing direction fixed.** Living entity rotation is populated from the prepared render state's `bodyYaw` instead of re-interpolating the live entity fields, avoiding the previous double-interpolation/sign mismatch path.
+- **Head rotation centre fixed.** The per-instance head pivot is now populated from the baked model's actual pivot table, rather than leaving ordinary entities at an implicit zero pivot.
+- **Render-state animation inputs improved.** Limb swing, limb amplitude, head rotation, death time, hurt state, water state, sneaking state, and hand-swing progress are taken from the already-prepared 1.21.11 render state instead of being interpolated a second time.
+- **Iris compatibility made safe.** Rentities' custom GPU shader path is automatically disabled when Iris is loaded, allowing vanilla rendering instead of attempting to draw entities through an incompatible custom shader path.
+- **GPU batching fallback hardened.** Standard SSBO uploads remain the default backend, while indirect/culling failures fall back to the normal ordered instanced path instead of silently dropping entities.
+- **Entity error fallback retained.** Failed mesh extraction can use the magenta error renderer while the normal rendering path remains available for recovery.
+- **Queue rollback/compaction hardened.** Failed direct-extraction reservations are rolled back safely and cancelled slots are compacted before drawing.
 
-These changes are intended to keep Rentities visually consistent with vanilla rendering while retaining the performance benefits of GPU entity batching.
+### Remaining Rentities limitations
 
-> **Verification status:** the Armor Stand state fix is committed. The `1.21.11` GitHub Actions build still needs to complete before this is considered CI-verified.
+- **Animations are still approximate.** Walk cycles and several special animations are GPU approximations of vanilla model animation. They are functional, but not yet guaranteed to be pixel-for-pixel identical to every entity's renderer.
+- **Texture/UV issues remain under investigation.** Some less-common entity models can still show mirrored or incorrectly oriented texture regions. The mesh consumer preserves Minecraft's source UVs verbatim, so the remaining problem is likely in model-specific extraction/texture handling rather than a blanket UV flip.
+- **Unscanned/failed entities may show the magenta error cube.** When a mesh cannot be baked or recovered, Rentities uses its visible error fallback. Normally the missing mesh can be rebuilt by returning to a world where the entity is available so the cache can be refreshed.
+
+These changes are intended to keep Rentities visually close to vanilla while retaining the performance benefits of GPU entity batching.
+
+> **Verification status:** the fixes are committed to `1.21.11`. GitHub Actions has not yet reported a successful verification for the latest commit, so runtime/CI confirmation is still pending.
 
 ---
 
