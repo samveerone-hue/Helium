@@ -52,9 +52,17 @@ public abstract class RentitiesEntityRenderManagerMixin {
         if (!RentitiesRenderStatePolicy.canBatch(state, type)) return;
 
         try {
-            // This is deliberately before queueEntityState()/ci.cancel(). A cache miss,
-            // unresolved texture, disabled render path, unsupported render state, or
-            // async rejection therefore cannot make an entity disappear for a frame.
+            // A cache miss is recoverable. Build the missing base mesh on the render
+            // thread, let this frame fall through to vanilla, then batch from the
+            // completed cache on subsequent frames. ensureMeshFor() also refreshes
+            // the GPU buffers and texture bootstrap after extraction.
+            if (!renderer.hasMeshFor(type)) {
+                renderer.getMeshBaker().ensureMeshFor(type);
+                return;
+            }
+
+            // These checks remain immediately before cancellation so a texture/shader
+            // failure or async rejection can never make an entity disappear.
             if (!renderer.canBatchEntity(type) || !renderer.asyncAllowsBatch(type)) return;
 
             if (EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) {
