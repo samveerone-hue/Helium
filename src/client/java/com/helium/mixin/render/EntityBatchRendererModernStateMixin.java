@@ -40,10 +40,9 @@ public abstract class EntityBatchRendererModernStateMixin {
             if (EntityBatchRegistry.hasZombieArms(type)) flags |= EntityInstance.FLAG_ZOMBIE_ARMS;
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
 
-            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y,
-                    (float) Math.toRadians(180.0f - renderState.bodyYaw));
-
             if (state instanceof LivingEntityRenderState living) {
+                MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y,
+                        (float) Math.toRadians(180.0f - living.bodyYaw));
                 MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_YAW,
                         (float) Math.toRadians(living.relativeHeadYaw));
                 MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PITCH,
