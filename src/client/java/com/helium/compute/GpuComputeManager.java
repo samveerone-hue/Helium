@@ -29,9 +29,8 @@ public final class GpuComputeManager {
 
     private GpuComputeManager() {}
 
-    private static synchronized boolean enabled() {
+    private static synchronized boolean ensureBackend(boolean wanted) {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
-        boolean wanted = c.enabled && c.lineOfSight;
         if (!wanted) {
             if (backend != null || !pending.isEmpty() || !results.isEmpty()) closeBackend();
             return false;
@@ -42,6 +41,11 @@ public final class GpuComputeManager {
             }
         }
         return backend != null;
+    }
+
+    private static synchronized boolean enabled() {
+        GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
+        return ensureBackend(c.enabled && c.lineOfSight);
     }
 
     private static void closeBackend() {
@@ -67,10 +71,13 @@ public final class GpuComputeManager {
         generation++;
     }
 
-    public static boolean lineOfSightEnabled() { return enabled() && config.lineOfSight; }
+    public static boolean lineOfSightEnabled() {
+        return enabled() && config.lineOfSight;
+    }
+
     public static boolean pathfindingEnabled() {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
-        return c.enabled && c.pathfinding;
+        return c.enabled && c.pathfinding && ensureBackend(true);
     }
 
     public static Boolean cached(int source, int target, long tick) {
@@ -121,10 +128,14 @@ public final class GpuComputeManager {
         lastFlush = tick;
         ArrayList<Request> batch = new ArrayList<>();
         int max = Math.max(1, config.maxBatch);
+        SolidSampler batchSampler = null;
+
         for (Request r : pending.values()) {
-            if (r.tick == tick && r.generation == generation && batch.size() < max && pending.remove(r.key, r)) {
-                batch.add(r);
-            }
+            if (r.tick != tick || r.generation != generation) continue;
+            if (batchSampler != null && r.sampler != batchSampler) continue;
+            if (batch.size() >= max || !pending.remove(r.key, r)) continue;
+            if (batchSampler == null) batchSampler = r.sampler;
+            batch.add(r);
         }
         if (batch.isEmpty() || backend == null) return;
 
@@ -179,12 +190,11 @@ public final class GpuComputeManager {
         final int snapshotMinY = minY;
         final int snapshotMinZ = minZ;
         final int snapshotSize = size;
-        Request anchor = batch.get(0);
         byte[] solid = new byte[snapshotSize * snapshotSize * snapshotSize];
         int i = 0;
         try {
             for (int z = 0; z < snapshotSize; z++) for (int y = 0; y < snapshotSize; y++) for (int xx = 0; xx < snapshotSize; xx++, i++) {
-                solid[i] = (byte) (anchor.sampler.isSolid(snapshotMinX + xx, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
+                solid[i] = (byte) (batchSampler.isSolid(snapshotMinX + xx, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
             }
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
@@ -238,7 +248,7 @@ public final class GpuComputeManager {
     }
 
     public static int[] runFlowField(byte[] blocked, int size, int targetX, int targetY, int targetZ) {
-        if (!pathfindingEnabled() || backend == null) return null;
+        if (!pathfindingEnabled()) return null;
         synchronized (BACKEND_LOCK) {
             OpenClComputeBackend b = backend;
             if (b == null) return null;
