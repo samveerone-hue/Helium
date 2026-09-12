@@ -4,11 +4,14 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.rentities.gl.GlShader;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.render.model.BakedQuad;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.texture.Sprite;
 import net.minecraft.util.Identifier;
+import org.joml.Matrix4f;
+import org.joml.Vector3fc;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.system.MemoryUtil;
-import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -22,7 +25,7 @@ import static org.lwjgl.opengl.GL15C.*;
 import static org.lwjgl.opengl.GL20C.*;
 import static org.lwjgl.opengl.GL30C.*;
 
-/** Dynamic GPU batch for simple entity equipment models. */
+/** Dynamic GPU batch for simple entity equipment and held-item geometry. */
 public final class RentitiesEquipmentBatcher {
     private static final int FLOATS_PER_VERTEX = 13;
     private static final int FLOAT_STRIDE_BYTES = FLOATS_PER_VERTEX * Float.BYTES;
@@ -42,7 +45,7 @@ public final class RentitiesEquipmentBatcher {
         return config != null && config.modEnabled && config.entityGpuBatching;
     }
 
-    /** Captures one already-posed equipment model into the frame batch. */
+    /** Captures one already-posed armor/equipment model into the frame batch. */
     public static boolean capture(Object model, MatrixStack matrices, int light, Identifier textureId) {
         if (!enabled() || model == null || matrices == null || textureId == null) return false;
         if (!(model instanceof Model<?> genericModel)) return false;
@@ -56,14 +59,104 @@ public final class RentitiesEquipmentBatcher {
             genericModel.render(matrices, consumer, light, 0, 0xFFFFFFFF);
             float[] vertices = consumer.toTriangulatedArray();
             if (vertices == null || vertices.length == 0) return false;
-
-            synchronized (QUEUED) {
-                QUEUED.computeIfAbsent(texture, ignored -> new ArrayList<>()).add(vertices);
-            }
+            queue(texture, vertices);
             return true;
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("[Rentities] equipment capture rejected: {}", t.toString());
             return false;
+        }
+    }
+
+    /**
+     * Captures simple item quads after vanilla has already applied the item display transform.
+     * The command queue supplies the actual BakedQuad list and tint layers, so no ItemStack
+     * model lookup is duplicated here.
+     */
+    public static boolean captureBakedQuads(
+            MatrixStack matrices,
+            List<BakedQuad> quads,
+            int[] tints,
+            int light) {
+        if (!enabled() || matrices == null || quads == null || quads.isEmpty()) return false;
+
+        try {
+            ensureInitialized();
+            Matrix4f transform = new Matrix4f(matrices.peek().getPositionMatrix());
+            LinkedHashMap<Integer, List<float[]>> local = new LinkedHashMap<>();
+
+            for (BakedQuad quad : quads) {
+                if (quad == null || quad.sprite() == null) return false;
+                int texture = EntityGlTextureResolver.resolveGlId(quad.sprite().getAtlasId());
+                if (texture <= 0) return false;
+
+                int tint = 0xFFFFFFFF;
+                int tintIndex = quad.tintIndex();
+                if (tintIndex >= 0) {
+                    if (tints == null || tintIndex >= tints.length) return false;
+                    tint = tints[tintIndex];
+                }
+
+                List<float[]> out = local.computeIfAbsent(texture, ignored -> new ArrayList<>());
+                for (int i = 0; i < 4; i++) {
+                    Vector3fc pos = quad.getPosition(i);
+                    long packedUv = quad.getTexcoords(i);
+                    float u = Float.intBitsToFloat((int) packedUv);
+                    float v = Float.intBitsToFloat((int) (packedUv >>> 32));
+
+                    Vector3fScratch transformed = transformPosition(transform, pos.x(), pos.y(), pos.z());
+                    float[] vertex = new float[]{
+                            transformed.x, transformed.y, transformed.z,
+                            0f, 1f, 0f,
+                            u, v,
+                            ((tint >>> 24) & 255) / 255f,
+                            ((tint >>> 16) & 255) / 255f,
+                            ((tint >>> 8) & 255) / 255f,
+                            (tint & 255) / 255f,
+                            Float.intBitsToFloat(light)
+                    };
+                    out.add(vertex);
+                }
+            }
+
+            for (Map.Entry<Integer, List<float[]>> entry : local.entrySet()) {
+                List<float[]> vertices = entry.getValue();
+                if (vertices.size() % 4 != 0) return false;
+                float[] triangulated = new float[(vertices.size() / 4) * 6 * FLOATS_PER_VERTEX];
+                int dst = 0;
+                for (int base = 0; base < vertices.size(); base += 4) {
+                    int[] order = {base, base + 1, base + 2, base + 2, base + 3, base};
+                    for (int source : order) {
+                        float[] vertex = vertices.get(source);
+                        System.arraycopy(vertex, 0, triangulated, dst, FLOATS_PER_VERTEX);
+                        dst += FLOATS_PER_VERTEX;
+                    }
+                }
+                queue(entry.getKey(), triangulated);
+            }
+            return true;
+        } catch (Throwable t) {
+            HeliumClient.LOGGER.debug("[Rentities] held-item capture rejected: {}", t.toString());
+            return false;
+        }
+    }
+
+    private static final class Vector3fScratch {
+        final float x, y, z;
+        Vector3fScratch(float x, float y, float z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    private static Vector3fScratch transformPosition(Matrix4f transform, float x, float y, float z) {
+        org.joml.Vector4f p = new org.joml.Vector4f(x, y, z, 1f).mul(transform);
+        return new Vector3fScratch(p.x(), p.y(), p.z());
+    }
+
+    private static void queue(int texture, float[] vertices) {
+        synchronized (QUEUED) {
+            QUEUED.computeIfAbsent(texture, ignored -> new ArrayList<>()).add(vertices);
         }
     }
 
@@ -150,7 +243,6 @@ public final class RentitiesEquipmentBatcher {
 
     private static synchronized void ensureInitialized() {
         if (initialized) return;
-
         shader = GlShader.builder()
                 .vert(GlShader.loadResource("equipment/equipment_vert.glsl"))
                 .frag(GlShader.loadResource("equipment/equipment_frag.glsl"))
@@ -160,7 +252,6 @@ public final class RentitiesEquipmentBatcher {
         vbo = glGenBuffers();
         glBindVertexArray(vao);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
         int stride = FLOAT_STRIDE_BYTES;
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, false, stride, 0L);
@@ -172,7 +263,6 @@ public final class RentitiesEquipmentBatcher {
         glVertexAttribPointer(3, 4, GL_FLOAT, false, stride, 8L * Float.BYTES);
         glEnableVertexAttribArray(4);
         glVertexAttribPointer(4, 1, GL_FLOAT, false, stride, 12L * Float.BYTES);
-
         uViewProjection = shader.getUniformLocation("uViewProjection");
         uTexture = shader.getUniformLocation("uTexture");
         glBindVertexArray(0);
@@ -188,67 +278,23 @@ public final class RentitiesEquipmentBatcher {
         private float u, v;
         private int color = 0xFFFFFFFF;
 
-        EquipmentMeshCapturingConsumer(int packedLight) {
-            this.fallbackPackedLight = packedLight;
-        }
-
-        @Override
-        public net.minecraft.client.render.VertexConsumer vertex(float x, float y, float z) {
-            vx = x; vy = y; vz = z;
-            return this;
-        }
-
-        @Override
-        public net.minecraft.client.render.VertexConsumer color(int r, int g, int b, int a) {
-            color = (a & 255) << 24 | (r & 255) << 16 | (g & 255) << 8 | (b & 255);
-            return this;
-        }
-
-        @Override
-        public net.minecraft.client.render.VertexConsumer color(int packedArgb) {
-            color = packedArgb;
-            return this;
-        }
-
-        @Override
-        public net.minecraft.client.render.VertexConsumer texture(float u, float v) {
-            this.u = u; this.v = v;
-            return this;
-        }
-
-        @Override
-        public net.minecraft.client.render.VertexConsumer overlay(int u, int v) { return this; }
-        @Override
-        public net.minecraft.client.render.VertexConsumer light(int u, int v) { return this; }
-        @Override
-        public net.minecraft.client.render.VertexConsumer normal(float nx, float ny, float nz) {
-            this.nx = nx; this.ny = ny; this.nz = nz;
-            capture(fallbackPackedLight);
-            return this;
-        }
-        @Override
-        public net.minecraft.client.render.VertexConsumer lineWidth(float width) { return this; }
-
-        @Override
-        public void vertex(float x, float y, float z, int color,
-                           float u, float v, int overlay, int light,
-                           float nx, float ny, float nz) {
-            this.vx = x; this.vy = y; this.vz = z;
-            this.u = u; this.v = v;
-            this.color = color;
-            this.nx = nx; this.ny = ny; this.nz = nz;
-            capture(light);
-        }
-
+        EquipmentMeshCapturingConsumer(int packedLight) { this.fallbackPackedLight = packedLight; }
+        @Override public net.minecraft.client.render.VertexConsumer vertex(float x, float y, float z) { vx = x; vy = y; vz = z; return this; }
+        @Override public net.minecraft.client.render.VertexConsumer color(int r, int g, int b, int a) { color = (a & 255) << 24 | (r & 255) << 16 | (g & 255) << 8 | (b & 255); return this; }
+        @Override public net.minecraft.client.render.VertexConsumer color(int packedArgb) { color = packedArgb; return this; }
+        @Override public net.minecraft.client.render.VertexConsumer texture(float u, float v) { this.u = u; this.v = v; return this; }
+        @Override public net.minecraft.client.render.VertexConsumer overlay(int u, int v) { return this; }
+        @Override public net.minecraft.client.render.VertexConsumer light(int u, int v) { return this; }
+        @Override public net.minecraft.client.render.VertexConsumer normal(float nx, float ny, float nz) { this.nx = nx; this.ny = ny; this.nz = nz; capture(fallbackPackedLight); return this; }
+        @Override public net.minecraft.client.render.VertexConsumer lineWidth(float width) { return this; }
+        @Override public void vertex(float x, float y, float z, int color, float u, float v, int overlay, int light, float nx, float ny, float nz) { this.vx = x; this.vy = y; this.vz = z; this.u = u; this.v = v; this.color = color; this.nx = nx; this.ny = ny; this.nz = nz; capture(light); }
         private void capture(int packedLight) {
             float a = ((color >>> 24) & 255) / 255.0f;
             float r = ((color >>> 16) & 255) / 255.0f;
             float g = ((color >>> 8) & 255) / 255.0f;
             float b = (color & 255) / 255.0f;
-            captured.add(new float[]{vx, vy, vz, nx, ny, nz, u, v, r, g, b, a,
-                    Float.intBitsToFloat(packedLight)});
+            captured.add(new float[]{vx, vy, vz, nx, ny, nz, u, v, r, g, b, a, Float.intBitsToFloat(packedLight)});
         }
-
         float[] toTriangulatedArray() {
             if (captured.isEmpty() || (captured.size() % 4) != 0) return null;
             int quadCount = captured.size() / 4;
