@@ -16,6 +16,10 @@ public final class RentitiesEquipmentContext {
         return CURRENT.get() == state;
     }
 
+    public static boolean isActive() {
+        return CURRENT.get() != null;
+    }
+
     public static void clear() {
         CURRENT.remove();
     }
