@@ -1,6 +1,7 @@
 package com.helium.mixin.render;
 
 import com.helium.rentities.entities.RentitiesEquipmentBatcher;
+import com.helium.rentities.entities.RentitiesEquipmentContext;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.item.ItemRenderState;
