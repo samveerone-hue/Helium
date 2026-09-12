@@ -28,9 +28,9 @@ public abstract class OrderedRenderCommandQueueImplMixin {
             cancellable = true,
             require = 0
     )
-    private <S extends EntityRenderState> void helium$suppressBatchedBody(
-            Model<? super S> model,
-            S state,
+    private void helium$suppressBatchedBody(
+            Model<?> model,
+            Object state,
             MatrixStack matrices,
             RenderLayer renderLayer,
             int light,
