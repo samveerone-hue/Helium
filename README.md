@@ -6,7 +6,7 @@ Lightweight client-side performance mod for Minecraft.
 
 ## Development status — `1.21.11`
 
-This README is an engineering audit of the branch. Features that cannot be represented correctly by a generic optimization path are deliberately allowed to fall back to vanilla rendering.
+This README describes the branch's real feature surface. Features that cannot be represented correctly by a generic optimization path are allowed to fall back to vanilla rendering.
 
 ### Rendering and culling
 
@@ -21,7 +21,7 @@ This README is an engineering audit of the branch. Features that cannot be repre
 | Animation throttling | Working | Intentionally reduces update frequency when enabled. |
 | Render-pipeline optimizations | Working | Fast math, fast animations, enum caching, accelerated text, uniform caching and renderer-owned pipeline work are independently configurable. |
 | Rentities GPU entity batching | Working | Exact-pose registry plus conservative vanilla fallback for unsupported rigs. |
-| Rentities mesh SIMD preprocessing | Working | Opt-in Vector API normal normalization for sufficiently large baked meshes; scalar/vanilla behavior remains available. |
+| Rentities mesh SIMD preprocessing | Working | Opt-in Vector API normal normalization for sufficiently large baked meshes; scalar behavior remains available. |
 
 ### Engine, memory, threading and world loading
 
@@ -33,9 +33,9 @@ This README is an engineering audit of the branch. Features that cannot be repre
 | Fast world loading | Working | Optional. |
 | Reduced allocations | Working | Enabled by default where Helium can safely reduce temporaries. |
 | Async resource-pack reload | Working | Resource preparation is off-thread while Minecraft-owned application remains on the client thread. |
-| Model cache | Experimental / working | Bounded block-model front cache and Rentities mesh cache paths are kept separate from unsafe renderer-state work. |
+| Model cache | Experimental / working | Bounded block-model front cache; Rentities mesh caching remains separate. |
 | Async light preparation | Experimental / working | Background deduplication/coalescing only; vanilla light propagation remains on its owning thread. |
-| Network buffer pooling | Experimental / working | Concurrent packet-buffer/direct-buffer pools are available without changing packet protocol semantics. |
+| Network buffer pooling | Experimental / working | Concurrent packet/direct-buffer reuse without changing packet protocol semantics. |
 | Object deduplication | Working | Enabled by default. |
 | Idle pause/FPS limiting | Working | Optional. |
 
@@ -55,33 +55,15 @@ This README is an engineering audit of the branch. Features that cannot be repre
 
 ### Networking, menus, hotbar and QoL
 
-Fast server/IP ping, refresh-scroll preservation, direct-connect preview, opt-in hotbar optimization, multi-switch/smooth hotbar controls, smooth scrolling, Windows window styling, fullbright, FPS overlay controls, menu FPS limiting, async pack reload, instant language change and one-click crafting are all independently configurable.
+Fast server/IP ping, refresh-scroll preservation, direct-connect preview, opt-in hotbar optimization, multi-switch/smooth hotbar controls, smooth scrolling, Windows window styling, fullbright, FPS overlay controls, menu FPS limiting, async pack reload, instant language change and one-click crafting are independently configurable.
 
-Experimental network maintenance also includes conservative packet-buffer reuse and optional one-tick flush coalescing. It does not rewrite Minecraft's protocol or packet ordering.
+Experimental network maintenance uses conservative buffer reuse and optional one-tick flush coalescing. It does not rewrite Minecraft's protocol or packet ordering.
 
-## Catalyst audit
+### Deliberate vanilla fallbacks
 
-Catalyst is a useful reference for 1.21.11 client-performance ideas, but Helium does not depend on it and does not copy its implementation wholesale.
+Helium does not claim a generic off-thread sound renderer, arbitrary world-save execution on worker threads, or a forced-GC "optimizer". Those require safe, measurable implementations rather than toggles that merely sound faster.
 
-The useful design targets we are auditing are:
-
-- mesh/model caching
-- async preparation for entity, block-entity and particle work
-- resource-pack loading
-- sound/resource preparation
-- low-contention collections and queues
-- quit/shutdown cleanup
-- biome color caching
-- JVM/GC-related allocation pressure
-- network buffer pooling
-
-Where Helium already has a real subsystem, the goal is to consolidate around that implementation rather than run two overlapping systems. Where Minecraft's thread ownership makes an off-thread mutation unsafe, Helium keeps only immutable preparation off-thread and leaves the state mutation/render call on the owning thread.
-
-### Deliberately not implemented as claims
-
-Helium does **not** currently claim a generic off-thread sound renderer, arbitrary world-save execution on worker threads, or a forced-GC "optimizer". Those would need a safe, measurable implementation rather than a toggle that merely sounds faster.
-
-## Rentities / GPU entity batching audit
+## Rentities / GPU entity batching
 
 Rentities is a correctness-sensitive renderer. It does not replace vanilla rendering for every entity or every state.
 
@@ -91,7 +73,7 @@ Rentities is a correctness-sensitive renderer. It does not replace vanilla rende
 - Entity-facing uses authoritative render-state yaw rather than re-interpolating live entity fields.
 - Head pivots come from the baked model pivot table.
 - Supported models run Minecraft's own `EntityModel#setAngles(state)` before exact pose capture.
-- The instance ABI now has ten exact-pose slots instead of six.
+- The instance ABI has ten exact-pose slots.
 - Horse/Camel support includes an independent tail slot.
 - Quadruped-family tails get an independent pose slot when present.
 - Bat wing bases/tips are supported.
@@ -102,14 +84,12 @@ Rentities is a correctness-sensitive renderer. It does not replace vanilla rende
 - Ghast body plus nine tentacles fit the ten-slot ABI.
 - Creeper fuse-time swell scaling is carried into the GPU instance.
 - Baby/base-scale/upside-down states are blocked from GPU batching when the common ABI cannot reproduce their renderer transform exactly.
-- Equipment and held items have a dedicated GPU path with conservative fallbacks for material-heavy feature cases such as glint, trims, dyes and outlines.
+- Equipment and held items have a dedicated GPU path with conservative fallbacks for glint, trims, dyes and outlines.
 - Queue suppression only cancels the exact vanilla body-model submission for the entity being batched; feature renderers are left intact.
 - Culling/SSBO failures use a fallback path instead of silently dropping entities.
 - Special-pose shader modification is atomic: when expected shader anchors are absent, the unmodified shader is retained.
 
-### Deliberate vanilla fallbacks
-
-These are not bugs. Their current model hierarchies do not fit the generic Rentities bone ABI without losing visible animation state:
+### Deliberate entity fallbacks
 
 | Entity family | Reason for fallback |
 |---|---|
@@ -118,12 +98,12 @@ These are not bugs. Their current model hierarchies do not fit the generic Renti
 | Squid / Glow Squid | 8 independently animated tentacles. |
 | Silverfish / Endermite | Segmented model hierarchy. |
 | Shulker | Separate base, head and lid state. |
-| Strider | Specialized body/legs plus six independently named bristle parts. |
-| Sheep | Sheared/rainbow material/geometry state is not represented by the common batch material ABI. |
-| Warden / Wither / other CPU-specialized rigs | Specialized model/state behavior exceeds the generic ten-bone path. |
-| Guardian, Happy Ghast, Nautilus, Turtle and other dedicated-state families not in the registry | No dedicated exact-pose mapping yet, so vanilla remains the safe path. |
+| Strider | Specialized body/legs plus independently named bristles. |
+| Sheep | Material/geometry variants are not represented by the common batch material ABI. |
+| Warden / Wither / other CPU-specialized rigs | Specialized model/state behavior exceeds the generic ABI. |
+| Other dedicated-state families not in the registry | No exact-pose mapping yet, so vanilla remains the safe path. |
 
-The important invariant is: **an entity is either visually representable by the GPU ABI or it stays vanilla.**
+The invariant is: **an entity is either visually representable by the GPU ABI or it stays vanilla.**
 
 ### Rentities controls
 
@@ -135,17 +115,17 @@ The important invariant is: **an entity is either visually representable by the 
 - `rentitiesEntityBatchWhitelistOnly`, whitelist and blacklist — per-entity safety controls.
 - Rentities debug and solid-debug toggles are separate.
 
-The config screen exposes the Rentities toggles under the Rendering page, while GPU compute controls live under Advanced. Experimental Catalyst-derived systems are kept separately opt-in until they have stable runtime validation.
+The config screen exposes the Rentities toggles under Rendering, while GPU compute controls live under Advanced. Experimental systems remain separately opt-in until runtime validation is complete.
 
 ## Verification
 
-The current `1.21.11` branch is continuously checked by GitHub Actions. Do not treat an in-progress workflow as a green verification result.
+The `1.21.11` branch is continuously checked by GitHub Actions. A workflow is only considered verified after `build` completes successfully; an in-progress workflow is not a green result.
 
-The latest relevant workflow is **Build & Test Helium #477**, commit `899cba0d30b165d0a6b4774a0fd8ca540c3a386d`; at the time of this update the Gradle build step is still running.
+The build targets Java 21 bytecode even when CI runs on a newer JDK.
 
 ## Building from source
 
-Helium is compiled for **Java 21**. The GitHub Actions runner may use a newer JDK, but the Gradle build explicitly targets Java 21 bytecode.
+Helium is compiled for **Java 21**.
 
 ```bash
 git clone https://github.com/samveerone-hue/Helium.git
@@ -182,7 +162,7 @@ src/
 |---|---|---|
 | Fabric API | Required | Fabric/Minecraft integration |
 | Sodium | Compile-only / integration | Helium configuration and renderer integration |
-| YACL / config library support | Build dependency | Config UI support |
+| Cloth Config | Build dependency | Config UI support |
 | ModMenu | Optional | Mod-list integration |
 
 ## Contributing
