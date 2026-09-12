@@ -19,14 +19,15 @@ public abstract class ClientConnectionMixin {
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void helium$optimizeBuffers(CallbackInfo ci) {
+        long tick = helium$tickCounter++;
         ExperimentalConfig experimental = ExperimentalConfig.load();
         if (experimental.networkOptimizations) {
-            BufferOptimizer.tick(helium$tickCounter++);
+            BufferOptimizer.tick(tick);
         }
     }
 
     /**
-     * Defer the final Netty flush by one connection tick when packet batching is enabled.
+     * Defer the final Netty flush when packet batching is enabled.
      * Packet encoding and ordering remain vanilla; only the flush boundary is coalesced.
      */
     @ModifyVariable(
@@ -45,6 +46,12 @@ public abstract class ClientConnectionMixin {
     private void helium$flushBatchedPackets(CallbackInfo ci) {
         ExperimentalConfig experimental = ExperimentalConfig.load();
         if (!experimental.packetBatching) return;
+
+        int interval = Math.max(1, Math.min(2, experimental.packetBatchTicks));
+        // Tick zero is already the first owner-thread tick. Flushing every N ticks makes the
+        // numeric experimental option meaningful without introducing any packet reordering.
+        if (helium$tickCounter % interval != 0L) return;
+
         try {
             ((ClientConnection) (Object) this).flush();
         } catch (Throwable t) {
