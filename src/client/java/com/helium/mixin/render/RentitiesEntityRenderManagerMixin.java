@@ -4,6 +4,8 @@ import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
 import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.entities.EntityBatchRenderer;
+import com.helium.rentities.entities.RentitiesBodyModelSuppression;
+import com.helium.rentities.entities.RentitiesEquipmentContext;
 import com.helium.rentities.entities.RentitiesRenderStatePolicy;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
