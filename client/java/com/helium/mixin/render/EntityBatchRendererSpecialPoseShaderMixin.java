@@ -45,37 +45,27 @@ mat4 exactLocalBone(int b, EntityInstance inst) {
     return pivotRot(getP(inst, b), rotX(pose.x) * rotY(pose.y) * rotZ(pose.z));
 }
 
-int exactParentBone(int bone, int category) {
-    // The mesh baker keeps child geometry in the parent-relative pivot layout.
-    // Reapply the vanilla ModelPart hierarchy in the shader so child bones move
-    // with an animated parent instead of orbiting independently around fixed pivots.
-    if (bone <= 1) return -1;
-
-    if (category == ANIM_BIRD) {
-        // Standard bird parts are children of the body. Phantom adds wing tips
-        // and a tail tip one level deeper in the hierarchy.
-        if (bone == 7) return 4;      // Phantom tail tip -> tail base
-        if (bone == 6) return 2;      // Phantom left wing tip -> left wing base
-        if (bone == 8 || bone == 9) return 1;
-        return 1;
-    }
-
-    if (category == ANIM_FROG && bone == 6) return 0; // tongue -> head
-    return 1; // biped/quadruped/horse/arthropod/insect/fish/ghast/creeper families
+int exactParentBone(EntityInstance inst, int bone) {
+    const int MAX_BONES = 10;
+    if (bone < 0 || bone >= MAX_BONES) return -1;
+    int pivotIndex = inst.entityTypeIndex * MAX_BONES + bone;
+    // Mesh baker stores -1 for a root-level ModelPart and parentIndex+1
+    // for an actual child relationship in the spare pivot W component.
+    return int(round(bonePivots[pivotIndex].w));
 }
 
 mat4 exactModelBone(int b, EntityInstance inst) {
-    int category = inst.animationCategory;
     mat4 result = exactLocalBone(b, inst);
-    int parent = exactParentBone(b, category);
-    if (parent >= 0) {
-        result = exactLocalBone(parent, inst) * result;
-    }
+    int parent = exactParentBone(inst, b);
 
-    // Two-level Phantom / multi-part bird rigs need one more composition step.
-    if (category == ANIM_BIRD && (b == 7 || b == 6)) {
-        int grandParent = (b == 7) ? 1 : 1;
-        result = exactLocalBone(grandParent, inst) * result;
+    // Reconstruct the actual ModelPart hierarchy recorded during mesh baking.
+    // Most vanilla biped/quadruped parts are siblings under the root, while
+    // tails, wing tips, tongues and other specialized pieces can be nested.
+    // The metadata makes this entity/model-specific instead of assuming a
+    // universal "everything is a child of body" hierarchy.
+    for (int depth = 0; parent >= 0 && depth < 10; depth++) {
+        result = exactLocalBone(parent, inst) * result;
+        parent = exactParentBone(inst, parent);
     }
     return result;
 }
@@ -98,8 +88,10 @@ mat4 exactModelBone(int b, EntityInstance inst) {
         String poseBranch = """
     if ((inst.flags & 4096) != 0) {
         int c = inst.animationCategory;
-        // The mesh baker preserves ModelPart hierarchy pivots. Reconstruct that
-        // hierarchy here so renderer-authored poses remain faithful to vanilla.
+        // Exact model animation is now safe for every registry category that
+        // successfully produced a vanilla ModelPart pose. Hierarchy metadata is
+        // applied per entity type, so flat models remain flat and nested models
+        // keep their parent/child motion.
         if (c == ANIM_BIPED
                 || c == ANIM_QUADRUPED
                 || c == ANIM_HORSE
