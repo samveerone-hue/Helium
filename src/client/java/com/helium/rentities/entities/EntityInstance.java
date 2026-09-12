@@ -81,6 +81,8 @@ public final class EntityInstance {
     public static final int FLAG_SLIME = 1024;
     public static final int FLAG_EXACT_MODEL_POSE = 512;
     public static final int FLAG_ARMOR_STAND = FLAG_EXACT_MODEL_POSE;
+    /** Use the two legacy slime-scale slots as a generic renderer scale for non-slimes. */
+    public static final int FLAG_MODEL_SCALE = 2048;
 
     public static final int NO_MOUNT = -1;
     public static final int NO_ITEM = -1;
