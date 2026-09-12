@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 public final class GpuComputeManager {
     @FunctionalInterface public interface SolidSampler { boolean isSolid(int x, int y, int z); }
     private record Key(int source, int target) {}
-    private record Request(Key key, float[] ray, long tick, long generation, SolidSampler sampler) {}
+    private record Request(Key key, float[] rays, int rayCount, long tick, long generation, SolidSampler sampler) {}
     private record Result(boolean visible, long tick, long generation) {}
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Helium-GPU-Compute");
@@ -21,6 +21,7 @@ public final class GpuComputeManager {
     private static final Object BACKEND_LOCK = new Object();
     private static final ConcurrentMap<Key, Request> pending = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Key, Result> results = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Key, Long> lastVisible = new ConcurrentHashMap<>();
     private static volatile GpuComputeConfig config;
     private static volatile OpenClComputeBackend backend;
     private static volatile long lastFlush = Long.MIN_VALUE;
@@ -54,12 +55,14 @@ public final class GpuComputeManager {
         }
         pending.clear();
         results.clear();
+        lastVisible.clear();
         lastFlush = Long.MIN_VALUE;
     }
 
     public static void clearWorldState() {
         pending.clear();
         results.clear();
+        lastVisible.clear();
         lastFlush = Long.MIN_VALUE;
         generation++;
     }
@@ -68,19 +71,45 @@ public final class GpuComputeManager {
     public static boolean pathfindingEnabled() { return enabled() && config.pathfinding; }
 
     public static Boolean cached(int source, int target, long tick) {
+        return cached(source, target, tick, 0.0D);
+    }
+
+    /**
+     * Returns the most recent GPU visibility answer. Negative answers are subject to a small
+     * distance-scaled grace window after the entity was last confirmed visible, preventing
+     * camera-grazing occlusion from flickering an entity on and off.
+     */
+    public static Boolean cached(int source, int target, long tick, double distanceSq) {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
         Result r = results.get(new Key(source, target));
         if (r == null || r.generation != generation) return null;
-        return tick - r.tick <= Math.max(1, c.refreshTicks) ? r.visible : null;
+        if (tick - r.tick > Math.max(1, c.refreshTicks)) return null;
+        if (r.visible) return true;
+
+        Long positive = lastVisible.get(new Key(source, target));
+        if (positive == null) return false;
+        return tick - positive <= occlusionGraceFrames(distanceSq);
+    }
+
+    private static int occlusionGraceFrames(double distanceSq) {
+        if (distanceSq <= 32.0D * 32.0D) return 4;
+        if (distanceSq <= 64.0D * 64.0D) return 8;
+        return 12;
     }
 
     public static void requestLineOfSight(int source, int target, float ox, float oy, float oz,
                                           float tx, float ty, float tz, long tick, SolidSampler sampler) {
-        if (!lineOfSightEnabled() || source == target) return;
-        if (cached(source, target, tick) != null) return;
+        requestLineOfSightMulti(source, target, new float[]{ox, oy, oz, tx, ty, tz}, tick, sampler);
+    }
+
+    public static void requestLineOfSightMulti(int source, int target, float[] rays, long tick, SolidSampler sampler) {
+        if (!lineOfSightEnabled() || source == target || rays == null || sampler == null || rays.length < 6) return;
+        if ((rays.length % 6) != 0) return;
+        if (cached(source, target, tick, 0.0D) != null) return;
+
         Key key = new Key(source, target);
         long requestGeneration = generation;
-        pending.putIfAbsent(key, new Request(key, new float[]{ox, oy, oz, tx, ty, tz}, tick, requestGeneration, sampler));
+        pending.putIfAbsent(key, new Request(key, rays, rays.length / 6, tick, requestGeneration, sampler));
         flush(tick - 1);
     }
 
@@ -102,12 +131,15 @@ public final class GpuComputeManager {
         float minFx = Float.POSITIVE_INFINITY, minFy = Float.POSITIVE_INFINITY, minFz = Float.POSITIVE_INFINITY;
         float maxFx = Float.NEGATIVE_INFINITY, maxFy = Float.NEGATIVE_INFINITY, maxFz = Float.NEGATIVE_INFINITY;
         for (Request r : batch) {
-            minFx = Math.min(minFx, Math.min(r.ray[0], r.ray[3]));
-            minFy = Math.min(minFy, Math.min(r.ray[1], r.ray[4]));
-            minFz = Math.min(minFz, Math.min(r.ray[2], r.ray[5]));
-            maxFx = Math.max(maxFx, Math.max(r.ray[0], r.ray[3]));
-            maxFy = Math.max(maxFy, Math.max(r.ray[1], r.ray[4]));
-            maxFz = Math.max(maxFz, Math.max(r.ray[2], r.ray[5]));
+            for (int n = 0; n < r.rayCount; n++) {
+                int base = n * 6;
+                minFx = Math.min(minFx, Math.min(r.rays[base], r.rays[base + 3]));
+                minFy = Math.min(minFy, Math.min(r.rays[base + 1], r.rays[base + 4]));
+                minFz = Math.min(minFz, Math.min(r.rays[base + 2], r.rays[base + 5]));
+                maxFx = Math.max(maxFx, Math.max(r.rays[base], r.rays[base + 3]));
+                maxFy = Math.max(maxFy, Math.max(r.rays[base + 1], r.rays[base + 4]));
+                maxFz = Math.max(maxFz, Math.max(r.rays[base + 2], r.rays[base + 5]));
+            }
         }
 
         int minX = (int) Math.floor(minFx) - 1;
@@ -151,8 +183,8 @@ public final class GpuComputeManager {
         byte[] solid = new byte[snapshotSize * snapshotSize * snapshotSize];
         int i = 0;
         try {
-            for (int z = 0; z < snapshotSize; z++) for (int y = 0; y < snapshotSize; y++) for (int x = 0; x < snapshotSize; x++, i++) {
-                solid[i] = (byte) (anchor.sampler.isSolid(snapshotMinX + x, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
+            for (int z = 0; z < snapshotSize; z++) for (int y = 0; y < snapshotSize; y++) for (int xx = 0; xx < snapshotSize; xx++, i++) {
+                solid[i] = (byte) (anchor.sampler.isSolid(snapshotMinX + xx, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
             }
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
@@ -161,8 +193,15 @@ public final class GpuComputeManager {
             return;
         }
 
-        float[] rays = new float[batch.size() * 6];
-        for (i = 0; i < batch.size(); i++) System.arraycopy(batch.get(i).ray, 0, rays, i * 6, 6);
+        int totalRays = 0;
+        for (Request r : batch) totalRays += r.rayCount;
+        float[] rays = new float[totalRays * 6];
+        int rayCursor = 0;
+        for (Request r : batch) {
+            System.arraycopy(r.rays, 0, rays, rayCursor * 6, r.rayCount * 6);
+            rayCursor += r.rayCount;
+        }
+
         final OpenClComputeBackend b;
         synchronized (BACKEND_LOCK) {
             b = backend;
@@ -179,9 +218,17 @@ public final class GpuComputeManager {
                 try {
                     boolean[] values = b.runLineOfSight(rays, solid, snapshotSize, snapshotMinX, snapshotMinY, snapshotMinZ);
                     if (values == null || batchGeneration != generation) return;
-                    for (int n = 0; n < values.length && n < batch.size(); n++) {
-                        Request r = batch.get(n);
-                        if (r.generation == generation) results.put(r.key, new Result(values[n], tick, generation));
+
+                    int valueCursor = 0;
+                    for (Request r : batch) {
+                        boolean visible = false;
+                        for (int n = 0; n < r.rayCount && valueCursor < values.length; n++, valueCursor++) {
+                            if (values[valueCursor]) visible = true;
+                        }
+                        if (r.generation == generation) {
+                            results.put(r.key, new Result(visible, tick, generation));
+                            if (visible) lastVisible.put(r.key, tick);
+                        }
                     }
                 } catch (Throwable t) {
                     HeliumClient.LOGGER.debug("gpu line-of-sight batch failed", t);
