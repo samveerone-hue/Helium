@@ -2,7 +2,6 @@ package com.helium.lighting;
 
 import com.helium.HeliumClient;
 
-import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -17,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public final class AsyncLightEngine {
     private static ExecutorService executor;
     private static final AtomicBoolean initialized = new AtomicBoolean();
+    private static final AtomicBoolean drainScheduled = new AtomicBoolean();
     private static final ConcurrentLinkedQueue<Long> pending = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<Long> prepared = new ConcurrentLinkedQueue<>();
     private static final ConcurrentHashMap<Long, Boolean> queued = new ConcurrentHashMap<>();
@@ -39,12 +39,13 @@ public final class AsyncLightEngine {
                     return t;
                 });
         initialized.set(true);
+        drainScheduled.set(false);
         HeliumClient.LOGGER.info("async light preparation initialized (batch={})", maxPerBatch);
     }
 
     public static boolean isInitialized() { return initialized.get(); }
 
-    /** Queues a block light invalidation and schedules a worker-side deduplication pass. */
+    /** Queues a block light invalidation and coalesces work into shared worker batches. */
     public static void queueBlock(long posKey) {
         if (!initialized.get()) return;
         if (queued.size() >= 4096) {
@@ -53,25 +54,38 @@ public final class AsyncLightEngine {
         }
         if (queued.putIfAbsent(posKey, Boolean.TRUE) != null) return;
         pending.offer(posKey);
-        submitted.incrementAndGet();
         scheduleDrain();
     }
 
     private static void scheduleDrain() {
         ExecutorService pool = executor;
-        if (pool == null || pool.isShutdown()) return;
-        pool.execute(() -> {
-            int processed = 0;
-            HashSet<Long> local = new HashSet<>();
-            Long key;
-            while (processed < maxPerBatch && (key = pending.poll()) != null) {
-                queued.remove(key);
-                local.add(key);
-                processed++;
-            }
-            for (Long value : local) prepared.offer(value);
-            preparedCount.addAndGet(local.size());
-        });
+        if (pool == null || pool.isShutdown() || !initialized.get()) return;
+        if (!drainScheduled.compareAndSet(false, true)) return;
+
+        submitted.incrementAndGet();
+        try {
+            pool.execute(() -> {
+                try {
+                    int processed = 0;
+                    Long key;
+                    while (processed < maxPerBatch && (key = pending.poll()) != null) {
+                        queued.remove(key);
+                        prepared.offer(key);
+                        preparedCount.incrementAndGet();
+                        processed++;
+                    }
+                } finally {
+                    drainScheduled.set(false);
+                    // More work may have arrived while this batch was running. Schedule exactly
+                    // one follow-up worker instead of one executor task per queued block.
+                    if (!pending.isEmpty()) scheduleDrain();
+                }
+            });
+        } catch (RuntimeException rejected) {
+            drainScheduled.set(false);
+            // Preserve the queued entries; a later queueBlock call can retry scheduling.
+            HeliumClient.LOGGER.warn("async light preparation worker rejected task: {}", rejected.toString());
+        }
     }
 
     /** Drains the prepared work on the owner thread without modifying vanilla lighting state. */
@@ -84,19 +98,21 @@ public final class AsyncLightEngine {
     }
 
     public static int getPendingCount() { return pending.size(); }
-    public static int getPreparedCount() { return preparedCount.get(); }
+    public static int getPreparedCount() { return Math.max(0, preparedCount.get()); }
     public static int getSubmittedCount() { return submitted.get(); }
     public static int getDroppedCount() { return dropped.get(); }
 
-    public static void shutdown() {
+    public static synchronized void shutdown() {
+        initialized.set(false);
+        drainScheduled.set(false);
         ExecutorService pool = executor;
+        executor = null;
         if (pool != null) pool.shutdownNow();
         pending.clear();
         prepared.clear();
         queued.clear();
         submitted.set(0);
         preparedCount.set(0);
-        initialized.set(false);
-        executor = null;
+        dropped.set(0);
     }
 }
