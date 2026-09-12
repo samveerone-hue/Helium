@@ -91,8 +91,8 @@ public class HeliumConfig {
     public boolean poseStackPooling = true;
     public boolean fastBambooLight = false;
     public boolean optimizedLightEngine = true;
-    public boolean screenshotLeakFix = false;
-    public boolean framebufferCleaner = false;
+    public boolean screenshotLeakFix = true;
+    public boolean framebufferCleaner = true;
     public boolean instantLanguageChange = true;
     public boolean enableReflex = true;
     public long reflexOffsetNs = 0L;
@@ -104,7 +104,7 @@ public class HeliumConfig {
     public boolean particleLOD = false;
     public double particleLODDistance = 16.0;
     public double particleLODReduction = 0.3;
-    public boolean reduceFpsWhenInactive = false;
+    public boolean reduceFpsWhenInactive = true;
     public int inactiveFpsLimit = 10;
     public boolean reduceRenderDistanceWhenInactive = false;
     public int inactiveRenderDistance = 4;
@@ -209,6 +209,8 @@ public class HeliumConfig {
         this.overlayShowFpsMinMaxAvg = other.overlayShowFpsMinMaxAvg;
         this.overlayShowMemory = other.overlayShowMemory;
         this.overlayShowParticles = other.overlayShowParticles;
+        this.overlayShowCoordinates = other.overlayShowCoordinates;
+        this.overlayShowBiome = other.overlayShowBiome;
         this.overlayPosition = other.overlayPosition;
         this.overlayTransparency = other.overlayTransparency;
         this.overlayBackgroundColor = other.overlayBackgroundColor;
@@ -239,13 +241,6 @@ public class HeliumConfig {
         this.cachedEnumValues = other.cachedEnumValues;
         this.fastWorldLoading = other.fastWorldLoading;
         this.fastIpPing = other.fastIpPing;
-        this.overlayShowCoordinates = other.overlayShowCoordinates;
-        this.overlayShowBiome = other.overlayShowBiome;
-        this.devMode = other.devMode;
-        this.smoothScrolling = other.smoothScrolling;
-        this.windowStyle = other.windowStyle;
-        this.windowMaterial = other.windowMaterial;
-        this.windowCorner = other.windowCorner;
         this.suppressOpenGLErrors = other.suppressOpenGLErrors;
         this.fastFramebufferBlit = other.fastFramebufferBlit;
         this.poseStackPooling = other.poseStackPooling;
