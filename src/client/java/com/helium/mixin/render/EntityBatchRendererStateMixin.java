@@ -1,5 +1,7 @@
 package com.helium.mixin.render;
 
+import com.helium.rentities.entities.EntityBatchRegistry;
+import com.helium.rentities.entities.EntityBatchRenderer;
 import com.helium.rentities.entities.EntityInstance;
 import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
@@ -12,23 +14,29 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.lang.reflect.Field;
+
 /**
  * Replaces the legacy/reflection interpolation values in EntityBatchRenderer's
  * packed instance with the authoritative 1.21.11 render-state values.
  *
  * Minecraft has already prepared these values for the current render tick, so
  * interpolating previous/current entity fields again can visibly double-lerp
- * rotation and movement. The mixin also carries render-state light and exact Armor Stand
- * Euler poses into the GPU instance payload.
+ * rotation and movement. The mixin also carries render-state light, exact Armor
+ * Stand Euler poses, and the exact baked head pivot into the GPU instance payload.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererStateMixin {
+
+    private static volatile Field meshBakerField;
+    private static volatile Field bonePivotDataField;
 
     @Inject(method = "writeEntityInstance", at = @At("RETURN"), require = 1)
     private void helium$applyRenderState(long ptr, Object state, double x, double y, double z,
                                          CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValueZ() || state == null) return;
 
+        EntityTypeHolder typeHolder = resolveType(state);
         if (state instanceof EntityRenderState renderState) {
             MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_PACKED_LIGHT, renderState.light);
 
@@ -81,6 +89,53 @@ public abstract class EntityBatchRendererStateMixin {
             writePose(ptr, EntityInstance.OFFSET_ARMOR_STAND_LEFT_LEG_POSE, stand.leftLegRotation);
             writePose(ptr, EntityInstance.OFFSET_ARMOR_STAND_RIGHT_LEG_POSE, stand.rightLegRotation);
         }
+
+        if (typeHolder.type != null) {
+            writeBakedHeadPivot(ptr, typeHolder.type);
+        }
+    }
+
+    private static EntityTypeHolder resolveType(Object state) {
+        try {
+            return new EntityTypeHolder(EntityBatchRenderer.getEntityType(state));
+        } catch (Throwable ignored) {
+            return new EntityTypeHolder(null);
+        }
+    }
+
+    private static void writeBakedHeadPivot(long ptr, net.minecraft.entity.EntityType<?> type) {
+        try {
+            EntityBatchRenderer renderer = EntityBatchRenderer.INSTANCE;
+            if (renderer == null) return;
+
+            Field mf = meshBakerField;
+            if (mf == null) {
+                mf = EntityBatchRenderer.class.getDeclaredField("meshBaker");
+                mf.setAccessible(true);
+                meshBakerField = mf;
+            }
+
+            Object baker = mf.get(renderer);
+            if (baker == null) return;
+
+            Field bf = bonePivotDataField;
+            if (bf == null) {
+                bf = baker.getClass().getDeclaredField("bonePivotData");
+                bf.setAccessible(true);
+                bonePivotDataField = bf;
+            }
+
+            float[] pivots = (float[]) bf.get(baker);
+            int typeIndex = EntityBatchRegistry.getEntityTypeIndex(type);
+            int base = (typeIndex * 10) * 4;
+            if (base < 0 || base + 2 >= pivots.length) return;
+
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_X, pivots[base]);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_Y, pivots[base + 1]);
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_Z, pivots[base + 2]);
+        } catch (Throwable ignored) {
+            // A missing pivot is not fatal; the shader retains its existing fallback.
+        }
     }
 
     private static void writePose(long ptr, int offset, EulerAngle pose) {
@@ -95,4 +150,6 @@ public abstract class EntityBatchRendererStateMixin {
         }
         MemoryUtil.memPutFloat(ptr + offset + 12, 0.0f);
     }
+
+    private record EntityTypeHolder(net.minecraft.entity.EntityType<?> type) {}
 }
