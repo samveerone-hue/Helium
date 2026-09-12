@@ -94,7 +94,9 @@
     "dedup.NbtCompoundDedupMixin",
     "render.RentitiesEntityRenderManagerMixin",
     "render.EntityBatchRendererStateMixin",
-    "render.RentitiesResourceReloadMixin"
+    "render.RentitiesResourceReloadMixin",
+    "render.EntityBatchRendererHealthMixin",
+    "render.EntityBatchRendererInvoker"
   ],
   "injectors": {
     "defaultRequire": 0
