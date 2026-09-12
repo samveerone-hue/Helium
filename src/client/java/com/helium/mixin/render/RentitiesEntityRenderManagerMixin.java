@@ -6,12 +6,12 @@ import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.entities.EntityBatchRenderer;
 import com.helium.rentities.entities.RentitiesRenderStatePolicy;
 import net.minecraft.client.model.Model;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EntityType;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,6 +34,7 @@ public abstract class RentitiesEntityRenderManagerMixin {
     @Inject(
             method = "render",
             at = @At("HEAD"),
+            cancellable = true,
             require = 0
     )
     private <S extends EntityRenderState> void helium$batchEntity(
@@ -69,7 +70,7 @@ public abstract class RentitiesEntityRenderManagerMixin {
             if (!renderer.canBatchEntity(type) || !renderer.asyncAllowsBatch(type)) return;
             if (!EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) return;
 
-            EntityRenderer<?, S> entityRenderer = ((EntityRenderManager) (Object) this).getRenderer(state);
+            EntityRenderer<?, ?> entityRenderer = ((EntityRenderManager) (Object) this).getRenderer(state);
             if (entityRenderer instanceof LivingEntityRenderer<?, ?, ?> livingRenderer) {
                 Model<?> model = livingRenderer.getModel();
                 if (model != null) {
