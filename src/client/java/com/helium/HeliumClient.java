@@ -1,5 +1,6 @@
 package com.helium;
 
+import com.helium.config.ExperimentalConfig;
 import com.helium.config.HeliumConfig;
 import com.helium.dedup.DeduplicationManager;
 import com.helium.tweaks.AsyncPackReloader;
@@ -8,30 +9,32 @@ import com.helium.gpu.AmdOptimizer;
 import com.helium.gpu.GpuDetector;
 import com.helium.gpu.IntelOptimizer;
 import com.helium.gpu.NvidiaOptimizer;
-import com.helium.idle.IdleManager;
-import com.helium.lighting.AsyncLightEngine;
-import com.helium.math.FastMath;
-import com.helium.memory.AllocationReducer;
-import com.helium.memory.BufferPool;
-import com.helium.memory.NativeMemoryManager;
-import com.helium.memory.ObjectPool;
-import com.helium.network.FastIpPingOptimizer;
-import com.helium.platform.DeviceDetector;
-import com.helium.render.DevModeOptimizer;
-import com.helium.render.EnumValueCache;
-import com.helium.render.FastAnimationOptimizer;
-import com.helium.render.FastWorldLoadingOptimizer;
-import com.helium.render.GLStateCache;
-import com.helium.render.HeliumBlockEntityCulling;
-import com.helium.render.RenderPipeline;
-import com.helium.render.TemporalReprojection;
-import com.helium.feature.FullbrightManager;
-import com.helium.threading.EventPoller;
-import com.helium.threading.ThreadPriorityManager;
+import com.heium.idle.IdleManager;
+import com.heium.lighting.AsyncLightEngine;
+import com.heium.math.FastMath;
+import com.heium.memory.AllocationReducer;
+import com.heium.memory.BufferPool;
+import com.heium.memory.NativeMemoryManager;
+import com.heium.memory.ObjectPool;
+import com.heium.network.BufferOptimizer;
+import com.heium.network.FastIpPingOptimizer;
+import com.heium.platform.DeviceDetector;
+import com.heium.render.DevModeOptimizer;
+import com.heium.render.EnumValueCache;
+import com.heium.render.FastAnimationOptimizer;
+import com.heium.render.FastWorldLoadingOptimizer;
+import com.heium.render.GLStateCache;
+import com.heium.render.HeliumBlockEntityCulling;
+import com.heium.render.RenderPipeline;
+import com.heium.render.TemporalReprojection;
+import com.heium.feature.FullbrightManager;
+import com.heium.startup.FastStartup;
+import com.heium.threading.EventPoller;
+import com.heium.threading.ThreadPriorityManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
-import com.helium.compat.CrossLoaderCompat;
+import com.heium.compat.CrossLoaderCompat;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
@@ -39,7 +42,6 @@ import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 public class HeliumClient implements ClientModInitializer {
 
@@ -85,6 +87,7 @@ public class HeliumClient implements ClientModInitializer {
         long start = System.nanoTime();
 
         config = HeliumConfig.load();
+        ExperimentalConfig experimental = ExperimentalConfig.load();
 
         isAndroid = DeviceDetector.isAndroid();
         if (isAndroid) {
@@ -99,6 +102,10 @@ public class HeliumClient implements ClientModInitializer {
         }
 
         detectCompatibleMods();
+
+        initFeatureSafely("FastStartup", () -> {
+            if (experimental.fastStartup) FastStartup.prepare();
+        }, () -> startupOptsFailed = true);
 
         initFeatureSafely("FastMath", () -> {
             if (config.fastMath) FastMath.init();
@@ -172,6 +179,10 @@ public class HeliumClient implements ClientModInitializer {
             if (config.objectDeduplication) DeduplicationManager.init();
         }, () -> dedupFailed = true);
 
+        initFeatureSafely("AsyncLightPreparation", () -> {
+            if (experimental.asyncLightUpdates) AsyncLightEngine.init(experimental.asyncLightMaxPerTick);
+        }, () -> asyncLightFailed = true);
+
         initFeatureSafely("JomlFastMath", () -> {
             if (config.jomlFastMath) {
                 System.setProperty("joml.fastmath", "true");
@@ -186,7 +197,7 @@ public class HeliumClient implements ClientModInitializer {
         }, null);
 
         initFeatureSafely("OneClickCrafting", () -> {
-            if (config.oneClickCrafting) com.helium.crafting.OneClickCraftingManager.init();
+            if (config.oneClickCrafting) com.heium.crafting.OneClickCraftingManager.init();
         }, null);
 
         fullbrightKey = CrossLoaderCompat.registerkeybinding(createKeyBinding(
@@ -221,6 +232,7 @@ public class HeliumClient implements ClientModInitializer {
                 AsyncPackReloader.reloadasync();
             }
             AsyncPackReloader.tick();
+            FastStartup.pollCompleted();
         });
 
         CrossLoaderCompat.registertickevent(() -> {
@@ -234,16 +246,16 @@ public class HeliumClient implements ClientModInitializer {
         WorldRenderEvents.BEFORE_ENTITIES.register(context -> {
             if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
             try {
-                if (com.helium.rentities.RendererCapabilityState.current() == null) {
-                    com.helium.rentities.RendererCapabilityState.probe();
+                if (com.heium.rentities.RendererCapabilityState.current() == null) {
+                    com.heium.rentities.RendererCapabilityState.probe();
                 }
-                if (com.helium.rentities.RendererCapabilityState.current() != null
-                        && com.helium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)
-                        && com.helium.rentities.entities.EntityBatchRenderer.INSTANCE == null) {
-                    new com.helium.rentities.entities.EntityBatchRenderer();
+                if (com.heium.rentities.RendererCapabilityState.current() != null
+                        && com.heium.rentities.RendererCapabilityState.current().gpuBatchingAllowed(config)
+                        && com.heium.rentities.entities.EntityBatchRenderer.INSTANCE == null) {
+                    new com.heium.rentities.entities.EntityBatchRenderer();
                 }
-                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
-                    com.helium.rentities.entities.EntityBatchRenderer.beginCapturedWorldRender();
+                if (com.heium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.heium.rentities.entities.EntityBatchRenderer.beginCapturedWorldRender();
                 }
             } catch (Throwable t) {
                 LOGGER.warn("Rentities entity batching preparation failed; using vanilla rendering", t);
@@ -252,13 +264,17 @@ public class HeliumClient implements ClientModInitializer {
         WorldRenderEvents.AFTER_ENTITIES.register(context -> {
             if (config == null || !config.modEnabled || !config.entityGpuBatching) return;
             try {
-                com.helium.rentities.entities.EntityBatchRenderer.flushBatch();
+                com.heium.rentities.entities.EntityBatchRenderer.flushBatch();
             } catch (Throwable t) {
                 LOGGER.warn("Rentities entity batch flush failed; using vanilla rendering", t);
             }
         });
 
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> AsyncPackReloader.shutdown());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            AsyncPackReloader.shutdown();
+            FastStartup.shutdown();
+            AsyncLightEngine.shutdown();
+        });
 
         long elapsed = (System.nanoTime() - start) / 1_000_000;
         LOGGER.info("initialized in {}ms", elapsed);
@@ -266,7 +282,7 @@ public class HeliumClient implements ClientModInitializer {
 
     private void initDeferredGpuFeatures() {
         initFeatureSafely("GLCaps", () -> {
-            com.helium.gpu.GBGL.initcaps();
+            com.heium.gpu.GBGL.initcaps();
         }, null);
 
         initFeatureSafely("RenderThreadPriority", () -> {
@@ -335,8 +351,8 @@ public class HeliumClient implements ClientModInitializer {
         config.entityGpuBatching = enabled;
         if (!enabled) {
             try {
-                if (com.helium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
-                    com.helium.rentities.entities.EntityBatchRenderer.INSTANCE.delete();
+                if (com.heium.rentities.entities.EntityBatchRenderer.INSTANCE != null) {
+                    com.heium.rentities.entities.EntityBatchRenderer.INSTANCE.delete();
                 }
             } catch (Throwable t) {
                 LOGGER.debug("[Rentities] entity batch teardown failed: {}", t.toString());
@@ -357,8 +373,8 @@ public class HeliumClient implements ClientModInitializer {
                 LOGGER.error("RenderPipeline failed to initialize from live config toggle", t);
             }
         } else {
-            com.helium.render.AsyncChunkMeshing.clear();
-            com.helium.render.RenderBatch.clear();
+            com.heium.render.AsyncChunkMeshing.clear();
+            com.heium.render.RenderBatch.clear();
             RenderPipeline.shutdown();
         }
     }
@@ -367,15 +383,15 @@ public class HeliumClient implements ClientModInitializer {
     public static boolean isMemoryOptsAvailable() { return !memoryOptsFailed; }
     public static boolean isGlStateCacheAvailable() { return !glStateCacheFailed; }
     public static boolean isThreadOptsAvailable() { return !threadOptsFailed; }
-    public static boolean isNetworkOptsAvailable() { return false; }
-    public static boolean isStartupOptsAvailable() { return false; }
+    public static boolean isNetworkOptsAvailable() { return !networkOptsFailed; }
+    public static boolean isStartupOptsAvailable() { return !startupOptsFailed; }
     public static boolean isNativeMemoryAvailable() { return !nativeMemoryFailed; }
     public static boolean isRenderPipelineAvailable() { return !renderPipelineFailed; }
-    public static boolean isModelCacheAvailable() { return false; }
+    public static boolean isModelCacheAvailable() { return !modelCacheFailed; }
     public static boolean isAllocationReducerAvailable() { return !allocationReducerFailed; }
-    public static boolean isSimdMathAvailable() { return false; }
-    public static boolean isAsyncLightAvailable() { return false; }
-    public static boolean isPacketBatcherAvailable() { return false; }
+    public static boolean isSimdMathAvailable() { return !simdMathFailed; }
+    public static boolean isAsyncLightAvailable() { return !asyncLightFailed; }
+    public static boolean isPacketBatcherAvailable() { return !packetBatcherFailed; }
     public static boolean isIdleManagerAvailable() { return !idleManagerFailed; }
     public static boolean isGpuDetectorAvailable() { return !gpuDetectorFailed; }
     public static boolean isGpuOptsAvailable() { return !gpuOptsFailed; }
@@ -389,7 +405,7 @@ public class HeliumClient implements ClientModInitializer {
         try {
             if (heliumkeycategory == null) {
                 heliumkeycategory = KeyBinding.Category.create(
-                        com.helium.util.VersionCompat.createIdentifier(MOD_ID, "keys"));
+                        com.heium.util.VersionCompat.createIdentifier(MOD_ID, "keys"));
             }
             return new KeyBinding(id, type, code, heliumkeycategory);
         } catch (NoClassDefFoundError | NoSuchMethodError e1) {
