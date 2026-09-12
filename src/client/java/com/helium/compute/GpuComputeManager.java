@@ -31,7 +31,7 @@ public final class GpuComputeManager {
 
     private static synchronized boolean enabled() {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
-        boolean wanted = c.enabled && (c.lineOfSight || c.pathfinding);
+        boolean wanted = c.enabled && c.lineOfSight;
         if (!wanted) {
             if (backend != null || !pending.isEmpty() || !results.isEmpty()) closeBackend();
             return false;
@@ -68,7 +68,10 @@ public final class GpuComputeManager {
     }
 
     public static boolean lineOfSightEnabled() { return enabled() && config.lineOfSight; }
-    public static boolean pathfindingEnabled() { return enabled() && config.pathfinding; }
+    public static boolean pathfindingEnabled() {
+        GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
+        return c.enabled && c.pathfinding;
+    }
 
     public static Boolean cached(int source, int target, long tick) {
         return cached(source, target, tick, 0.0D);
@@ -125,9 +128,6 @@ public final class GpuComputeManager {
         }
         if (batch.isEmpty() || backend == null) return;
 
-        // Build the smallest axis-aligned snapshot that contains every ray endpoint,
-        // then pad it by one voxel. Unlike the old anchor-centered cube, this remains
-        // correct when rays travel farther than gridSize/2 from their source.
         float minFx = Float.POSITIVE_INFINITY, minFy = Float.POSITIVE_INFINITY, minFz = Float.POSITIVE_INFINITY;
         float maxFx = Float.NEGATIVE_INFINITY, maxFy = Float.NEGATIVE_INFINITY, maxFz = Float.NEGATIVE_INFINITY;
         for (Request r : batch) {
