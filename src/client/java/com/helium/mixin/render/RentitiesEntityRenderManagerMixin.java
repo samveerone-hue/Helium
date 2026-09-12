@@ -6,9 +6,11 @@ import com.helium.rentities.RendererCapabilityState;
 import com.helium.rentities.entities.EntityBatchRenderer;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.EntityRenderManager;
+import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.EntityType;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -17,9 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /**
  * State-based Rentities interception for Yarn 1.21.11.
  *
- * <p>Vanilla still performs state extraction. Rentities replaces only the expensive
- * geometry submission/draw phase. Any unsupported entity type, missing mesh/texture,
- * inactive capability, or runtime extraction problem falls through to vanilla.</p>
+ * Vanilla state extraction always runs. Rentities replaces the expensive geometry
+ * submission only after the complete GPU path is known to be ready. A failed
+ * preflight always falls through to vanilla for that frame.
  */
 @Mixin(EntityRenderManager.class)
 public abstract class RentitiesEntityRenderManagerMixin {
@@ -46,10 +48,22 @@ public abstract class RentitiesEntityRenderManagerMixin {
         EntityBatchRenderer renderer = EntityBatchRenderer.INSTANCE;
         if (caps == null || !caps.gpuBatchingAllowed(config) || renderer == null || state == null) return;
 
-        // Player skin extraction is not implemented yet. Never cancel vanilla player rendering.
-        if (EntityBatchRenderer.getEntityType(state) == net.minecraft.entity.EntityType.PLAYER) return;
+        EntityType<?> type = EntityBatchRenderer.getEntityType(state);
+        if (type == null || type == EntityType.PLAYER) return;
+
+        // Special Armor Stand variants change model visibility/scale in ways that
+        // the shared cached mesh does not encode yet. Keep those exact vanilla paths.
+        if (state instanceof ArmorStandEntityRenderState stand
+                && (stand.small || !stand.showArms || !stand.showBasePlate || stand.marker)) {
+            return;
+        }
 
         try {
+            // This is deliberately before queueEntityState()/ci.cancel(). A cache miss,
+            // unresolved texture, disabled render path, failed shader, or async rejection
+            // therefore cannot make an entity disappear for a frame.
+            if (!renderer.canBatchEntity(type) || !renderer.asyncAllowsBatch(type)) return;
+
             if (EntityBatchRenderer.queueEntityState(state, offsetX, offsetY, offsetZ)) {
                 ci.cancel();
             }
