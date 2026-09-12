@@ -17,8 +17,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * packed instance with the authoritative 1.21.11 render-state values.
  *
  * Minecraft has already prepared these values for the current render tick, so
- * interpolating previous/current fields again can visibly double-lerp rotation
- * and movement. The mixin also carries render-state light and exact Armor Stand
+ * interpolating previous/current entity fields again can visibly double-lerp
+ * rotation and movement. The mixin also carries render-state light and exact Armor Stand
  * Euler poses into the GPU instance payload.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
@@ -89,9 +89,9 @@ public abstract class EntityBatchRendererStateMixin {
             MemoryUtil.memPutFloat(ptr + offset + 4, 0.0f);
             MemoryUtil.memPutFloat(ptr + offset + 8, 0.0f);
         } else {
-            MemoryUtil.memPutFloat(ptr + offset, (float) Math.toRadians(pose.getPitch()));
-            MemoryUtil.memPutFloat(ptr + offset + 4, (float) Math.toRadians(pose.getYaw()));
-            MemoryUtil.memPutFloat(ptr + offset + 8, (float) Math.toRadians(pose.getRoll()));
+            MemoryUtil.memPutFloat(ptr + offset, (float) Math.toRadians(pose.pitch()));
+            MemoryUtil.memPutFloat(ptr + offset + 4, (float) Math.toRadians(pose.yaw()));
+            MemoryUtil.memPutFloat(ptr + offset + 8, (float) Math.toRadians(pose.roll()));
         }
         MemoryUtil.memPutFloat(ptr + offset + 12, 0.0f);
     }
