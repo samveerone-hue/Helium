@@ -93,6 +93,7 @@
     "dedup.BakedQuadDedupMixin",
     "dedup.NbtCompoundDedupMixin",
     "render.RentitiesEntityRenderManagerMixin",
+    "render.EntityBatchRendererModernStateMixin",
     "render.EntityBatchRendererStateMixin",
     "render.RentitiesResourceReloadMixin",
     "render.EntityBatchRendererHealthMixin",
