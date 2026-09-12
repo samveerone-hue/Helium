@@ -14,17 +14,18 @@ public abstract class EntityMeshBakerBoneAliasMixin {
     @Shadow @Final private static Map<String, Integer> QUADRUPED_BONES;
     @Shadow @Final private static Map<String, Integer> BIRD_BONES;
     @Shadow @Final private static Map<String, Integer> ARTHROPOD_BONES;
+    @Shadow @Final private static Map<String, Integer> INSECT_BONES;
 
     @Inject(method = "<clinit>", at = @At("TAIL"))
     private static void helium$addSpecialAliases(CallbackInfo ci) {
-        // FrogEntityModel uses camelCase child keys.
+        // FrogEntityModel uses camelCase child keys and has an independently animated tongue.
         QUADRUPED_BONES.put("leftArm", 2);
         QUADRUPED_BONES.put("rightArm", 3);
         QUADRUPED_BONES.put("leftLeg", 4);
         QUADRUPED_BONES.put("rightLeg", 5);
+        QUADRUPED_BONES.put("tongue", 6);
 
-        // BatEntityModel has separate wing-tip bones; keep them independently
-        // animatable instead of collapsing the whole wing into one bone.
+        // BatEntityModel has separate wing-tip bones; keep them independently animatable.
         BIRD_BONES.put("left_wing_tip", 6);
         BIRD_BONES.put("right_wing_tip", 7);
 
@@ -41,5 +42,11 @@ public abstract class EntityMeshBakerBoneAliasMixin {
         ARTHROPOD_BONES.put("left_hind_leg", 7);
         ARTHROPOD_BONES.put("right_middle_hind_leg", 6);
         ARTHROPOD_BONES.put("left_middle_hind_leg", 7);
+
+        // BeeEntityModel has three separately posed leg groups. Do not collapse
+        // middle/back legs into the front-leg bone.
+        INSECT_BONES.put("front_legs", 3);
+        INSECT_BONES.put("middle_legs", 4);
+        INSECT_BONES.put("back_legs", 5);
     }
 }
