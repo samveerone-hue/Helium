@@ -33,7 +33,6 @@ public final class EntityBatchRegistry {
         reg(EntityType.SNOW_GOLEM,          EntityAnimationCategory.BIPED);
         reg(EntityType.ENDERMAN,            EntityAnimationCategory.BIPED);
         reg(EntityType.CREAKING,            EntityAnimationCategory.BIPED);
-        // Player handled separately via player batching path
 
         reg(EntityType.COW,                 EntityAnimationCategory.QUADRUPED);
         reg(EntityType.PIG,                 EntityAnimationCategory.QUADRUPED);
@@ -61,7 +60,6 @@ public final class EntityBatchRegistry {
         reg(EntityType.CHICKEN,             EntityAnimationCategory.BIRD);
         reg(EntityType.PARROT,              EntityAnimationCategory.BIRD);
         reg(EntityType.BAT,                 EntityAnimationCategory.BIRD);
-        // Phantom is a wing/tail rig, not a generic six-limb floating rig.
         reg(EntityType.PHANTOM,             EntityAnimationCategory.BIRD);
 
         reg(EntityType.SPIDER,              EntityAnimationCategory.ARTHROPOD);
@@ -69,8 +67,8 @@ public final class EntityBatchRegistry {
 
         reg(EntityType.BEE,                 EntityAnimationCategory.INSECT);
 
-        reg(EntityType.SILVERFISH,          EntityAnimationCategory.WORM);
-        reg(EntityType.ENDERMITE,            EntityAnimationCategory.WORM);
+        // Deliberately vanilla: Silverfish and Endermite use multiple segmented
+        // ModelParts; one generic worm bone would collapse their animation.
 
         reg(EntityType.COD,                 EntityAnimationCategory.FISH);
         reg(EntityType.SALMON,              EntityAnimationCategory.FISH);
@@ -80,8 +78,8 @@ public final class EntityBatchRegistry {
         reg(EntityType.AXOLOTL,             EntityAnimationCategory.AQUATIC_LEGS);
 
         reg(EntityType.DOLPHIN,             EntityAnimationCategory.SWIMMING);
-        reg(EntityType.SQUID,               EntityAnimationCategory.SWIMMING);
-        reg(EntityType.GLOW_SQUID,          EntityAnimationCategory.SWIMMING);
+        // Squid/Glow Squid use eight independently animated tentacles; they remain vanilla
+        // until a dedicated tentacle ABI is added.
         reg(EntityType.TADPOLE,             EntityAnimationCategory.SWIMMING);
 
         reg(EntityType.SLIME,               EntityAnimationCategory.SLIME);
@@ -90,8 +88,8 @@ public final class EntityBatchRegistry {
         reg(EntityType.ALLAY,               EntityAnimationCategory.FLOATING);
         reg(EntityType.VEX,                 EntityAnimationCategory.FLOATING);
 
-        reg(EntityType.BLAZE,               EntityAnimationCategory.FLOATING_SPINNING);
-        reg(EntityType.BREEZE,              EntityAnimationCategory.FLOATING_SPINNING);
+        // Blaze has 12 independently animated rods and Breeze has dedicated wind parts;
+        // neither fits the current generic six-bone floating ABI.
 
         reg(EntityType.GHAST,               EntityAnimationCategory.GHAST);
 
