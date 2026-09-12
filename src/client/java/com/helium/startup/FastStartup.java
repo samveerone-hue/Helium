@@ -50,7 +50,7 @@ public final class FastStartup {
                 "com.helium.render.AsyncChunkMeshing",
                 "com.helium.render.FastWorldLoadingOptimizer",
                 "com.helium.rentities.entities.EntityBatchRenderer",
-                "com.heium.rentities.entities.EntityMeshBaker",
+                "com.helium.rentities.entities.EntityMeshBaker",
                 "com.helium.network.BufferOptimizer",
                 "com.helium.lighting.AsyncLightEngine",
                 "com.helium.compute.GpuComputeManager"
