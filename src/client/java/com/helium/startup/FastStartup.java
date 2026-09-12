@@ -8,24 +8,61 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
+/** Parallelizes safe, initialization-free Helium class loading during the first client tick. */
 public final class FastStartup {
 
     private static ExecutorService startupPool;
     private static final List<Future<?>> pendingTasks = new ArrayList<>();
+    private static volatile boolean started;
+    private static volatile boolean prepared;
 
     private FastStartup() {}
 
-    public static void init() {
-        int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
+    public static synchronized void init() {
+        if (startupPool != null) return;
+        int threads = Math.max(2, Math.min(8, Runtime.getRuntime().availableProcessors()));
         AtomicInteger counter = new AtomicInteger(0);
         ThreadFactory factory = r -> {
             Thread t = new Thread(r, "helium-startup-" + counter.getAndIncrement());
             t.setDaemon(true);
-            t.setPriority(Thread.NORM_PRIORITY + 1);
+            t.setPriority(Thread.NORM_PRIORITY - 1);
             return t;
         };
         startupPool = Executors.newFixedThreadPool(threads, factory);
         HeliumClient.LOGGER.info("fast startup pool initialized with {} threads", threads);
+    }
+
+    /**
+     * Loads class metadata without running static initializers. This removes class-linking and
+     * bytecode verification spikes from the render thread while preserving normal initialization order.
+     */
+    public static synchronized void prepare() {
+        if (prepared) return;
+        init();
+        started = true;
+        String[] classes = {
+                "com.helium.math.FastMath",
+                "com.helium.math.SimdMath",
+                "com.helium.render.ModelCache",
+                "com.helium.render.RenderPipeline",
+                "com.helium.render.AsyncChunkMeshing",
+                "com.helium.render.FastWorldLoadingOptimizer",
+                "com.helium.rentities.entities.EntityBatchRenderer",
+                "com.helium.rentities.entities.EntityMeshBaker",
+                "com.helium.network.BufferOptimizer",
+                "com.helium.lighting.AsyncLightEngine",
+                "com.helium.compute.GpuComputeManager"
+        };
+        for (String name : classes) {
+            pendingTasks.add(submit(() -> {
+                try {
+                    Class.forName(name, false, FastStartup.class.getClassLoader());
+                } catch (Throwable t) {
+                    HeliumClient.LOGGER.debug("fast startup preload skipped {}: {}", name, t.toString());
+                }
+            }));
+        }
+        prepared = true;
     }
 
     public static <T> CompletableFuture<T> submit(Supplier<T> task) {
@@ -38,19 +75,26 @@ public final class FastStartup {
         return CompletableFuture.runAsync(task, startupPool);
     }
 
-    public static void awaitAll(long timeoutMs) {
-        if (startupPool == null) return;
-        startupPool.shutdown();
-        try {
-            if (!startupPool.awaitTermination(timeoutMs, TimeUnit.MILLISECONDS)) {
-                HeliumClient.LOGGER.warn("startup tasks did not complete within {}ms", timeoutMs);
-                startupPool.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            startupPool.shutdownNow();
+    public static boolean isPrepared() {
+        return prepared;
+    }
+
+    public static boolean isStarted() {
+        return started;
+    }
+
+    /** Drains completed preload tasks without blocking the client thread. */
+    public static void pollCompleted() {
+        if (pendingTasks.isEmpty()) return;
+        pendingTasks.removeIf(Future::isDone);
+    }
+
+    public static void shutdown() {
+        if (startupPool != null) {
+            startupPool.shutdown();
+            startupPool = null;
         }
-        startupPool = null;
         pendingTasks.clear();
+        started = false;
     }
 }
