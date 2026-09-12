@@ -2,13 +2,12 @@ package com.helium.mixin.network;
 
 import com.helium.HeliumClient;
 import com.helium.config.ExperimentalConfig;
-import com.helium.config.HeliumConfig;
 import com.helium.network.BufferOptimizer;
 import net.minecraft.network.ClientConnection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -30,10 +29,11 @@ public abstract class ClientConnectionMixin {
      * Defer the final Netty flush by one connection tick when packet batching is enabled.
      * Packet encoding and ordering remain vanilla; only the flush boundary is coalesced.
      */
-    @ModifyArg(
+    @ModifyVariable(
             method = "send(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/PacketCallbacks;Z)V",
             at = @At("HEAD"),
-            index = 2
+            argsOnly = true,
+            ordinal = 0
     )
     private boolean helium$batchFlushes(boolean flush) {
         if (!flush) return false;
