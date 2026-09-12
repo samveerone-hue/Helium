@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererSpecialPoseShaderMixin {
-    @Inject(method = "loadShader", at = @At("RETURN"), require = 0)
+    @Inject(method = "loadShader", at = @At("RETURN"), cancellable = true, require = 0)
     private void helium$extendSpecialPoseShader(String path, CallbackInfoReturnable<String> cir) {
         if (path == null || !path.endsWith("entity/entity_vert.glsl")) return;
 
