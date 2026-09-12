@@ -137,10 +137,15 @@ public class HeliumConfig {
             try {
                 String json = Files.readString(CONFIG_PATH);
                 HeliumConfig cfg = GSON.fromJson(json, HeliumConfig.class);
-                if (cfg != null) { cfg.save(); return cfg; }
+                if (cfg != null) {
+                    disableRemovedFeatures(cfg);
+                    cfg.save();
+                    return cfg;
+                }
             } catch (IOException e) { HeliumClient.LOGGER.warn("failed to load config, using defaults", e); }
         }
         HeliumConfig cfg = new HeliumConfig();
+        disableRemovedFeatures(cfg);
         cfg.save();
         return cfg;
     }
@@ -164,9 +169,23 @@ public class HeliumConfig {
         try {
             String json = Files.readString(path);
             HeliumConfig imported = GSON.fromJson(json, HeliumConfig.class);
-            if (imported != null) { HeliumClient.LOGGER.info("config imported from {}", path); return imported; }
+            if (imported != null) {
+                disableRemovedFeatures(imported);
+                HeliumClient.LOGGER.info("config imported to runtime with removed features disabled");
+                return imported;
+            }
         } catch (IOException e) { HeliumClient.LOGGER.warn("failed to import config from {}", path, e); }
         return null;
+    }
+
+    private static void disableRemovedFeatures(HeliumConfig cfg) {
+        cfg.networkOptimizations = false;
+        cfg.fastStartup = false;
+        cfg.modelCache = false;
+        cfg.simdMath = false;
+        cfg.asyncLightUpdates = false;
+        cfg.packetBatching = false;
+        cfg.glStateCache = false;
     }
 
     public void copyFrom(HeliumConfig other) {
@@ -285,5 +304,6 @@ public class HeliumConfig {
         this.directStateAccess = other.directStateAccess;
         this.renderbufferDepth = other.renderbufferDepth;
         this.oneClickCrafting = other.oneClickCrafting;
+        disableRemovedFeatures(this);
     }
 }
