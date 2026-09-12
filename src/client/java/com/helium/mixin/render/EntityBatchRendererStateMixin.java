@@ -1,8 +1,10 @@
 package com.helium.mixin.render;
 
+import com.helium.rentities.entities.EntityAnimationCategory;
 import com.helium.rentities.entities.EntityBatchRegistry;
 import com.helium.rentities.entities.EntityBatchRenderer;
 import com.helium.rentities.entities.EntityInstance;
+import com.helium.rentities.entities.EntityModelPoseExtractor;
 import net.minecraft.client.render.entity.state.ArmorStandEntityRenderState;
 import net.minecraft.client.render.entity.state.ArmedEntityRenderState;
 import net.minecraft.client.render.entity.state.EntityRenderState;
@@ -18,12 +20,11 @@ import java.lang.reflect.Field;
 
 /**
  * Replaces the legacy/reflection interpolation values in EntityBatchRenderer's
- * packed instance with the authoritative 1.21.11 render-state values.
+ * packed instance with authoritative 1.21.11 render-state values.
  *
- * Minecraft has already prepared these values for the current render tick, so
- * interpolating previous/current entity fields again can visibly double-lerp
- * rotation and movement. The mixin also carries render-state light, exact Armor
- * Stand Euler poses, and the exact baked head pivot into the GPU instance payload.
+ * The same mixin also asks Minecraft's own EntityModel#setAngles(state) to produce
+ * exact ModelPart rotations for the six-bone model families supported by the GPU ABI.
+ * This removes the old hand-written walk/attack approximation for those entities.
  */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererStateMixin {
@@ -92,6 +93,16 @@ public abstract class EntityBatchRendererStateMixin {
 
         if (typeHolder.type != null) {
             writeBakedHeadPivot(ptr, typeHolder.type);
+
+            EntityAnimationCategory category = EntityBatchRegistry.getCategory(typeHolder.type);
+            if (EntityModelPoseExtractor.writeExactPose(ptr, state, category)) {
+                // The existing shader's Armor Stand pose branch is now the generic
+                // exact-pose branch. Armor Stand rendering remains compatible because
+                // its six vanilla rotations are written to the same slots above.
+                int flags = MemoryUtil.memGetInt(ptr + EntityInstance.OFFSET_FLAGS);
+                flags |= EntityInstance.FLAG_EXACT_MODEL_POSE;
+                MemoryUtil.memPutInt(ptr + EntityInstance.OFFSET_FLAGS, flags);
+            }
         }
     }
 
