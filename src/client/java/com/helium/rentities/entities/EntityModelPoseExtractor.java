@@ -84,10 +84,19 @@ public final class EntityModelPoseExtractor {
                 if (root == null) return null;
                 String[][] candidates = candidates(category);
                 ModelPart[] parts = new ModelPart[requiredBones];
+                int found = 0;
                 for (int bone = 0; bone < requiredBones; bone++) {
                     parts[bone] = findPart(root, candidates[bone]);
-                    if (parts[bone] == null && !optionalBone(category, bone)) return null;
+                    if (parts[bone] != null) found++;
+                    if (parts[bone] == null && !optionalBone(category, bone)) {
+                        // Bird families intentionally allow sparse rigs: chickens/parrots use
+                        // slots 0-5 while Phantom uses slots 2-7. Requiring every slot would
+                        // reject a valid exact-pose model merely because it lacks head/body parts.
+                        if (category != EntityAnimationCategory.BIRD) return null;
+                    }
                 }
+                int minimum = category == EntityAnimationCategory.BIRD ? 4 : requiredBones;
+                if (found < minimum) return null;
                 PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
                 BINDINGS.put(model, binding);
                 return binding;
@@ -116,14 +125,10 @@ public final class EntityModelPoseExtractor {
                     {"back_left_leg", "left_hind_leg"}, {"back_right_leg", "right_hind_leg"}, {"tail"}
             };
             case BIRD -> new String[][] {
-                    {"head"},
-                    {"body"},
-                    {"left_wing", "left_wing_base"},
-                    {"right_wing", "right_wing_base"},
-                    {"left_leg", "tail_base"},
-                    {"right_leg", "tail_tip"},
-                    {"left_wing_tip"},
-                    {"right_wing_tip"}
+                    {"head"}, {"body"},
+                    {"left_wing", "left_wing_base"}, {"right_wing", "right_wing_base"},
+                    {"left_leg", "tail_base"}, {"right_leg", "tail_tip"},
+                    {"left_wing_tip"}, {"right_wing_tip"}
             };
             case ARTHROPOD -> new String[][] {
                     {"head"}, {"body"}, {"right_middle_front_leg"}, {"left_middle_front_leg"}, {"right_middle_leg"}, {"left_middle_leg"},
@@ -169,14 +174,10 @@ public final class EntityModelPoseExtractor {
     }
 
     private static Field findChildrenField(Class<?> cls) {
-        for (String name : new String[]{"children", "field_3661", "n"}) {
-            Class<?> c = cls;
-            while (c != null && c != Object.class) {
-                try {
-                    Field f = c.getDeclaredField(name);
-                    if (Map.class.isAssignableFrom(f.getType())) { f.setAccessible(true); return f; }
-                } catch (NoSuchFieldException ignored) {}
-                c = c.getSuperclass();
+        for (Field f : cls.getDeclaredFields()) {
+            if (Map.class.isAssignableFrom(f.getType())) {
+                f.setAccessible(true);
+                return f;
             }
         }
         return null;
