@@ -109,8 +109,8 @@ The invariant is: **an entity is either visually representable by the GPU ABI or
 
 - `entityGpuBatching` — master GPU entity-batching toggle.
 - `entityGpuFrustumCulling` — GPU visibility/culling path.
-- `rentitiesAsyncRenderPreparationEnabled` — async render preparation.
-- `rentitiesAsyncVisibilityEnabled` — cached synchronous visibility prefilter.
+- `rentitiesAsyncRenderPreparationEnabled` — asynchronous render preparation; unresolved work fails closed to vanilla rendering.
+- `rentitiesAsyncVisibilityEnabled` — **legacy config key for the synchronous `VisibilityDecisionCache`**. The implementation is render-thread-only and cache-based; it does not run visibility work asynchronously.
 - `rentitiesAsyncVisibilityRefreshFrames`, `rentitiesAsyncVisibilityMaxAgeFrames`, `rentitiesAsyncVisibilityMaxDistance` — cache tuning for the render-thread distance decision.
 - `rentitiesEntityBatchWhitelistOnly`, whitelist and blacklist — per-entity safety controls.
 - Rentities debug and solid-debug toggles are separate.
