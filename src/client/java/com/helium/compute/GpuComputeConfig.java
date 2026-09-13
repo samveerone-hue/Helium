@@ -17,7 +17,7 @@ public final class GpuComputeConfig {
     public boolean enabled = false;
     /** Offload entity line-of-sight tests to OpenCL. Disabled by default. */
     public boolean lineOfSight = false;
-    /** Enable the flow-field OpenCL kernel. This currently exposes the compute API only; it does not replace vanilla navigation. */
+    /** Reserved until a real navigation consumer exists; intentionally forced off so it cannot provision OpenCL by itself. */
     public boolean pathfinding = false;
     /** Requested cube edge length for world snapshots. The runtime expands it when needed and rejects oversized rays safely. */
     public int gridSize = 32;
@@ -42,6 +42,7 @@ public final class GpuComputeConfig {
     }
 
     void sanitize() {
+        pathfinding = false;
         gridSize = ConfigClamps.gpuGridSize(gridSize);
         refreshTicks = ConfigClamps.gpuRefreshTicks(refreshTicks);
         maxBatch = ConfigClamps.gpuMaxBatch(maxBatch);
