@@ -1,6 +1,6 @@
 package com.helium.mixin.render;
 
-import com.helium.HeliumClient;
+import com.helium.config.ExperimentalConfig;
 import com.helium.render.GLStateCache;
 import com.helium.render.ShaderUniformCache;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,16 +12,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(targets = "com.mojang.blaze3d.platform.GlStateManager", remap = false)
 public abstract class GlStateManagerLegacyMixin {
 
+    private static boolean helium$glStateCacheEnabled() {
+        ExperimentalConfig experimental = ExperimentalConfig.load();
+        return experimental.glStateCache;
+    }
+
     @Inject(method = "_activeTexture", at = @At("HEAD"))
     private static void helium$trackActiveTexture(int texture, CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             GLStateCache.setActiveTexture(texture);
         }
     }
 
     @Inject(method = "_bindTexture", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheBindTexture(int texture, CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldBindTexture(texture)) {
                 ci.cancel();
             }
@@ -30,7 +35,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_enableBlend", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheEnableBlend(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableBlend(true)) {
                 ci.cancel();
             }
@@ -39,7 +44,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_disableBlend", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheDisableBlend(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableBlend(false)) {
                 ci.cancel();
             }
@@ -48,7 +53,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_enableDepthTest", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheEnableDepth(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableDepthTest(true)) {
                 ci.cancel();
             }
@@ -57,7 +62,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_disableDepthTest", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheDisableDepth(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableDepthTest(false)) {
                 ci.cancel();
             }
@@ -66,7 +71,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_enableCull", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheEnableCull(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableCullFace(true)) {
                 ci.cancel();
             }
@@ -75,7 +80,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_disableCull", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheDisableCull(CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldEnableCullFace(false)) {
                 ci.cancel();
             }
@@ -84,7 +89,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_blendFuncSeparate", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha, CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldSetBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha)) {
                 ci.cancel();
             }
@@ -93,7 +98,7 @@ public abstract class GlStateManagerLegacyMixin {
 
     @Inject(method = "_depthFunc", at = @At("HEAD"), cancellable = true)
     private static void helium$cacheDepthFunc(int func, CallbackInfo ci) {
-        if (GLStateCache.isInitialized() && HeliumClient.getConfig().glStateCache) {
+        if (GLStateCache.isInitialized() && helium$glStateCacheEnabled()) {
             if (!GLStateCache.shouldSetDepthFunc(func)) {
                 ci.cancel();
             }
