@@ -34,6 +34,10 @@ repositories {
     maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
+configurations {
+    pureTestRuntime
+}
+
 loom {
     accessWidenerPath = file("src/main/resources/helium.accesswidener")
     splitEnvironmentSourceSets()
@@ -43,7 +47,7 @@ loom {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc:loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     implementation "org.lwjgl:lwjgl-opencl:3.3.3"
     modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") { exclude(group: "net.fabricmc.fabric-api") }
@@ -51,10 +55,6 @@ dependencies {
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
     pureTestRuntime 'org.junit.jupiter:junit-jupiter:5.12.2'
-}
-
-configurations {
-    pureTestRuntime
 }
 
 processResources { inputs.property "version", project.version; filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }; filesMatching("quilt.mod.json") { expand "version": inputs.properties.version } }
