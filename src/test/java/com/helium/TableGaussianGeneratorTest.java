@@ -10,40 +10,51 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TableGaussianGeneratorTest {
-    private static final int SAMPLES = 100_000;
-    private static final double MEAN_TOLERANCE = 0.05;
-    private static final double VARIANCE_TOLERANCE = 0.12;
+    private static final long[] SEEDS = {
+            0x51A7EL, 0x12345678L, 0xCAFEBABEL, 0xDEADBEEFL, 0x13579BDFL
+    };
+    private static final int SAMPLES_PER_SEED = 20_000;
+    private static final int SAMPLES = SEEDS.length * SAMPLES_PER_SEED;
+    private static final double MEAN_TOLERANCE = 0.025;
+    private static final double VARIANCE_TOLERANCE = 0.06;
+    private static final double CROSS_MEAN_TOLERANCE = 0.02;
+    private static final double CROSS_VARIANCE_TOLERANCE = 0.05;
 
     @Test
-    @Timeout(5)
+    @Timeout(10)
     void zigguratMatchesVanillaGaussianDistribution() {
-        Stats table = sampleTableGaussian(0x51A7E);
-        Stats vanilla = sampleVanillaGaussian(0x51A7E);
+        Stats table = new Stats();
+        Stats vanilla = new Stats();
 
-        // Validate both generators against the same standard-normal reference.
-        // They consume the underlying PRNG differently, so paired sample means
-        // and variances are not expected to match for one deterministic seed.
+        for (long seed : SEEDS) {
+            sampleTableGaussian(seed, table);
+            sampleVanillaGaussian(seed, vanilla);
+        }
+
+        // Aggregate independent seeds so the regression is not coupled to one
+        // deterministic PRNG trajectory. Both implementations must stay close
+        // to N(0,1), and the aggregate statistics must remain mutually close.
         assertTrue(Math.abs(table.mean()) < MEAN_TOLERANCE, "table mean drift: " + table.mean());
         assertTrue(Math.abs(vanilla.mean()) < MEAN_TOLERANCE, "vanilla mean drift: " + vanilla.mean());
         assertTrue(Math.abs(table.variance() - 1.0) < VARIANCE_TOLERANCE, "table variance drift: " + table.variance());
         assertTrue(Math.abs(vanilla.variance() - 1.0) < VARIANCE_TOLERANCE, "vanilla variance drift: " + vanilla.variance());
+        assertTrue(Math.abs(table.mean() - vanilla.mean()) < CROSS_MEAN_TOLERANCE,
+                "mean mismatch: table=" + table.mean() + " vanilla=" + vanilla.mean());
+        assertTrue(Math.abs(table.variance() - vanilla.variance()) < CROSS_VARIANCE_TOLERANCE,
+                "variance mismatch: table=" + table.variance() + " vanilla=" + vanilla.variance());
         assertEquals(SAMPLES, table.count());
         assertEquals(SAMPLES, vanilla.count());
     }
 
-    private static Stats sampleTableGaussian(long seed) {
+    private static void sampleTableGaussian(long seed, Stats stats) {
         Random random = new LocalRandom(seed);
         TableGaussianGenerator generator = new TableGaussianGenerator(random);
-        Stats stats = new Stats();
-        for (int i = 0; i < SAMPLES; i++) stats.add(generator.next());
-        return stats;
+        for (int i = 0; i < SAMPLES_PER_SEED; i++) stats.add(generator.next());
     }
 
-    private static Stats sampleVanillaGaussian(long seed) {
+    private static void sampleVanillaGaussian(long seed, Stats stats) {
         Random random = new LocalRandom(seed);
-        Stats stats = new Stats();
-        for (int i = 0; i < SAMPLES; i++) stats.add(random.nextGaussian());
-        return stats;
+        for (int i = 0; i < SAMPLES_PER_SEED; i++) stats.add(random.nextGaussian());
     }
 
     private static final class Stats {
