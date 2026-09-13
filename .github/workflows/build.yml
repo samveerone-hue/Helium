@@ -34,7 +34,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run Pure JUnit Tests
-        run: ./gradlew test --no-daemon --tests com.helium.ConfigAndGpuMathTest
+        run: ./gradlew test --no-daemon --tests com.helium.ConfigAndGpuMathTest --tests com.helium.TableGaussianGeneratorTest
 
       - name: Build with Gradle
         run: ./gradlew build --no-daemon
