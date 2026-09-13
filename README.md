@@ -15,7 +15,7 @@ This README describes the branch's real feature surface. Features that cannot be
 | Entity culling | Working | Configurable distance-based visibility path. |
 | Block-entity culling | Working | Configurable and independently switchable. |
 | Particle culling/limits/priority | Working | Separate controls; aggressive limits can intentionally hide effects. |
-| Particle batching/LOD | Working | Optional, with conservative fallback behavior. |
+| Particle LOD | Working | Optional long-range reduction; no generic particle-batching toggle is advertised. |
 | Leaf/sign/rain/beacon/painting/item-frame culling | Working | Individually switchable for compatibility. |
 | Item-frame LOD | Working | Optional long-range reduction. |
 | Animation throttling | Working | Intentionally reduces update frequency when enabled. |
