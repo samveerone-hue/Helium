@@ -139,57 +139,26 @@ public final class GpuComputeManager {
         }
         if (batch.isEmpty() || backend == null) return;
 
-        float minFx = Float.POSITIVE_INFINITY, minFy = Float.POSITIVE_INFINITY, minFz = Float.POSITIVE_INFINITY;
-        float maxFx = Float.NEGATIVE_INFINITY, maxFy = Float.NEGATIVE_INFINITY, maxFz = Float.NEGATIVE_INFINITY;
+        int totalRays = 0;
+        for (Request r : batch) totalRays += r.rayCount;
+        float[] rays = new float[totalRays * 6];
+        int rayCursor = 0;
         for (Request r : batch) {
-            for (int n = 0; n < r.rayCount; n++) {
-                int base = n * 6;
-                minFx = Math.min(minFx, Math.min(r.rays[base], r.rays[base + 3]));
-                minFy = Math.min(minFy, Math.min(r.rays[base + 1], r.rays[base + 4]));
-                minFz = Math.min(minFz, Math.min(r.rays[base + 2], r.rays[base + 5]));
-                maxFx = Math.max(maxFx, Math.max(r.rays[base], r.rays[base + 3]));
-                maxFy = Math.max(maxFy, Math.max(r.rays[base + 1], r.rays[base + 4]));
-                maxFz = Math.max(maxFz, Math.max(r.rays[base + 2], r.rays[base + 5]));
-            }
+            System.arraycopy(r.rays, 0, rays, rayCursor * 6, r.rayCount * 6);
+            rayCursor += r.rayCount;
         }
 
-        int minX = (int) Math.floor(minFx) - 1;
-        int minY = (int) Math.floor(minFy) - 1;
-        int minZ = (int) Math.floor(minFz) - 1;
-        int maxX = (int) Math.floor(maxFx) + 1;
-        int maxY = (int) Math.floor(maxFy) + 1;
-        int maxZ = (int) Math.floor(maxFz) + 1;
-        int requiredX = maxX - minX + 1;
-        int requiredY = maxY - minY + 1;
-        int requiredZ = maxZ - minZ + 1;
-        int requestedSize = Math.max(16, Math.min(48, config.gridSize));
-        int size = Math.max(requestedSize, Math.max(requiredX, Math.max(requiredY, requiredZ)));
-        if (size > 64) {
+        GpuComputeMath.Grid grid = GpuComputeMath.computeGrid(rays, config.gridSize);
+        if (grid == null) {
             for (Request r : batch) pending.putIfAbsent(r.key, r);
             lastFlush = Long.MIN_VALUE;
             return;
         }
 
-        int centerX = (minX + maxX) / 2;
-        int centerY = (minY + maxY) / 2;
-        int centerZ = (minZ + maxZ) / 2;
-        minX = centerX - size / 2;
-        minY = centerY - size / 2;
-        minZ = centerZ - size / 2;
-        maxX = minX + size - 1;
-        maxY = minY + size - 1;
-        maxZ = minZ + size - 1;
-        if (maxX < (int) Math.ceil(maxFx) || maxY < (int) Math.ceil(maxFy) || maxZ < (int) Math.ceil(maxFz)
-                || minX > (int) Math.floor(minFx) || minY > (int) Math.floor(minFy) || minZ > (int) Math.floor(minFz)) {
-            for (Request r : batch) pending.putIfAbsent(r.key, r);
-            lastFlush = Long.MIN_VALUE;
-            return;
-        }
-
-        final int snapshotMinX = minX;
-        final int snapshotMinY = minY;
-        final int snapshotMinZ = minZ;
-        final int snapshotSize = size;
+        final int snapshotMinX = grid.minX();
+        final int snapshotMinY = grid.minY();
+        final int snapshotMinZ = grid.minZ();
+        final int snapshotSize = grid.size();
         byte[] solid = new byte[snapshotSize * snapshotSize * snapshotSize];
         int i = 0;
         try {
@@ -201,15 +170,6 @@ public final class GpuComputeManager {
             for (Request r : batch) pending.putIfAbsent(r.key, r);
             lastFlush = Long.MIN_VALUE;
             return;
-        }
-
-        int totalRays = 0;
-        for (Request r : batch) totalRays += r.rayCount;
-        float[] rays = new float[totalRays * 6];
-        int rayCursor = 0;
-        for (Request r : batch) {
-            System.arraycopy(r.rays, 0, rays, rayCursor * 6, r.rayCount * 6);
-            rayCursor += r.rayCount;
         }
 
         final OpenClComputeBackend b;
