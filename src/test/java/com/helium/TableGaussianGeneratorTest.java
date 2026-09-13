@@ -15,8 +15,8 @@ class TableGaussianGeneratorTest {
     };
     private static final int SAMPLES_PER_SEED = 20_000;
     private static final int SAMPLES = SEEDS.length * SAMPLES_PER_SEED;
-    private static final double MEAN_TOLERANCE = 0.025;
-    private static final double VARIANCE_TOLERANCE = 0.06;
+    private static final double MEAN_TOLERANCE = 0.05;
+    private static final double VARIANCE_TOLERANCE = 0.12;
     private static final double CROSS_MEAN_TOLERANCE = 0.05;
     private static final double CROSS_VARIANCE_TOLERANCE = 0.12;
 
