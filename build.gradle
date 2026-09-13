@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'net.fabricmc.loom-remap' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -49,11 +49,20 @@ dependencies {
     modApi("me.shedaniel.cloth:cloth-config-fabric:${project.cloth_config_version}") { exclude(group: "net.fabricmc.fabric-api") }
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
 }
 
 processResources { inputs.property "version", project.version; filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }; filesMatching("quilt.mod.json") { expand "version": inputs.properties.version } }
 tasks.withType(JavaCompile).configureEach { it.options.release = 21 }
 java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21 }
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    // Keep the test JVM free of Minecraft/Fabric runtime dependencies; tests exercise
+    // only pure helpers while the normal build still compiles the mod against Loom.
+    classpath = files(sourceSets.test.output, sourceSets.main.output, configurations.testCompileClasspath)
+}
+
 jar { inputs.property "archivesName", project.base.archivesName; from("LICENSE") { rename { "${it}_${inputs.properties.archivesName}" } } }
 tasks.register('publishJar', Copy) { dependsOn remapJar; group='helium'; description='Builds a release-ready jar'; def outputDir=file("${buildDir}/publish"); def jarName="Helium-${project.mod_version}+mc${mcVersion}.jar"; from(remapJar.archiveFile); into(outputDir); rename { jarName }; doFirst { outputDir.mkdirs() } }
 tasks.register('release') { dependsOn publishJar; group='helium' }
