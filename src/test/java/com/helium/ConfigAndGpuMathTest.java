@@ -77,12 +77,12 @@ class ConfigAndGpuMathTest {
 
         assertNotNull(grid);
         assertEquals(16, grid.size());
-        assertTrue(grid.minX <= 10 && grid.maxX >= 13);
-        assertTrue(grid.minY <= 20 && grid.maxY >= 22);
-        assertTrue(grid.minZ <= 30 && grid.maxZ >= 33);
-        assertEquals(grid.size() - 1, grid.maxX - grid.minX);
-        assertEquals(grid.size() - 1, grid.maxY - grid.minY);
-        assertEquals(grid.size() - 1, grid.maxZ - grid.minZ);
+        assertTrue(grid.minX() <= 10 && grid.maxX() >= 13);
+        assertTrue(grid.minY() <= 20 && grid.maxY() >= 22);
+        assertTrue(grid.minZ() <= 30 && grid.maxZ() >= 33);
+        assertEquals(grid.size() - 1, grid.maxX() - grid.minX());
+        assertEquals(grid.size() - 1, grid.maxY() - grid.minY());
+        assertEquals(grid.size() - 1, grid.maxZ() - grid.minZ());
     }
 
     @Test
