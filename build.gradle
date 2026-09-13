@@ -34,10 +34,6 @@ repositories {
     maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven'; content { includeGroup 'maven.modrinth' } }
 }
 
-configurations {
-    pureTestRuntime
-}
-
 loom {
     accessWidenerPath = file("src/main/resources/helium.accesswidener")
     splitEnvironmentSourceSets()
@@ -54,8 +50,7 @@ dependencies {
     modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
-    pureTestRuntime 'org.junit.jupiter:junit-jupiter:5.12.2'
-    pureTestRuntime 'org.junit.platform:junit-platform-launcher:1.12.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.12.2'
 }
 
 processResources { inputs.property "version", project.version; filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }; filesMatching("quilt.mod.json") { expand "version": inputs.properties.version } }
@@ -64,8 +59,6 @@ java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaV
 
 tasks.named('test', Test) {
     useJUnitPlatform()
-    // Keep Minecraft/Fabric and other mod dependencies off the pure test runtime.
-    classpath = files(sourceSets.test.output, sourceSets.main.output, configurations.pureTestRuntime)
 }
 
 jar { inputs.property "archivesName", project.base.archivesName; from("LICENSE") { rename { "${it}_${inputs.properties.archivesName}" } } }
