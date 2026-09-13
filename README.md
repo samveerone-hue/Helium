@@ -1,63 +1,6 @@
 # Helium
 
-Lightweight client-side performance mod for Minecraft.
-
-> This is the development repository for Helium. For normal installation, use the published Modrinth build.
-
-## Development status — `1.21.11`
-
-This README describes the branch's real feature surface. Features that cannot be represented correctly by a generic optimization path are allowed to fall back to vanilla rendering.
-
-### Rendering and culling
-
-| Feature | Status | Notes |
-|---|---|---|
-| Entity culling | Working | Configurable distance-based visibility path. |
-| Block-entity culling | Working | Configurable and independently switchable. |
-| Particle culling/limits/priority | Working | Separate controls; aggressive limits can intentionally hide effects. |
-| Particle batching/LOD | Working | Optional, with conservative fallback behavior. |
-| Leaf/sign/rain/beacon/painting/item-frame culling | Working | Individually switchable for compatibility. |
-| Item-frame LOD | Working | Optional long-range reduction. |
-| Animation throttling | Working | Intentionally reduces update frequency when enabled. |
-| Render-pipeline optimizations | Working | Fast math, fast animations, enum caching, accelerated text, uniform caching and renderer-owned pipeline work are independently configurable. |
-| Rentities GPU entity batching | Working | Exact-pose registry plus conservative vanilla fallback for unsupported rigs. |
-| Rentities mesh SIMD preprocessing | Working | Opt-in Vector API normal normalization for sufficiently large baked meshes; scalar behavior remains available. |
-
-### Engine, memory, threading and world loading
-
-| Feature | Status | Notes |
-|---|---|---|
-| Memory optimizations | Working | Pooling and allocation reductions are configurable. |
-| Thread optimizations | Working | Background helpers are configurable. |
-| Fast startup | Experimental / working | Parallel class metadata preloading only; static initializers are not executed off-thread. |
-| Fast world loading | Working | Optional. |
-| Reduced allocations | Working | Enabled by default where Helium can safely reduce temporaries. |
-| Async resource-pack reload | Working | Resource preparation is off-thread while Minecraft-owned application remains on the client thread. |
-| Model cache | Experimental / working | Bounded block-model front cache; Rentities mesh caching remains separate. |
-| Async light preparation | Experimental / working | Background deduplication/coalescing only; vanilla light propagation remains on its owning thread. |
-| Network buffer pooling | Experimental / working | Concurrent packet/direct-buffer reuse without changing packet protocol semantics. |
-| Object deduplication | Working | Enabled by default. |
-| Idle pause/FPS limiting | Working | Optional. |
-
-### Math, GPU and OpenGL
-
-| Feature | Status | Notes |
-|---|---|---|
-| Fast math / SIMD / JOML math | Working / experimental | SIMD uses the Java Vector API where available and falls back safely. |
-| Fast random | Working | Explicit opt-in. |
-| GPU compute | Working | Optional OpenCL backend with fallback. |
-| Adaptive/display sync | Working | Driver-dependent. |
-| Temporal reprojection | Working | Optional; visual behavior is shader-dependent. |
-| Framebuffer blit / DSA / renderbuffer paths | Working | Compatibility-sensitive low-level options. |
-| OpenGL cleanup / screenshot leak fixes | Working | Dedicated resource/state cleanup paths. |
-| NVIDIA / AMD / Intel optimizations | Working | Vendor-specific toggles are isolated. |
-| Reflex | Working | Configurable enable/offset/debug controls. |
-
-### Networking, menus, hotbar and QoL
-
-Fast server/IP ping, refresh-scroll preservation, direct-connect preview, opt-in hotbar optimization, multi-switch/smooth hotbar controls, smooth scrolling, Windows window styling, fullbright, FPS overlay controls, menu FPS limiting, async pack reload, instant language change and one-click crafting are independently configurable.
-
-Experimental network maintenance uses conservative buffer reuse and optional one-tick flush coalescing. It does not rewrite Minecraft's protocol or packet ordering.
+Helium is a lightweight client-side performance mod for Minecraft 1.21.11.
 
 ### Deliberate vanilla fallbacks
 
@@ -110,8 +53,8 @@ The invariant is: **an entity is either visually representable by the GPU ABI or
 - `entityGpuBatching` — master GPU entity-batching toggle.
 - `entityGpuFrustumCulling` — GPU visibility/culling path.
 - `rentitiesAsyncRenderPreparationEnabled` — async render preparation.
-- `rentitiesAsyncVisibilityEnabled` — async visibility checks.
-- `rentitiesAsyncVisibilityRefreshFrames`, `rentitiesAsyncVisibilityMaxAgeFrames`, `rentitiesAsyncVisibilityMaxDistance` — cache tuning.
+- `rentitiesAsyncVisibilityEnabled` — cached synchronous visibility prefilter.
+- `rentitiesAsyncVisibilityRefreshFrames`, `rentitiesAsyncVisibilityMaxAgeFrames`, `rentitiesAsyncVisibilityMaxDistance` — cache tuning for the render-thread distance decision.
 - `rentitiesEntityBatchWhitelistOnly`, whitelist and blacklist — per-entity safety controls.
 - Rentities debug and solid-debug toggles are separate.
 
