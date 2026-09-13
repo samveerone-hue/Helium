@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Off-thread preparation of immutable entity-type metadata only.
  * Never touches Minecraft entity instances, GL objects, or render state.
- * Missing/stale results are always treated as batchable (fail-open).
+ * Missing/stale results are fail-closed so unresolved work remains on the vanilla path.
  */
 public final class AsyncRenderPreparation {
     private final ExecutorService executor;
@@ -41,7 +41,6 @@ public final class AsyncRenderPreparation {
         return new Result(category, EntityBatchRegistry.isGpuBatchable(type));
     }
 
-    /** Fail-open: unresolved async work never cancels vanilla rendering. */
     public boolean allowsBatch(EntityType<?> type, boolean whitelistOnly, Set<String> whitelist, Set<String> blacklist) {
         if (type == null) return false;
         String key = type.toString();
@@ -49,13 +48,13 @@ public final class AsyncRenderPreparation {
         if (whitelistOnly && (whitelist == null || !whitelist.contains(key))) return false;
         schedule(type);
         CompletableFuture<Result> future = results.get(type);
-        if (future == null || !future.isDone()) return true;
+        if (future == null || !future.isDone()) return false;
         try {
             Result r = future.getNow(null);
-            return r == null || r.gpuBatchable();
+            return r != null && r.gpuBatchable();
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("[Rentities] Async render prep failed for {}: {}", key, t.toString());
-            return true;
+            return false;
         }
     }
 
