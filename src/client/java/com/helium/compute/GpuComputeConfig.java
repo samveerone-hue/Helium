@@ -2,6 +2,7 @@ package com.helium.compute;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.helium.config.ConfigClamps;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -40,11 +41,10 @@ public final class GpuComputeConfig {
         return cfg;
     }
 
-    private void sanitize() {
-        // Keep configuration inside the range exposed by the GUI and the safe runtime limits.
-        gridSize = Math.max(16, Math.min(48, gridSize));
-        refreshTicks = Math.max(1, Math.min(10, refreshTicks));
-        maxBatch = Math.max(1, Math.min(8, maxBatch));
+    void sanitize() {
+        gridSize = ConfigClamps.gpuGridSize(gridSize);
+        refreshTicks = ConfigClamps.gpuRefreshTicks(refreshTicks);
+        maxBatch = ConfigClamps.gpuMaxBatch(maxBatch);
     }
 
     public void save() {
