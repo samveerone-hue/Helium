@@ -20,10 +20,9 @@ class TableGaussianGeneratorTest {
         Stats table = sampleTableGaussian(0x51A7E);
         Stats vanilla = sampleVanillaGaussian(0x51A7E);
 
-        // Both generators must independently remain consistent with the same
-        // standard-normal distribution. Their PRNG consumption differs, so
-        // comparing sample-by-sample or requiring matching sample variances
-        // would make the regression test spuriously seed-dependent.
+        // Validate both generators against the same standard-normal reference.
+        // They consume the underlying PRNG differently, so paired sample means
+        // and variances are not expected to match for one deterministic seed.
         assertTrue(Math.abs(table.mean()) < MEAN_TOLERANCE, "table mean drift: " + table.mean());
         assertTrue(Math.abs(vanilla.mean()) < MEAN_TOLERANCE, "vanilla mean drift: " + vanilla.mean());
         assertTrue(Math.abs(table.variance() - 1.0) < VARIANCE_TOLERANCE, "table variance drift: " + table.variance());
