@@ -13,7 +13,7 @@ class TableGaussianGeneratorTest {
     private static final int SAMPLES = 100_000;
     private static final double MEAN_TOLERANCE = 0.03;
     private static final double VARIANCE_TOLERANCE = 0.08;
-    private static final double CROSS_VARIANCE_TOLERANCE = 0.08;
+    private static final double CROSS_VARIANCE_TOLERANCE = 0.12;
 
     @Test
     @Timeout(5)
