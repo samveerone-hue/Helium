@@ -1,38 +1,42 @@
 package com.helium.math;
 
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.random.GaussianGenerator;
 import net.minecraft.util.math.random.Random;
 
 /**
  * Ziggurat Gaussian generator.
  *
- * The table construction and tail acceptance use exact Math.log/Math.exp because the
- * cheaper GBF approximations do not preserve the recurrence's positivity invariant.
- * The fast-random toggle remains fail-closed until distribution/throughput validation
- * is complete.
+ * Uses the standard 128-layer construction with an exact recurrence so the table
+ * remains finite and samples a standard normal distribution. The fast-random config
+ * remains fail-closed until the full path is runtime-validated.
  */
 public class TableGaussianGenerator extends GaussianGenerator {
 
-    private static final int TABLE_SIZE = 256;
-    private static final float R = 3.442619855899F;
-    private static final float INV_R = 0.29047645161474317F;
+    private static final int TABLE_SIZE = 128;
+    private static final double R = 3.442619855899D;
+    private static final double AREA = 9.91256303526217E-3D;
+    private static final double INV_R = 1.0D / R;
 
-    private static final float[] X = new float[TABLE_SIZE + 1];
-    private static final float[] Y = new float[TABLE_SIZE + 1];
+    private static final double[] X = new double[TABLE_SIZE + 1];
+    private static final double[] F = new double[TABLE_SIZE + 1];
 
     static {
-        float f = (float) Math.exp(-0.5F * R * R);
-        X[0] = R / f;
+        double tailHeight = Math.exp(-0.5D * R * R);
+        X[0] = AREA / tailHeight;
         X[1] = R;
-        Y[0] = 0.0F;
-        Y[1] = f;
+        F[0] = 1.0D;
+        F[1] = tailHeight;
 
-        for (int i = 2; i <= TABLE_SIZE; i++) {
-            X[i] = MathHelper.sqrt((float) (-2.0F * Math.log(
-                    Math.exp(-0.5F * X[i - 1] * X[i - 1]) + Y[i - 1] / X[i - 1])));
-            Y[i] = (float) Math.exp(-0.5F * X[i] * X[i]);
+        double dn = R;
+        for (int i = 2; i < TABLE_SIZE; i++) {
+            dn = Math.sqrt(-2.0D * Math.log(
+                    AREA / dn + Math.exp(-0.5D * dn * dn)));
+            X[i] = dn;
+            F[i] = Math.exp(-0.5D * dn * dn);
         }
+
+        X[TABLE_SIZE] = 0.0D;
+        F[TABLE_SIZE] = 1.0D;
     }
 
     public TableGaussianGenerator(Random rand) {
@@ -46,26 +50,27 @@ public class TableGaussianGenerator extends GaussianGenerator {
     public double next() {
         while (true) {
             int i = this.baseRandom.nextInt(TABLE_SIZE);
-            long j = this.baseRandom.nextInt() & 0xFFFFFFFFL;
+            double x = this.baseRandom.nextDouble() * X[i];
 
-            double xVal = j * (X[i] / 4294967296.0);
-
-            if (xVal < X[i + 1]) {
-                return this.baseRandom.nextBoolean() ? xVal : -xVal;
+            if (x < X[i + 1]) {
+                return this.baseRandom.nextBoolean() ? x : -x;
             }
 
             if (i == 0) {
-                double xx, yy;
+                double xx;
+                double yy;
                 do {
                     xx = -Math.log(this.baseRandom.nextDouble()) * INV_R;
                     yy = -Math.log(this.baseRandom.nextDouble());
                 } while (yy + yy < xx * xx);
-                return (this.baseRandom.nextBoolean() ? R + xx : -R - xx);
+
+                double tail = R + xx;
+                return this.baseRandom.nextBoolean() ? tail : -tail;
             }
 
-            if (Y[i + 1] + (Y[i] - Y[i + 1]) * this.baseRandom.nextDouble()
-                    < Math.exp(-0.5 * xVal * xVal)) {
-                return this.baseRandom.nextBoolean() ? xVal : -xVal;
+            if (F[i + 1] + (F[i] - F[i + 1]) * this.baseRandom.nextDouble()
+                    < Math.exp(-0.5D * x * x)) {
+                return this.baseRandom.nextBoolean() ? x : -x;
             }
         }
     }
