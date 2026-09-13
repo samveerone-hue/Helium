@@ -213,6 +213,10 @@ public class HeliumConfig {
         cfg.asyncLightUpdates = false;
         cfg.packetBatching = false;
         cfg.glStateCache = false;
+        // The current Gaussian replacement is not safe to enable: its fast-log
+        // table construction can become non-finite. Keep vanilla Gaussian RNG
+        // until a replacement passes distribution and termination checks.
+        cfg.fastRandom = false;
     }
 
     public void copyFrom(HeliumConfig other) {
@@ -332,7 +336,5 @@ public class HeliumConfig {
         this.renderbufferDepth = other.renderbufferDepth;
         this.oneClickCrafting = other.oneClickCrafting;
         this.devMode = other.devMode;
-        sanitize();
-        disableRemovedFeatures(this);
     }
 }
