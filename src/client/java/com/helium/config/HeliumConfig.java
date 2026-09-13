@@ -138,6 +138,7 @@ public class HeliumConfig {
                 String json = Files.readString(CONFIG_PATH);
                 HeliumConfig cfg = GSON.fromJson(json, HeliumConfig.class);
                 if (cfg != null) {
+                    cfg.sanitize();
                     disableRemovedFeatures(cfg);
                     cfg.save();
                     return cfg;
@@ -145,6 +146,7 @@ public class HeliumConfig {
             } catch (IOException e) { HeliumClient.LOGGER.warn("failed to load config, using defaults", e); }
         }
         HeliumConfig cfg = new HeliumConfig();
+        cfg.sanitize();
         disableRemovedFeatures(cfg);
         cfg.save();
         return cfg;
@@ -155,6 +157,7 @@ public class HeliumConfig {
     }
 
     public void save() {
+        sanitize();
         try { Files.createDirectories(CONFIG_PATH.getParent()); Files.writeString(CONFIG_PATH, GSON.toJson(this)); }
         catch (IOException e) { HeliumClient.LOGGER.warn("failed to save config", e); }
     }
@@ -170,12 +173,36 @@ public class HeliumConfig {
             String json = Files.readString(path);
             HeliumConfig imported = GSON.fromJson(json, HeliumConfig.class);
             if (imported != null) {
+                imported.sanitize();
                 disableRemovedFeatures(imported);
                 HeliumClient.LOGGER.info("config imported to runtime with removed features disabled");
                 return imported;
             }
         } catch (IOException e) { HeliumClient.LOGGER.warn("failed to import config from {}", path, e); }
         return null;
+    }
+
+    public void sanitize() {
+        entityCullDistance = ConfigClamps.entityCullDistance(entityCullDistance);
+        blockEntityCullDistance = ConfigClamps.blockEntityCullDistance(blockEntityCullDistance);
+        particleCullDistance = ConfigClamps.particleCullDistance(particleCullDistance);
+        maxParticles = ConfigClamps.maxParticles(maxParticles);
+        overlayTransparency = ConfigClamps.overlayTransparency(overlayTransparency);
+        nativeMemoryPoolMb = ConfigClamps.nativeMemoryPoolMb(nativeMemoryPoolMb);
+        chunkScheduleMaxPerTick = ConfigClamps.chunkScheduleMaxPerTick(chunkScheduleMaxPerTick);
+        idleTimeoutSeconds = ConfigClamps.idleTimeoutSeconds(idleTimeoutSeconds);
+        idleFpsLimit = ConfigClamps.idleFpsLimit(idleFpsLimit);
+        fullbrightStrength = ConfigClamps.fullbrightStrength(fullbrightStrength);
+        leafCullingDepth = ConfigClamps.leafCullingDepth(leafCullingDepth);
+        leafCullingRandomRejection = ConfigClamps.leafCullingRandomRejection(leafCullingRandomRejection);
+        particleLODDistance = ConfigClamps.particleLODDistance(particleLODDistance);
+        particleLODReduction = ConfigClamps.particleLODReduction(particleLODReduction);
+        itemFrameLODRange = ConfigClamps.itemFrameLODRange(itemFrameLODRange);
+        rentitiesAsyncVisibilityRefreshFrames = ConfigClamps.rentitiesAsyncVisibilityRefreshFrames(rentitiesAsyncVisibilityRefreshFrames);
+        rentitiesAsyncVisibilityMaxAgeFrames = ConfigClamps.rentitiesAsyncVisibilityMaxAgeFrames(rentitiesAsyncVisibilityMaxAgeFrames);
+        rentitiesAsyncVisibilityMaxDistance = ConfigClamps.rentitiesAsyncVisibilityMaxDistance(rentitiesAsyncVisibilityMaxDistance);
+        inactiveFpsLimit = ConfigClamps.inactiveFpsLimit(inactiveFpsLimit);
+        inactiveRenderDistance = ConfigClamps.inactiveRenderDistance(inactiveRenderDistance);
     }
 
     private static void disableRemovedFeatures(HeliumConfig cfg) {
@@ -304,6 +331,8 @@ public class HeliumConfig {
         this.directStateAccess = other.directStateAccess;
         this.renderbufferDepth = other.renderbufferDepth;
         this.oneClickCrafting = other.oneClickCrafting;
+        this.devMode = other.devMode;
+        sanitize();
         disableRemovedFeatures(this);
     }
 }
