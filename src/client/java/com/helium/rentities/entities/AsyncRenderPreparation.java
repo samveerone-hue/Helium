@@ -51,10 +51,10 @@ public final class AsyncRenderPreparation {
         if (future == null || !future.isDone()) return false;
         try {
             Result r = future.getNow(null);
-            return r != null && r.gpuBatchable();
+            return r != null && BatchabilityDecision.allowResolved(true, r.gpuBatchable());
         } catch (Throwable t) {
             HeliumClient.LOGGER.debug("[Rentities] Async render prep failed for {}: {}", key, t.toString());
-            return false;
+            return BatchabilityDecision.allowResolved(false, false);
         }
     }
 
