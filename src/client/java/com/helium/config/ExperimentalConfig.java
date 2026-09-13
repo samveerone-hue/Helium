@@ -44,16 +44,21 @@ public final class ExperimentalConfig {
                 } catch (IOException ignored) {
                 }
             }
-            cfg.packetBatchTicks = Math.max(1, Math.min(2, cfg.packetBatchTicks));
-            cfg.modelCacheMaxMb = Math.max(16, Math.min(512, cfg.modelCacheMaxMb));
-            cfg.asyncLightMaxPerTick = Math.max(8, Math.min(256, cfg.asyncLightMaxPerTick));
+            cfg.sanitize();
             INSTANCE = cfg;
             cfg.save();
             return cfg;
         }
     }
 
+    void sanitize() {
+        packetBatchTicks = ConfigClamps.experimentalPacketBatchTicks(packetBatchTicks);
+        modelCacheMaxMb = ConfigClamps.experimentalModelCacheMaxMb(modelCacheMaxMb);
+        asyncLightMaxPerTick = ConfigClamps.experimentalAsyncLightMaxPerTick(asyncLightMaxPerTick);
+    }
+
     public void save() {
+        sanitize();
         try {
             Files.createDirectories(PATH.getParent());
             Files.writeString(PATH, GSON.toJson(this));
