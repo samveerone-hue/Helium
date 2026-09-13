@@ -1,6 +1,5 @@
 package com.helium.math;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.random.GaussianGenerator;
 import net.minecraft.util.math.random.Random;
