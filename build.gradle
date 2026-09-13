@@ -55,6 +55,7 @@ dependencies {
     modCompileOnly "maven.modrinth:sodium:mc1.21.11-0.8.14-fabric"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.12.2'
     pureTestRuntime 'org.junit.jupiter:junit-jupiter:5.12.2'
+    pureTestRuntime 'org.junit.platform:junit-platform-launcher:1.12.2'
 }
 
 processResources { inputs.property "version", project.version; filesMatching("fabric.mod.json") { expand "version": inputs.properties.version }; filesMatching("quilt.mod.json") { expand "version": inputs.properties.version } }
