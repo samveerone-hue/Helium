@@ -17,6 +17,7 @@ public final class NativeMemoryManager {
 
     private static final int[] POOL_SIZES = {1024, 4096, 16384, 65536, 262144, 1048576};
     private static final int MAX_POOL_ENTRIES = 64;
+    private static final byte[] ZERO_CHUNK = new byte[4096];
 
     @SuppressWarnings("unchecked")
     private static final ConcurrentLinkedDeque<ByteBuffer>[] POOLS = new ConcurrentLinkedDeque[POOL_SIZES.length];
@@ -148,7 +149,13 @@ public final class NativeMemoryManager {
 
     public static void zero(ByteBuffer buffer) {
         if (buffer == null) return;
-        for (int i = 0; i < buffer.capacity(); i++) buffer.put(i, (byte) 0);
+        ByteBuffer view = buffer.duplicate();
+        while (view.remaining() >= ZERO_CHUNK.length) {
+            view.put(ZERO_CHUNK);
+        }
+        if (view.hasRemaining()) {
+            view.put(ZERO_CHUNK, 0, view.remaining());
+        }
     }
 
     public static long getTotalAllocatedBytes() { return totalAllocatedBytes.get(); }
