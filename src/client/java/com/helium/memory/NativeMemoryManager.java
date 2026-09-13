@@ -149,7 +149,9 @@ public final class NativeMemoryManager {
 
     public static void zero(ByteBuffer buffer) {
         if (buffer == null) return;
+        // Preserve the old contract: clear the entire capacity without changing the caller's position/limit.
         ByteBuffer view = buffer.duplicate();
+        view.clear();
         while (view.remaining() >= ZERO_CHUNK.length) {
             view.put(ZERO_CHUNK);
         }
