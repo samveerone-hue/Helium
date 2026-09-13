@@ -50,8 +50,8 @@ public class TableGaussianGenerator extends GaussianGenerator {
 
             double xVal = j * (X[i] / 4294967296.0);
 
-            if (Math.abs(xVal) < X[i + 1]) {
-                return xVal;
+            if (xVal < X[i + 1]) {
+                return this.baseRandom.nextBoolean() ? xVal : -xVal;
             }
 
             if (i == 0) {
