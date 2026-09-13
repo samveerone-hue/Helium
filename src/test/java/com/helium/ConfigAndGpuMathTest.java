@@ -2,6 +2,7 @@ package com.helium;
 
 import com.helium.compute.GpuComputeMath;
 import com.helium.config.ConfigClamps;
+import com.helium.rentities.entities.BatchabilityDecision;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -55,6 +56,14 @@ class ConfigAndGpuMathTest {
         assertEquals(10, ConfigClamps.gpuRefreshTicks(999));
         assertEquals(1, ConfigClamps.gpuMaxBatch(-1));
         assertEquals(8, ConfigClamps.gpuMaxBatch(999));
+    }
+
+    @Test
+    void asyncRentitiesDecisionFailsClosedUntilResolved() {
+        assertFalse(BatchabilityDecision.allowResolved(false, true));
+        assertFalse(BatchabilityDecision.allowResolved(false, false));
+        assertFalse(BatchabilityDecision.allowResolved(true, false));
+        assertTrue(BatchabilityDecision.allowResolved(true, true));
     }
 
     @Test
