@@ -2,6 +2,7 @@ package com.helium.compute;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.helium.config.ConfigClamps;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -13,17 +14,39 @@ public final class GpuComputeConfig {
     private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("helium-gpu-compute.json");
     public boolean enabled = false;
     public boolean lineOfSight = false;
+    /** Reserved until a real navigation consumer exists; kept fail-closed. */
     public boolean pathfinding = false;
     public int gridSize = 32;
     public int refreshTicks = 2;
-    public int maxBatch = 32;
+    public int maxBatch = 1;
+
     private GpuComputeConfig() {}
+
     public static GpuComputeConfig load() {
+        GpuComputeConfig cfg = null;
         if (Files.exists(PATH)) {
-            try { GpuComputeConfig cfg = GSON.fromJson(Files.readString(PATH), GpuComputeConfig.class); if (cfg != null) { cfg.save(); return cfg; } }
-            catch (IOException ignored) {}
+            try {
+                cfg = GSON.fromJson(Files.readString(PATH), GpuComputeConfig.class);
+            } catch (IOException | RuntimeException ignored) {}
         }
-        GpuComputeConfig cfg = new GpuComputeConfig(); cfg.save(); return cfg;
+        if (cfg == null) cfg = new GpuComputeConfig();
+        cfg.sanitize();
+        cfg.save();
+        return cfg;
     }
-    public void save() { try { Files.createDirectories(PATH.getParent()); Files.writeString(PATH, GSON.toJson(this)); } catch (IOException ignored) {} }
+
+    void sanitize() {
+        pathfinding = false;
+        gridSize = ConfigClamps.gpuGridSize(gridSize);
+        refreshTicks = ConfigClamps.gpuRefreshTicks(refreshTicks);
+        maxBatch = ConfigClamps.gpuMaxBatch(maxBatch);
+    }
+
+    public void save() {
+        sanitize();
+        try {
+            Files.createDirectories(PATH.getParent());
+            Files.writeString(PATH, GSON.toJson(this));
+        } catch (IOException ignored) {}
+    }
 }
