@@ -1,19 +1,19 @@
 package com.helium.render;
 
-import com.helium.HeliumClient;
-import com.helium.config.HeliumConfig;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import com.helium.util.VersionCompat;
 
 public final class CullingHelper {
 
     private static volatile Frustum currentfrustum = null;
+    private static final ThreadLocal<BlockPos.Mutable> BACK_FACE_POS =
+            ThreadLocal.withInitial(BlockPos.Mutable::new);
 
     private CullingHelper() {}
 
@@ -41,34 +41,42 @@ public final class CullingHelper {
     public static boolean shouldcullback(BlockPos pos, Direction facing) {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null) return false;
-        BlockPos behind = pos.relative(facing.getOpposite());
+        BlockPos.Mutable behind = BACK_FACE_POS.get().set(pos, facing.getOpposite());
         BlockState state = client.level.getBlockState(behind);
         return state.canOcclude() && state.isCollisionShapeFullBlock(client.level, behind);
     }
 
     public static boolean isfacingcamera(Direction facing, Vec3 entitypos) {
+        return isfacingcamera(facing, entitypos.x, entitypos.y, entitypos.z);
+    }
+
+    public static boolean isfacingcamera(Direction facing, double x, double y, double z) {
         Minecraft client = Minecraft.getInstance();
         if (client.gameRenderer == null || client.gameRenderer.getMainCamera() == null) return true;
         Vec3 camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getMainCamera());
         return switch (facing) {
-            case DOWN -> camerapos.y <= entitypos.y;
-            case UP -> camerapos.y >= entitypos.y;
-            case NORTH -> camerapos.z <= entitypos.z;
-            case SOUTH -> camerapos.z >= entitypos.z;
-            case WEST -> camerapos.x <= entitypos.x;
-            case EAST -> camerapos.x >= entitypos.x;
+            case DOWN -> camerapos.y <= y;
+            case UP -> camerapos.y >= y;
+            case NORTH -> camerapos.z <= z;
+            case SOUTH -> camerapos.z >= z;
+            case WEST -> camerapos.x <= x;
+            case EAST -> camerapos.x >= x;
         };
     }
 
     public static boolean issignfacingcamera(Direction facing, Vec3 signpos) {
+        return issignfacingcamera(facing, signpos.x, signpos.y, signpos.z);
+    }
+
+    public static boolean issignfacingcamera(Direction facing, double x, double y, double z) {
         Minecraft client = Minecraft.getInstance();
         if (client.gameRenderer == null || client.gameRenderer.getMainCamera() == null) return true;
         Vec3 camerapos = VersionCompat.getCameraPosition(client.gameRenderer.getMainCamera());
         return switch (facing) {
-            case NORTH -> camerapos.z <= signpos.z;
-            case SOUTH -> camerapos.z >= signpos.z;
-            case WEST -> camerapos.x <= signpos.x;
-            case EAST -> camerapos.x >= signpos.x;
+            case NORTH -> camerapos.z <= z;
+            case SOUTH -> camerapos.z >= z;
+            case WEST -> camerapos.x <= x;
+            case EAST -> camerapos.x >= x;
             default -> true;
         };
     }
