@@ -3,6 +3,8 @@ package com.helium.gpu;
 import com.helium.HeliumClient;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Locale;
+
 public final class GpuDetector {
 
     public enum GpuVendor {
@@ -11,6 +13,7 @@ public final class GpuDetector {
 
     private static volatile GpuVendor vendor = GpuVendor.UNKNOWN;
     private static volatile String rendererString = "";
+    private static volatile String vendorString = "";
     private static volatile boolean initialized = false;
     private static volatile boolean isIntegratedOnly = false;
 
@@ -20,11 +23,15 @@ public final class GpuDetector {
         if (initialized) return;
 
         try {
+            vendorString = GL11.glGetString(GL11.GL_VENDOR);
+            if (vendorString == null) vendorString = "";
+
             rendererString = GL11.glGetString(GL11.GL_RENDERER);
             if (rendererString == null) rendererString = "";
 
-            String lower = rendererString.toLowerCase();
-            if (lower.contains("nvidia") || lower.contains("geforce") || lower.contains("quadro") || lower.contains("rtx") || lower.contains("gtx")) {
+            String vendorLower = vendorString.toLowerCase(Locale.ROOT);
+            String lower = rendererString.toLowerCase(Locale.ROOT);
+            if (vendorLower.contains("nvidia") || lower.contains("nvidia") || lower.contains("geforce") || lower.contains("quadro") || lower.contains("rtx") || lower.contains("gtx")) {
                 vendor = GpuVendor.NVIDIA;
             } else if (lower.contains("amd") || lower.contains("radeon") || lower.contains("rx ")) {
                 vendor = GpuVendor.AMD;
@@ -34,7 +41,7 @@ public final class GpuDetector {
 
             isIntegratedOnly = (vendor == GpuVendor.INTEL) && isLikelyIntegratedGpu(lower);
             initialized = true;
-            HeliumClient.LOGGER.info("gpu detected: {} ({}){}" , vendor, rendererString, isIntegratedOnly ? " [integrated]" : "");
+            HeliumClient.LOGGER.info("gpu detected: {} ({}){}", vendor, rendererString, isIntegratedOnly ? " [integrated]" : "");
         } catch (Throwable t) {
             initialized = true;
             HeliumClient.LOGGER.warn("gpu detection failed", t);
@@ -65,13 +72,17 @@ public final class GpuDetector {
         return rendererString;
     }
 
+    public static String getVendorString() {
+        return vendorString;
+    }
+
     public static boolean isIntegratedOnly() {
         return isIntegratedOnly;
     }
 
     private static boolean isLikelyIntegratedGpu(String renderer) {
-        return renderer.contains("uhd") || renderer.contains("hd graphics") || 
-               renderer.contains("iris xe") || renderer.contains("iris plus") ||
-               (renderer.contains("intel") && !renderer.contains("arc"));
+        return renderer.contains("uhd") || renderer.contains("hd graphics")
+                || renderer.contains("iris xe") || renderer.contains("iris plus")
+                || (renderer.contains("intel") && !renderer.contains("arc"));
     }
 }
