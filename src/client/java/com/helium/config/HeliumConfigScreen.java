@@ -35,6 +35,7 @@ public final class HeliumConfigScreen {
                 .setParentScreen(parent)
                 .setTitle(Component.translatable("helium.name"))
                 .setSavingRunnable(() -> {
+                    ConfigSanitizer.sanitize(config);
                     config.save();
                     if (HeliumSharedOptions.consumedirty()) {
                         Minecraft client = Minecraft.getInstance();
@@ -70,7 +71,7 @@ public final class HeliumConfigScreen {
                     addsharedentry(eb, groupentries, opt);
                 }
 
-                                SubCategoryListEntry subcat = eb.startSubCategory(Component.translatable(group.key()), groupentries)
+                SubCategoryListEntry subcat = eb.startSubCategory(Component.translatable(group.key()), groupentries)
                         .setExpanded(true)
                         .build();
                 cat.addEntry(subcat);
@@ -129,7 +130,7 @@ public final class HeliumConfigScreen {
                     .setEnumNameProvider(v -> {
                         String id = v instanceof Enum<?> en ? en.name().toLowerCase() : v.toString().toLowerCase();
                         if (v instanceof com.helium.platform.DwmEnums.WindowMaterial m) id = m.id;
-                        if (v instanceof com.helium.platform.DwmEnums.WindowCorner c) id = c.id;
+                        if (v instanceof com.heum.platform.DwmEnums.WindowCorner c) id = c.id;
                         return Component.translatable(e.namePrefix() + id);
                     })
                     .setSaveConsumer(v -> ((Consumer) e.set()).accept(v))
