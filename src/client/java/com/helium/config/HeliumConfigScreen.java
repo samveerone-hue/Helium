@@ -15,14 +15,11 @@ import net.minecraft.network.chat.Component;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public final class HeliumConfigScreen {
 
-    private static final Path EXPORT_PATH = FabricLoader.getInstance()
-            .getConfigDir().resolve("helium-export.json");
+    private static final Path EXPORT_PATH = FabricLoader.getInstance().getConfigDir().resolve("helium-export.json");
 
     private HeliumConfigScreen() {}
 
@@ -66,10 +63,7 @@ public final class HeliumConfigScreen {
 
             for (OptGroup group : page.groups()) {
                 List<me.shedaniel.clothconfig2.api.AbstractConfigListEntry> groupentries = new ArrayList<>();
-
-                for (Opt opt : group.options()) {
-                    addsharedentry(eb, groupentries, opt);
-                }
+                for (Opt opt : group.options()) addsharedentry(eb, groupentries, opt);
 
                 SubCategoryListEntry subcat = eb.startSubCategory(Component.translatable(group.key()), groupentries)
                         .setExpanded(true)
@@ -84,8 +78,7 @@ public final class HeliumConfigScreen {
                         .setTooltip(Component.translatable("helium.config.dev_mode.tooltip"))
                         .setSaveConsumer(v -> config.devMode = v)
                         .build());
-                cat.addEntry(eb.startSubCategory(Component.translatable("helium.config.category.developer"), devEntries)
-                        .build());
+                cat.addEntry(eb.startSubCategory(Component.translatable("helium.config.category.developer"), devEntries).build());
             }
         }
 
@@ -130,7 +123,7 @@ public final class HeliumConfigScreen {
                     .setEnumNameProvider(v -> {
                         String id = v instanceof Enum<?> en ? en.name().toLowerCase() : v.toString().toLowerCase();
                         if (v instanceof com.helium.platform.DwmEnums.WindowMaterial m) id = m.id;
-                        if (v instanceof com.heum.platform.DwmEnums.WindowCorner c) id = c.id;
+                        if (v instanceof com.helium.platform.DwmEnums.WindowCorner c) id = c.id;
                         return Component.translatable(e.namePrefix() + id);
                     })
                     .setSaveConsumer(v -> ((Consumer) e.set()).accept(v))
