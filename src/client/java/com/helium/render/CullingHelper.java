@@ -12,8 +12,6 @@ import com.helium.util.VersionCompat;
 public final class CullingHelper {
 
     private static volatile Frustum currentfrustum = null;
-    private static final ThreadLocal<BlockPos.Mutable> BACK_FACE_POS =
-            ThreadLocal.withInitial(BlockPos.Mutable::new);
 
     private CullingHelper() {}
 
@@ -41,7 +39,7 @@ public final class CullingHelper {
     public static boolean shouldcullback(BlockPos pos, Direction facing) {
         Minecraft client = Minecraft.getInstance();
         if (client.level == null) return false;
-        BlockPos.Mutable behind = BACK_FACE_POS.get().set(pos, facing.getOpposite());
+        BlockPos behind = pos.relative(facing.getOpposite());
         BlockState state = client.level.getBlockState(behind);
         return state.canOcclude() && state.isCollisionShapeFullBlock(client.level, behind);
     }
