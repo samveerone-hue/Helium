@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 public final class GpuComputeManager {
     @FunctionalInterface public interface SolidSampler { boolean isSolid(int x, int y, int z); }
     private record Key(int source, int target) {}
-    private record Request(Key key, float[] ray, long tick, long generation, SolidSampler sampler) {}
+    private record Request(Key key, float[] rays, int rayCount, long tick, long generation, SolidSampler sampler) {}
     private record Result(boolean visible, long tick, long generation) {}
     private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor(r -> {
         Thread t = new Thread(r, "Helium-GPU-Compute");
@@ -18,8 +18,10 @@ public final class GpuComputeManager {
         t.setPriority(Thread.NORM_PRIORITY - 1);
         return t;
     });
+    private static final Object BACKEND_LOCK = new Object();
     private static final ConcurrentMap<Key, Request> pending = new ConcurrentHashMap<>();
     private static final ConcurrentMap<Key, Result> results = new ConcurrentHashMap<>();
+    private static final ConcurrentMap<Key, Long> lastVisible = new ConcurrentHashMap<>();
     private static volatile GpuComputeConfig config;
     private static volatile OpenClComputeBackend backend;
     private static volatile long lastFlush = Long.MIN_VALUE;
@@ -27,53 +29,92 @@ public final class GpuComputeManager {
 
     private GpuComputeManager() {}
 
-    private static synchronized boolean enabled() {
+    private static synchronized boolean ensureBackend(boolean wanted) {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
-        boolean wanted = c.enabled && (c.lineOfSight || c.pathfinding);
         if (!wanted) {
             if (backend != null || !pending.isEmpty() || !results.isEmpty()) closeBackend();
             return false;
         }
-        if (backend == null) backend = OpenClComputeBackend.create();
+        if (backend == null) {
+            synchronized (BACKEND_LOCK) {
+                if (backend == null) backend = OpenClComputeBackend.create();
+            }
+        }
         return backend != null;
     }
 
+    private static synchronized boolean enabled() {
+        GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
+        return ensureBackend(c.enabled && c.lineOfSight);
+    }
+
     private static void closeBackend() {
-        OpenClComputeBackend b = backend;
-        backend = null;
-        if (b != null) {
-            try { b.close(); } catch (Throwable ignored) {}
+        synchronized (BACKEND_LOCK) {
+            OpenClComputeBackend b = backend;
+            backend = null;
+            generation++;
+            if (b != null) {
+                try { b.close(); } catch (Throwable ignored) {}
+            }
         }
         pending.clear();
         results.clear();
+        lastVisible.clear();
         lastFlush = Long.MIN_VALUE;
-        generation++;
     }
 
     public static void clearWorldState() {
         pending.clear();
         results.clear();
+        lastVisible.clear();
         lastFlush = Long.MIN_VALUE;
         generation++;
     }
 
-    public static boolean lineOfSightEnabled() { return enabled() && config.lineOfSight; }
-    public static boolean pathfindingEnabled() { return enabled() && config.pathfinding; }
+    public static boolean lineOfSightEnabled() {
+        return enabled() && config.lineOfSight;
+    }
+
+    public static boolean pathfindingEnabled() {
+        GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
+        return c.enabled && c.pathfinding && ensureBackend(true);
+    }
 
     public static Boolean cached(int source, int target, long tick) {
+        return cached(source, target, tick, 0.0D);
+    }
+
+    public static Boolean cached(int source, int target, long tick, double distanceSq) {
         GpuComputeConfig c = config == null ? (config = GpuComputeConfig.load()) : config;
         Result r = results.get(new Key(source, target));
         if (r == null || r.generation != generation) return null;
-        return tick - r.tick <= Math.max(1, c.refreshTicks) ? r.visible : null;
+        if (tick - r.tick > Math.max(1, c.refreshTicks)) return null;
+        if (r.visible) return true;
+
+        Long positive = lastVisible.get(new Key(source, target));
+        if (positive == null) return false;
+        return tick - positive <= occlusionGraceFrames(distanceSq);
+    }
+
+    private static int occlusionGraceFrames(double distanceSq) {
+        if (distanceSq <= 32.0D * 32.0D) return 4;
+        if (distanceSq <= 64.0D * 64.0D) return 8;
+        return 12;
     }
 
     public static void requestLineOfSight(int source, int target, float ox, float oy, float oz,
                                           float tx, float ty, float tz, long tick, SolidSampler sampler) {
-        if (!lineOfSightEnabled() || source == target) return;
-        if (cached(source, target, tick) != null) return;
+        requestLineOfSightMulti(source, target, new float[]{ox, oy, oz, tx, ty, tz}, tick, sampler);
+    }
+
+    public static void requestLineOfSightMulti(int source, int target, float[] rays, long tick, SolidSampler sampler) {
+        if (!lineOfSightEnabled() || source == target || rays == null || sampler == null || rays.length < 6) return;
+        if ((rays.length % 6) != 0) return;
+        if (cached(source, target, tick, 0.0D) != null) return;
+
         Key key = new Key(source, target);
         long requestGeneration = generation;
-        pending.putIfAbsent(key, new Request(key, new float[]{ox, oy, oz, tx, ty, tz}, tick, requestGeneration, sampler));
+        pending.putIfAbsent(key, new Request(key, rays, rays.length / 6, tick, requestGeneration, sampler));
         flush(tick - 1);
     }
 
@@ -82,52 +123,95 @@ public final class GpuComputeManager {
         lastFlush = tick;
         ArrayList<Request> batch = new ArrayList<>();
         int max = Math.max(1, config.maxBatch);
+        SolidSampler batchSampler = null;
+
         for (Request r : pending.values()) {
-            if (r.tick == tick && r.generation == generation && batch.size() < max && pending.remove(r.key, r)) batch.add(r);
+            if (r.tick != tick || r.generation != generation) continue;
+            if (batchSampler != null && r.sampler != batchSampler) continue;
+            if (batch.size() >= max || !pending.remove(r.key, r)) continue;
+            if (batchSampler == null) batchSampler = r.sampler;
+            batch.add(r);
         }
         if (batch.isEmpty() || backend == null) return;
 
-        Request anchor = batch.get(0);
-        int size = Math.max(16, Math.min(48, config.gridSize));
-        int half = size / 2;
-        int minX = (int) Math.floor(anchor.ray[0]) - half;
-        int minY = (int) Math.floor(anchor.ray[1]) - half;
-        int minZ = (int) Math.floor(anchor.ray[2]) - half;
-        byte[] solid = new byte[size * size * size];
-        int i = 0;
-        try {
-            for (int z = 0; z < size; z++) for (int y = 0; y < size; y++) for (int x = 0; x < size; x++, i++) {
-                solid[i] = (byte) (anchor.sampler.isSolid(minX + x, minY + y, minZ + z) ? 1 : 0);
-            }
-        } catch (Throwable t) {
-            HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
+        int totalRays = 0;
+        for (Request r : batch) totalRays += r.rayCount;
+        float[] rays = new float[totalRays * 6];
+        int rayCursor = 0;
+        for (Request r : batch) {
+            System.arraycopy(r.rays, 0, rays, rayCursor * 6, r.rayCount * 6);
+            rayCursor += r.rayCount;
+        }
+
+        GpuComputeMath.Grid grid = GpuComputeMath.computeGrid(rays, config.gridSize);
+        if (grid == null) {
+            for (Request r : batch) pending.putIfAbsent(r.key, r);
+            lastFlush = Long.MIN_VALUE;
             return;
         }
 
-        float[] rays = new float[batch.size() * 6];
-        for (i = 0; i < batch.size(); i++) System.arraycopy(batch.get(i).ray, 0, rays, i * 6, 6);
-        OpenClComputeBackend b = backend;
+        final int snapshotMinX = grid.minX();
+        final int snapshotMinY = grid.minY();
+        final int snapshotMinZ = grid.minZ();
+        final int snapshotSize = grid.size();
+        byte[] solid = new byte[snapshotSize * snapshotSize * snapshotSize];
+        int i = 0;
+        try {
+            for (int z = 0; z < snapshotSize; z++) for (int y = 0; y < snapshotSize; y++) for (int xx = 0; xx < snapshotSize; xx++, i++) {
+                solid[i] = (byte) (batchSampler.isSolid(snapshotMinX + xx, snapshotMinY + y, snapshotMinZ + z) ? 1 : 0);
+            }
+        } catch (Throwable t) {
+            HeliumClient.LOGGER.debug("gpu compute world snapshot failed", t);
+            for (Request r : batch) pending.putIfAbsent(r.key, r);
+            lastFlush = Long.MIN_VALUE;
+            return;
+        }
+
+        final OpenClComputeBackend b;
+        synchronized (BACKEND_LOCK) {
+            b = backend;
+            if (b == null) {
+                for (Request r : batch) pending.putIfAbsent(r.key, r);
+                lastFlush = Long.MIN_VALUE;
+                return;
+            }
+        }
         long batchGeneration = generation;
         EXECUTOR.execute(() -> {
-            try {
-                boolean[] values = b.runLineOfSight(rays, solid, size, minX, minY, minZ);
-                if (values == null || batchGeneration != generation) return;
-                for (int n = 0; n < values.length && n < batch.size(); n++) {
-                    Request r = batch.get(n);
-                    if (r.generation == generation) results.put(r.key, new Result(values[n], tick, generation));
+            synchronized (BACKEND_LOCK) {
+                if (b != backend || batchGeneration != generation) return;
+                try {
+                    boolean[] values = b.runLineOfSight(rays, solid, snapshotSize, snapshotMinX, snapshotMinY, snapshotMinZ);
+                    if (values == null || batchGeneration != generation) return;
+
+                    int valueCursor = 0;
+                    for (Request r : batch) {
+                        boolean visible = false;
+                        for (int n = 0; n < r.rayCount && valueCursor < values.length; n++, valueCursor++) {
+                            if (values[valueCursor]) visible = true;
+                        }
+                        if (r.generation == generation) {
+                            results.put(r.key, new Result(visible, tick, generation));
+                            if (visible) lastVisible.put(r.key, tick);
+                        }
+                    }
+                } catch (Throwable t) {
+                    HeliumClient.LOGGER.debug("gpu line-of-sight batch failed", t);
                 }
-            } catch (Throwable t) {
-                HeliumClient.LOGGER.debug("gpu line-of-sight batch failed", t);
             }
         });
     }
 
     public static int[] runFlowField(byte[] blocked, int size, int targetX, int targetY, int targetZ) {
-        if (!pathfindingEnabled() || backend == null) return null;
-        try { return backend.runFlowField(blocked, size, targetX, targetY, targetZ); }
-        catch (Throwable t) {
-            HeliumClient.LOGGER.debug("gpu flow-field failed", t);
-            return null;
+        if (!pathfindingEnabled()) return null;
+        synchronized (BACKEND_LOCK) {
+            OpenClComputeBackend b = backend;
+            if (b == null) return null;
+            try { return b.runFlowField(blocked, size, targetX, targetY, targetZ); }
+            catch (Throwable t) {
+                HeliumClient.LOGGER.debug("gpu flow-field failed", t);
+                return null;
+            }
         }
     }
 }
