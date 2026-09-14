@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class NativeMemoryManager {
 
     private static final int[] POOL_SIZES = {1024, 4096, 16384, 65536, 262144, 1048576};
+    private static final ByteBuffer ZERO_CHUNK = ByteBuffer.allocate(8192);
 
     @SuppressWarnings("unchecked")
     private static final ConcurrentLinkedDeque<ByteBuffer>[] POOLS = new ConcurrentLinkedDeque[POOL_SIZES.length];
@@ -157,10 +158,16 @@ public final class NativeMemoryManager {
         }
     }
 
+    /** Zero the entire buffer capacity without the per-byte loop or changing its position/limit. */
     public static void zero(ByteBuffer buffer) {
         if (buffer == null) return;
-        for (int i = 0; i < buffer.capacity(); i++) {
-            buffer.put(i, (byte) 0);
+        ByteBuffer dst = buffer.duplicate();
+        dst.clear();
+        while (dst.hasRemaining()) {
+            int length = Math.min(dst.remaining(), ZERO_CHUNK.capacity());
+            ByteBuffer chunk = ZERO_CHUNK.duplicate();
+            chunk.limit(length);
+            dst.put(chunk);
         }
     }
 
