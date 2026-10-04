@@ -237,6 +237,7 @@ public final class GpuComputeManager {
 
         int totalRays = 0;
         for (Request r : batch) totalRays += r.rayCount;
+        final int expectedRayCount = totalRays;
         float[] rays = new float[totalRays * 6];
         int rayCursor = 0;
         for (Request r : batch) {
@@ -287,7 +288,7 @@ public final class GpuComputeManager {
                             boolean[] values = b.runLineOfSight(rays, solid, snapshotSize,
                                     snapshotMinX, snapshotMinY, snapshotMinZ);
                             if (batchGeneration != generation) return;
-                            if (values == null || values.length != totalRays) {
+                            if (values == null || values.length != expectedRayCount) {
                                 markVisibleFallback(batch, batchGeneration);
                                 return;
                             }
