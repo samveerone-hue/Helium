@@ -1,5 +1,6 @@
 package com.helium.mixin.render;
 
+import com.helium.HeliumClient;
 import com.helium.config.ExperimentalConfig;
 import com.helium.render.GLStateCache;
 import com.helium.render.ShaderUniformCache;
@@ -13,8 +14,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class GlStateManagerLegacyMixin {
 
     private static boolean helium$glStateCacheEnabled() {
-        ExperimentalConfig experimental = ExperimentalConfig.load();
-        return experimental.glStateCache;
+        try {
+            ExperimentalConfig experimental = ExperimentalConfig.get();
+                return experimental.glStateCache
+                    && HeliumClient.isGlStateCacheAvailable()
+                    && !HeliumClient.hasImmediatelyFast();
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     @Inject(method = "_activeTexture", at = @At("HEAD"))

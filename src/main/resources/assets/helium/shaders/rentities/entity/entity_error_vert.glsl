@@ -66,6 +66,10 @@ struct EntityInstance {
     vec4 armorStandRightArmPose;
     vec4 armorStandLeftLegPose;
     vec4 armorStandRightLegPose;
+    vec4 exactPose6;
+    vec4 exactPose7;
+    vec4 exactPose8;
+    vec4 exactPose9;
 
     int packedLight;
     float slimeScaleXZ;

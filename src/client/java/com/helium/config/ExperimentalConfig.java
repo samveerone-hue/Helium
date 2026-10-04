@@ -11,23 +11,44 @@ import java.nio.file.Path;
 /** Real, opt-in experimental features which are intentionally separate from the stable schema. */
 public final class ExperimentalConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("helium-experimental.json");
+    private static final Path PATH = configPath();
 
-    public boolean networkOptimizations = false;
+    private static Path configPath() {
+        try {
+            FabricLoader loader = FabricLoader.getInstance();
+            if (loader != null) {
+                return loader.getConfigDir().resolve("helium-experimental.json");
+            }
+        } catch (Throwable ignored) {
+            // fall through to the safe fallback below
+        }
+        return Path.of(System.getProperty("user.home", "."), ".helium", "helium-experimental.json");
+    }
+
     public boolean glStateCache = false;
     public boolean packetBatching = false;
     public boolean fastStartup = false;
     public boolean modelCache = false;
     public boolean simdMath = false;
-    public boolean asyncLightUpdates = false;
 
     public int packetBatchTicks = 1;
     public int modelCacheMaxMb = 64;
-    public int asyncLightMaxPerTick = 64;
 
     private static volatile ExperimentalConfig INSTANCE;
 
     private ExperimentalConfig() {}
+
+    public static ExperimentalConfig get() {
+        ExperimentalConfig cached = INSTANCE;
+        if (cached != null) return cached;
+        return load();
+    }
+
+    public static void invalidate() {
+        synchronized (ExperimentalConfig.class) {
+            INSTANCE = null;
+        }
+    }
 
     public static ExperimentalConfig load() {
         ExperimentalConfig cached = INSTANCE;
@@ -41,7 +62,7 @@ public final class ExperimentalConfig {
                 try {
                     ExperimentalConfig loaded = GSON.fromJson(Files.readString(PATH), ExperimentalConfig.class);
                     if (loaded != null) cfg = loaded;
-                } catch (IOException ignored) {
+                } catch (IOException | RuntimeException ignored) {
                 }
             }
             cfg.sanitize();
@@ -54,7 +75,6 @@ public final class ExperimentalConfig {
     void sanitize() {
         packetBatchTicks = ConfigClamps.experimentalPacketBatchTicks(packetBatchTicks);
         modelCacheMaxMb = ConfigClamps.experimentalModelCacheMaxMb(modelCacheMaxMb);
-        asyncLightMaxPerTick = ConfigClamps.experimentalAsyncLightMaxPerTick(asyncLightMaxPerTick);
     }
 
     public void save() {
@@ -62,7 +82,10 @@ public final class ExperimentalConfig {
         try {
             Files.createDirectories(PATH.getParent());
             Files.writeString(PATH, GSON.toJson(this));
-        } catch (IOException ignored) {
+            synchronized (ExperimentalConfig.class) {
+                INSTANCE = this;
+            }
+        } catch (IOException | RuntimeException ignored) {
         }
     }
 }

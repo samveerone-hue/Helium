@@ -915,16 +915,6 @@ public class EntityBatchRenderer {
             } catch (Exception e) { return null; }
         }
 
-        /** Optional object — null when absent. */
-        private static java.lang.invoke.MethodHandle mhObj(Class<?> cls, String... names) {
-            Field f = findField(cls, null, "object", names);
-            if (f == null) return null;
-            try {
-                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
-                    .asType(java.lang.invoke.MethodType.methodType(Object.class, Object.class));
-            } catch (Exception e) { return null; }
-        }
-
         /**
          * Mandatory object field. Missing it means the fallback queued-state
          * extraction cannot know which entity type the state represents, so it
@@ -954,17 +944,11 @@ public class EntityBatchRenderer {
     }
 
     private static float clampBodyYaw(float bodyYaw, float headYaw) {
-        float diff = wrapDegrees(bodyYaw - headYaw);
-        if (diff > 75.0f) return headYaw + 75.0f;
-        if (diff < -75.0f) return headYaw - 75.0f;
-        return bodyYaw;
+        return EntityPoseNormalizer.clampBodyYaw(bodyYaw, headYaw);
     }
 
     private static float wrapDegrees(float deg) {
-        float d = deg % 360f;
-        if (d >= 180f) d -= 360f;
-        if (d < -180f) d += 360f;
-        return d;
+        return EntityPoseNormalizer.wrapDegrees(deg);
     }
 
     private static final ClassValue<StateAccessor> ACCESSOR_CACHE = new ClassValue<>() {
@@ -1039,8 +1023,14 @@ public class EntityBatchRenderer {
             EntityType<?> type = acc.type != null ? (EntityType<?>) invokeAccessor(acc.type, state) : null;
             boolean isArmorStand = (type == EntityType.ARMOR_STAND);
 
-            float headYawDeg = 0f;
-            if (!isArmorStand && acc.headYaw != null) {
+            float bodyYawDeg = acc.yaw != null ? (float) invokeAccessor(acc.yaw, state) : 0f;
+            if (acc.yawO != null) {
+                float yawODeg = (float) invokeAccessor(acc.yawO, state);
+                bodyYawDeg = net.minecraft.util.math.MathHelper.lerpAngleDegrees(partialTick, yawODeg, bodyYawDeg);
+            }
+
+            float headYawDeg = bodyYawDeg;
+            if (acc.headYaw != null) {
                 headYawDeg = (float) invokeAccessor(acc.headYaw, state);
                 if (acc.headYawO != null) {
                     float headYawO = (float) invokeAccessor(acc.headYawO, state);
@@ -1048,28 +1038,21 @@ public class EntityBatchRenderer {
                 }
             }
 
-            float bodyYawDeg = acc.yaw != null ? (float) invokeAccessor(acc.yaw, state) : 0f;
-            if (acc.yawO != null) {
-                float yawODeg = (float) invokeAccessor(acc.yawO, state);
-                bodyYawDeg = net.minecraft.util.math.MathHelper.lerpAngleDegrees(partialTick, yawODeg, bodyYawDeg);
-            }
-            if (!isArmorStand) bodyYawDeg = clampBodyYaw(bodyYawDeg, headYawDeg);
+            bodyYawDeg = clampBodyYaw(bodyYawDeg, headYawDeg);
 
             float rotY = (float) Math.toRadians(180.0f - bodyYawDeg);
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_ROTATION_Y, rotY);
 
             float headYawRel = 0f;
             float headPitchRel = 0f;
-            if (!isArmorStand) {
-                headYawRel = (float) Math.toRadians(wrapDegrees(headYawDeg - bodyYawDeg));
-                if (acc.headPitch != null) {
-                    float pitchDeg = (float) invokeAccessor(acc.headPitch, state);
-                    if (acc.headPitchO != null) {
-                        float pitchODeg = (float) invokeAccessor(acc.headPitchO, state);
-                        pitchDeg = net.minecraft.util.math.MathHelper.lerp(partialTick, pitchODeg, pitchDeg);
-                    }
-                    headPitchRel = (float) Math.toRadians(pitchDeg);
+            headYawRel = (float) Math.toRadians(EntityPoseNormalizer.relativeHeadYaw(bodyYawDeg, headYawDeg));
+            if (acc.headPitch != null) {
+                float pitchDeg = (float) invokeAccessor(acc.headPitch, state);
+                if (acc.headPitchO != null) {
+                    float pitchODeg = (float) invokeAccessor(acc.headPitchO, state);
+                    pitchDeg = net.minecraft.util.math.MathHelper.lerp(partialTick, pitchODeg, pitchDeg);
                 }
+                headPitchRel = (float) Math.toRadians(pitchDeg);
             }
 
             float limbSwing = 0f, limbSwingAmt = 0f, attackProgress = 0f, swimProgress = 0f;

@@ -36,7 +36,6 @@
     "idle.GameRendererMixin",
     "idle.MinecraftClientMixin",
     "idle.InactivityFpsLimiterMixin",
-    "lighting.LightingProviderMixin",
     "lighting.BambooLightMixin",
     "lighting.DynamicGraphMixin",
     "render.GameRendererTemporalMixin",
@@ -102,8 +101,7 @@
     "render.EquipmentRendererMixin",
     "render.EntityBatchRendererEquipmentMixin",
     "render.RentitiesEquipmentItemQueueMixin",
-    "render.EntityMeshBakerBoneAliasMixin",
-    "render.EntityBatchRendererSpecialPoseShaderMixin"
+    "render.EntityMeshBakerBoneAliasMixin"
   ],
   "injectors": {
     "defaultRequire": 0

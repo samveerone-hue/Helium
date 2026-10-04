@@ -19,13 +19,18 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 @Mixin(InGameHud.class)
 public abstract class SmoothHotbarMixin {
 
+    static boolean isSmoothHotbarEnabled() {
+        var config = HeliumClient.getConfig();
+        return config != null && config.smoothHotbar;
+    }
+
     @Shadow
     @Nullable
     protected abstract PlayerEntity getCameraPlayer();
 
     @Inject(method = "renderHotbar", at = @At("HEAD"))
     private void helium$onRenderHotbarHead(DrawContext context, RenderTickCounter counter, CallbackInfo ci) {
-        if (!HeliumClient.getConfig().smoothHotbar) return;
+        if (!isSmoothHotbarEnabled()) return;
 
         PlayerEntity player = getCameraPlayer();
         if (player == null) return;
@@ -59,7 +64,7 @@ public abstract class SmoothHotbarMixin {
             require = 0
     )
     private void helium$modifyHotbarSelectorPos(Args args) {
-        if (!HeliumClient.getConfig().smoothHotbar) return;
+        if (!isSmoothHotbarEnabled()) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
         int basex = (client.getWindow().getScaledWidth() / 2) - 92;
@@ -76,7 +81,7 @@ public abstract class SmoothHotbarMixin {
             require = 0
     )
     private void helium$modifyHotbarSelectorPosAlt(Args args) {
-        if (!HeliumClient.getConfig().smoothHotbar) return;
+        if (!isSmoothHotbarEnabled()) return;
 
         MinecraftClient client = MinecraftClient.getInstance();
         int basex = (client.getWindow().getScaledWidth() / 2) - 92;

@@ -17,8 +17,6 @@ public final class RenderPipeline {
     private static volatile int frameSampleCount = 0;
     private static volatile long frameTimeSumNs = 0;
     private static volatile double smoothedFrameTime = 16.67;
-    private static volatile boolean adaptivePacing = true;
-
     private RenderPipeline() {}
 
     public static void init() {
@@ -58,18 +56,6 @@ public final class RenderPipeline {
         frameCount.incrementAndGet();
     }
 
-    /**
-     * Records the end of a frame without blocking the render thread. Minecraft/driver frame
-     * limiting owns present pacing; Helium only exposes the measured budget to schedulers.
-     */
-    public static void onFrameEnd() {
-        if (!initialized.get() || !adaptivePacing) return;
-        long elapsed = System.nanoTime() - lastFrameTime.get();
-        if (elapsed < 0) return;
-        // Intentionally no sleep: sleeping here can add input latency and fight Minecraft's
-        // own frame limiter. The frame budget remains available through getFrameBudgetMs().
-    }
-
     public static void setTargetFps(int fps) {
         if (fps <= 0 || fps >= 260) {
             frameBudgetNs.set(0L);
@@ -78,10 +64,6 @@ public final class RenderPipeline {
         if (fps <= 1000) {
             frameBudgetNs.set(1_000_000_000L / fps);
         }
-    }
-
-    public static void setAdaptivePacing(boolean enabled) {
-        adaptivePacing = enabled;
     }
 
     public static double getFrameBudgetMs() {

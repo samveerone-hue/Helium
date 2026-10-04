@@ -8,6 +8,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.entity.EntityRenderer;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -22,6 +23,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(EntityRenderer.class)
 public abstract class EntityCullingMixin<T extends Entity> {
     @Unique private static boolean helium$failed = false;
+    @Unique private static volatile ClientWorld helium$lineOfSightWorld;
+    @Unique private static final ThreadLocal<BlockPos.Mutable> helium$samplePosition =
+            ThreadLocal.withInitial(BlockPos.Mutable::new);
+    @Unique private static final GpuComputeManager.SolidSampler helium$solidSampler = (x, y, z) -> {
+        ClientWorld world = helium$lineOfSightWorld;
+        if (world == null) return false;
+        BlockPos.Mutable pos = helium$samplePosition.get();
+        pos.set(x, y, z);
+        BlockState state = world.getBlockState(pos);
+        return state.isOpaque() && state.isFullCube(world, pos);
+    };
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true, require = 0)
     private void helium$cullDistantEntities(
@@ -34,7 +46,8 @@ public abstract class EntityCullingMixin<T extends Entity> {
         if (helium$failed) return;
         try {
             HeliumConfig config = HeliumClient.getConfig();
-            if (config == null || !config.modEnabled) return;
+            if (config == null || !config.modEnabled
+                    || (!config.entityCulling && !config.temporalReprojection)) return;
 
             MinecraftClient client = MinecraftClient.getInstance();
             if (client.player == null || client.world == null || entity instanceof PlayerEntity) return;
@@ -65,45 +78,44 @@ public abstract class EntityCullingMixin<T extends Entity> {
                     }
                 }
 
-                long tick = client.world.getTime();
-                int sourceId = client.player.getId();
-                int targetId = entity.getId();
-                Boolean gpu = GpuComputeManager.cached(sourceId, targetId, tick, distSq);
-                if (gpu != null && !gpu) {
-                    cir.setReturnValue(false);
-                    return;
-                }
+                if (distSq <= 2304.0 && GpuComputeManager.lineOfSightConfigured()
+                        && GpuComputeManager.lineOfSightEnabled()) {
+                    long tick = client.world.getTime();
+                    int sourceId = client.player.getId();
+                    int targetId = entity.getId();
+                    Boolean gpu = GpuComputeManager.cached(sourceId, targetId, tick, distSq);
+                    if (gpu != null && !gpu) {
+                        cir.setReturnValue(false);
+                        return;
+                    }
+                    if (gpu == null) {
+                        Box bounds = entity.getBoundingBox();
+                        float centerX = (float) ((bounds.minX + bounds.maxX) * 0.5);
+                        float centerY = (float) ((bounds.minY + bounds.maxY) * 0.5);
+                        float centerZ = (float) ((bounds.minZ + bounds.maxZ) * 0.5);
+                        float topY = (float) (bounds.maxY - 0.05);
+                        float bottomY = (float) (bounds.minY + 0.05);
+                        float leftX = (float) (bounds.minX + 0.05);
+                        float rightX = (float) (bounds.maxX - 0.05);
+                        float ox = (float) x;
+                        float oy = (float) y;
+                        float oz = (float) z;
+                        if (helium$lineOfSightWorld != client.world) helium$lineOfSightWorld = client.world;
 
-                if (distSq <= 2304.0 && GpuComputeManager.lineOfSightEnabled()) {
-                    Box bounds = entity.getBoundingBox();
-                    float centerX = (float) ((bounds.minX + bounds.maxX) * 0.5);
-                    float centerY = (float) ((bounds.minY + bounds.maxY) * 0.5);
-                    float centerZ = (float) ((bounds.minZ + bounds.maxZ) * 0.5);
-                    float topY = (float) (bounds.maxY - 0.05);
-                    float bottomY = (float) (bounds.minY + 0.05);
-                    float leftX = (float) (bounds.minX + 0.05);
-                    float rightX = (float) (bounds.maxX - 0.05);
-                    float ox = (float) x;
-                    float oy = (float) y;
-                    float oz = (float) z;
-
-                    float[] rays = new float[]{
+                        float[] rays = new float[]{
                             ox, oy, oz, centerX, centerY, centerZ,
                             ox, oy, oz, centerX, topY, centerZ,
                             ox, oy, oz, centerX, bottomY, centerZ,
                             ox, oy, oz, leftX, centerY, centerZ,
                             ox, oy, oz, rightX, centerY, centerZ
-                    };
-                    GpuComputeManager.requestLineOfSightMulti(
+                        };
+                        GpuComputeManager.requestLineOfSightMulti(
                             sourceId,
                             targetId,
                             rays,
                             tick,
-                            (bx, by, bz) -> {
-                                BlockPos p = new BlockPos(bx, by, bz);
-                                BlockState s = client.world.getBlockState(p);
-                                return s.isOpaque() && s.isFullCube(client.world, p);
-                            });
+                            helium$solidSampler);
+                    }
                 }
             }
 

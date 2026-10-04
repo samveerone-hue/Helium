@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.Field;
 
-/** Bypasses obsolete 1.21.11 render-state reflection for modern EntityRenderState objects. */
+/** Seeds modern render-state data while allowing the normal writer and its RETURN postprocessor to finish. */
 @Mixin(targets = "com.helium.rentities.entities.EntityBatchRenderer")
 public abstract class EntityBatchRendererModernStateMixin {
     @Inject(method = "writeEntityInstance", at = @At("HEAD"), cancellable = true, require = 0)
@@ -86,9 +86,8 @@ public abstract class EntityBatchRendererModernStateMixin {
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_X, 1.0f);
             MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_TEX_SCALE_Y, 1.0f);
 
-            // EntityBatchRendererStateMixin runs at RETURN and adds exact model poses,
-            // special renderer scale and the final authoritative state values.
-            cir.setReturnValue(true);
+            // Let the renderer finish normally so the RETURN injector can capture the
+            // exact model pose and baked pivots before the instance is queued.
         } catch (Throwable t) {
             MemoryUtil.memSet(ptr, 0, EntityInstance.STRIDE);
             cir.setReturnValue(false);

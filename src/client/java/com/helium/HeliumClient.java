@@ -2,6 +2,7 @@ package com.helium;
 
 import com.helium.config.ExperimentalConfig;
 import com.helium.config.HeliumConfig;
+import com.helium.compute.GpuComputeManager;
 import com.helium.dedup.DeduplicationManager;
 import com.helium.tweaks.AsyncPackReloader;
 import com.helium.gpu.AdaptiveSyncManager;
@@ -10,13 +11,11 @@ import com.helium.gpu.GpuDetector;
 import com.helium.gpu.IntelOptimizer;
 import com.helium.gpu.NvidiaOptimizer;
 import com.helium.idle.IdleManager;
-import com.helium.lighting.AsyncLightEngine;
 import com.helium.math.FastMath;
 import com.helium.memory.AllocationReducer;
 import com.helium.memory.BufferPool;
 import com.helium.memory.NativeMemoryManager;
 import com.helium.memory.ObjectPool;
-import com.helium.network.BufferOptimizer;
 import com.helium.network.FastIpPingOptimizer;
 import com.helium.platform.DeviceDetector;
 import com.helium.render.DevModeOptimizer;
@@ -62,14 +61,12 @@ public class HeliumClient implements ClientModInitializer {
     private static boolean memoryOptsFailed = false;
     private static boolean glStateCacheFailed = false;
     private static boolean threadOptsFailed = false;
-    private static boolean networkOptsFailed = false;
     private static boolean startupOptsFailed = false;
     private static boolean nativeMemoryFailed = false;
     private static boolean renderPipelineFailed = false;
     private static boolean modelCacheFailed = false;
     private static boolean allocationReducerFailed = false;
     private static boolean simdMathFailed = false;
-    private static boolean asyncLightFailed = false;
     private static boolean idleManagerFailed = false;
     private static boolean gpuDetectorFailed = false;
     private static boolean gpuOptsFailed = false;
@@ -104,6 +101,8 @@ public class HeliumClient implements ClientModInitializer {
         }
 
         detectCompatibleMods();
+
+        initFeatureSafely("GpuComputeConfig", GpuComputeManager::initializeConfiguration, null);
 
         initFeatureSafely("FastStartup", () -> {
             if (experimental.fastStartup) FastStartup.prepare();
@@ -181,10 +180,6 @@ public class HeliumClient implements ClientModInitializer {
         initFeatureSafely("ObjectDeduplication", () -> {
             if (config.objectDeduplication) DeduplicationManager.init();
         }, () -> dedupFailed = true);
-
-        initFeatureSafely("AsyncLightPreparation", () -> {
-            if (experimental.asyncLightUpdates) AsyncLightEngine.init(experimental.asyncLightMaxPerTick);
-        }, () -> asyncLightFailed = true);
 
         initFeatureSafely("JomlFastMath", () -> {
             if (config.jomlFastMath) {
@@ -276,7 +271,6 @@ public class HeliumClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             AsyncPackReloader.shutdown();
             FastStartup.shutdown();
-            AsyncLightEngine.shutdown();
         });
 
         long elapsed = (System.nanoTime() - start) / 1_000_000;
@@ -395,14 +389,12 @@ public class HeliumClient implements ClientModInitializer {
     public static boolean isMemoryOptsAvailable() { return featureAvailable("MemoryOptimizations"); }
     public static boolean isGlStateCacheAvailable() { return featureAvailable("GLStateCache"); }
     public static boolean isThreadOptsAvailable() { return featureAvailable("ThreadOptimizations"); }
-    public static boolean isNetworkOptsAvailable() { return featureAvailable("NetworkOptimizations"); }
     public static boolean isStartupOptsAvailable() { return featureAvailable("FastStartup"); }
     public static boolean isNativeMemoryAvailable() { return featureAvailable("NativeMemory"); }
     public static boolean isRenderPipelineAvailable() { return featureAvailable("RenderPipeline"); }
     public static boolean isModelCacheAvailable() { return featureAvailable("ModelCache"); }
     public static boolean isAllocationReducerAvailable() { return featureAvailable("AllocationReducer"); }
     public static boolean isSimdMathAvailable() { return featureAvailable("SIMDMath"); }
-    public static boolean isAsyncLightAvailable() { return featureAvailable("AsyncLightPreparation"); }
     public static boolean isIdleManagerAvailable() { return featureAvailable("IdleManager"); }
     public static boolean isGpuDetectorAvailable() { return featureAvailable("GpuDetector"); }
     public static boolean isGpuOptsAvailable() { return featureAvailable("GpuOptimizations"); }

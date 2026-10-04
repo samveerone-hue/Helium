@@ -2,10 +2,7 @@ package com.helium.mixin.tick;
 
 import com.helium.HeliumClient;
 import com.helium.compute.GpuComputeManager;
-import com.helium.config.ExperimentalConfig;
 import com.helium.config.HeliumConfig;
-import com.helium.lighting.AsyncLightEngine;
-import com.helium.memory.MemoryCompactor;
 import net.minecraft.client.world.ClientWorld;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -23,13 +20,5 @@ public abstract class ClientWorldMixin {
         if (config == null || !config.modEnabled) return;
 
         if (helium$tickCounter++ == 0) GpuComputeManager.clearWorldState();
-        long time = helium$tickCounter - 1;
-
-        if (config.memoryOptimizations) MemoryCompactor.tick(time);
-
-        ExperimentalConfig experimental = ExperimentalConfig.load();
-        if (experimental.asyncLightUpdates && AsyncLightEngine.isInitialized()) {
-            AsyncLightEngine.drainPrepared();
-        }
     }
 }

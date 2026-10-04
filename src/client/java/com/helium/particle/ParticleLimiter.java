@@ -14,10 +14,15 @@ public final class ParticleLimiter {
     private ParticleLimiter() {}
 
     public static void init(int max) {
+        init(max, 0);
+    }
+
+    public static void init(int max, int existingParticles) {
         maxParticles = Math.max(1, max);
-        currentParticleCount.set(0);
+        currentParticleCount.set(Math.max(0, existingParticles));
         initialized = true;
-        HeliumClient.LOGGER.info("particle limiter initialized with max {}", maxParticles);
+        HeliumClient.LOGGER.info("particle limiter initialized with max {} and {} active particles",
+                maxParticles, currentParticleCount.get());
     }
 
     public static boolean isInitialized() {
@@ -25,9 +30,14 @@ public final class ParticleLimiter {
     }
 
     public static boolean canAddParticle(Particle particle) {
+        return canAddParticle(particle, true);
+    }
+
+    public static boolean canAddParticle(Particle particle, boolean preservePriority) {
         if (!initialized) return true;
 
         int count = currentParticleCount.get();
+        if (!preservePriority) return count < maxParticles;
         int priority = ParticlePriority.getPriority(particle);
 
         return ParticlePriority.shouldKeep(priority, count, maxParticles);

@@ -5,6 +5,7 @@ import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.entity.state.SheepEntityRenderState;
 import net.minecraft.client.render.entity.state.WardenEntityRenderState;
 import net.minecraft.client.render.entity.state.WitherEntityRenderState;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
 
 /** Single correctness gate for the Rentities replacement renderer. */
@@ -40,11 +41,17 @@ public final class RentitiesRenderStatePolicy {
         // Let vanilla handle baby/scaled/upside-down variants rather than drawing
         // a correctly animated model at the wrong transform.
         if (state instanceof LivingEntityRenderState living) {
-            if (living.baby || Math.abs(living.baseScale - 1.0f) > 0.001f || living.flipUpsideDown) return false;
+            if (living.baby
+                    || Math.abs(living.baseScale - 1.0f) > 0.001f
+                    || living.flipUpsideDown
+                    || living.usingRiptide
+                    || living.isInPose(EntityPose.SLEEPING)) {
+                return false;
+            }
         }
 
         if (state instanceof ArmorStandEntityRenderState stand) {
-            return !stand.small && !stand.marker && stand.showArms && stand.showBasePlate;
+            return !stand.marker;
         }
 
         return true;

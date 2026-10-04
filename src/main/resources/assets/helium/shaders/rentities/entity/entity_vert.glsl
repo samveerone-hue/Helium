@@ -2,6 +2,7 @@
 
 const int FLAG_SLIME = 1024;
 const int FLAG_MAGMA_CUBE = 2;
+const int FLAG_MODEL_SCALE = 2048;
 
 
 layout(location = 0) in vec3  aPosition;
@@ -72,6 +73,10 @@ struct EntityInstance {
     vec4 armorStandRightArmPose;
     vec4 armorStandLeftLegPose;
     vec4 armorStandRightLegPose;
+    vec4 exactPose6;
+    vec4 exactPose7;
+    vec4 exactPose8;
+    vec4 exactPose9;
 
     int packedLight;
     float slimeScaleXZ;
@@ -325,6 +330,11 @@ mat4 getArmorStandBone(int b, EntityInstance inst) {
             p,
             armorStandRotation(inst.armorStandRightLegPose));
     }
+
+    if (b == 6) return pivotRot(p, armorStandRotation(inst.exactPose6));
+    if (b == 7) return pivotRot(p, armorStandRotation(inst.exactPose7));
+    if (b == 8) return pivotRot(p, armorStandRotation(inst.exactPose8));
+    if (b == 9) return pivotRot(p, armorStandRotation(inst.exactPose9));
 
     return mat4(1.0);
 }
@@ -1082,6 +1092,11 @@ void main() {
             localNrm.x * c + localNrm.z * s,
             localNrm.y,
             localNrm.z * c - localNrm.x * s);
+
+    if ((inst.flags & FLAG_MODEL_SCALE) != 0) {
+        rotPos.xz *= max(inst.slimeScaleXZ, 0.01);
+        rotPos.y *= max(inst.slimeScaleY, 0.01);
+    }
 
     if ((inst.materialFlags & FLAG_SLIME) != 0) {
         float shell = (uSlimeOverlay != 0) ? 1.06 : 1.0;

@@ -23,12 +23,14 @@ public abstract class BlockModelsCacheMixin {
         }
     }
 
+    private static void helium$configureCache() {
+        ModelCache.init(ExperimentalConfig.load().modelCacheMaxMb);
+    }
+
     @Inject(method = "getModel", at = @At("HEAD"), cancellable = true)
     private void helium$cacheGet(BlockState state, CallbackInfoReturnable<BlockStateModel> cir) {
         if (!helium$enabled()) return;
-        if (!ModelCache.isInitialized()) {
-            ModelCache.init(ExperimentalConfig.load().modelCacheMaxMb);
-        }
+        helium$configureCache();
         BlockStateModel cached = ModelCache.get(state);
         if (cached != null) cir.setReturnValue(cached);
     }
@@ -36,9 +38,7 @@ public abstract class BlockModelsCacheMixin {
     @Inject(method = "getModel", at = @At("RETURN"))
     private void helium$cachePut(BlockState state, CallbackInfoReturnable<BlockStateModel> cir) {
         if (!helium$enabled() || cir.getReturnValue() == null) return;
-        if (!ModelCache.isInitialized()) {
-            ModelCache.init(ExperimentalConfig.load().modelCacheMaxMb);
-        }
+        helium$configureCache();
         ModelCache.put(state, cir.getReturnValue());
     }
 

@@ -1,7 +1,8 @@
 package com.helium.particle;
 
 import net.minecraft.client.particle.Particle;
-import net.minecraft.particle.ParticleTypes;
+
+import java.util.Locale;
 
 public final class ParticlePriority {
 
@@ -11,13 +12,21 @@ public final class ParticlePriority {
     public static final int PRIORITY_LOW = 25;
     public static final int PRIORITY_AMBIENT = 10;
 
+    private static final ClassValue<Integer> PRIORITY_BY_CLASS = new ClassValue<>() {
+        @Override
+        protected Integer computeValue(Class<?> type) {
+            return classify(type.getSimpleName().toLowerCase(Locale.ROOT));
+        }
+    };
+
     private ParticlePriority() {}
 
     public static int getPriority(Particle particle) {
         if (particle == null) return PRIORITY_LOW;
+        return PRIORITY_BY_CLASS.get(particle.getClass());
+    }
 
-        String className = particle.getClass().getSimpleName().toLowerCase();
-
+    private static int classify(String className) {
         if (className.contains("explosion") || className.contains("damage") || className.contains("crit")) {
             return PRIORITY_CRITICAL;
         }

@@ -48,16 +48,4 @@ public abstract class WorldRendererPipelineMixin {
             HeliumClient.LOGGER.warn("render pipeline hook disabled ({})", t.getClass().getSimpleName());
         }
     }
-
-    @Inject(method = "render", at = @At("RETURN"), require = 0)
-    private void helium$frameEnd(CallbackInfo ci) {
-        if (helium$failed) return;
-        try {
-            HeliumConfig config = HeliumClient.getConfig();
-            if (config == null || !config.modEnabled || !config.renderPipelining) return;
-            if (!RenderPipeline.isInitialized()) return;
-
-            RenderPipeline.onFrameEnd();
-        } catch (Throwable ignored) {}
-    }
 }

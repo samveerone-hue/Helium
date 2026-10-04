@@ -92,26 +92,16 @@ public final class HeliumSodiumBooleanConfig implements ConfigEntryPoint {
             ExperimentalConfig experimental = ExperimentalConfig.load();
             addBoolean(builder, experimentalGroup, experimental::save, "experimental_fast_startup", "Fast Startup",
                     () -> experimental.fastStartup, false, v -> experimental.fastStartup = v,
-                    "Preloads Helium hot classes in parallel without running static initializers.", OptionImpact.MEDIUM, () -> true, false);
+                    "Preloads Helium hot classes without running static initializers; takes effect after restart.", OptionImpact.MEDIUM, () -> true, false);
             addBoolean(builder, experimentalGroup, experimental::save, "experimental_model_cache", "Model Cache",
                     () -> experimental.modelCache, false, v -> experimental.modelCache = v,
                     "Adds a bounded front-cache to BlockState model lookups and clears it on model reload.", OptionImpact.MEDIUM, () -> true, false);
             addBoolean(builder, experimentalGroup, experimental::save, "experimental_simd_math", "SIMD Math",
                     () -> experimental.simdMath, false, v -> experimental.simdMath = v,
                     "Use the Java Vector API for Helium batch math kernels when available.", OptionImpact.MEDIUM, () -> true, false);
-            addBoolean(builder, experimentalGroup, experimental::save, "experimental_async_light", "Async Light Updates",
-                    () -> experimental.asyncLightUpdates, false, v -> experimental.asyncLightUpdates = v,
-                    "Prepare and coalesce light-update work off-thread; vanilla propagation remains on its owning thread.", OptionImpact.HIGH, () -> true, false);
-            addBoolean(builder, experimentalGroup, experimental::save, "experimental_network_optimizations", "Network Optimizations",
-                    () -> experimental.networkOptimizations, false, v -> experimental.networkOptimizations = v,
-                    "Experimental network buffer reuse and maintenance; protocol semantics are unchanged.", OptionImpact.MEDIUM, () -> true, false);
-            addBoolean(builder, experimentalGroup, experimental::save, "experimental_gl_state_cache", "GL State Cache",
-                    () -> experimental.glStateCache, false, v -> experimental.glStateCache = v,
-                    "Experimental GL state cache. Disabled automatically with ImmediatelyFast.", OptionImpact.HIGH,
-                    () -> !HeliumClient.hasImmediatelyFast(), false);
             addBoolean(builder, experimentalGroup, experimental::save, "experimental_packet_batching", "Packet Batching",
                     () -> experimental.packetBatching, false, v -> experimental.packetBatching = v,
-                    "Coalesces outgoing Netty flushes once per connection tick and can add up to one tick of latency.", OptionImpact.HIGH, () -> true, false);
+                    "Coalesces outgoing Netty flushes; the configured interval can add up to two connection ticks of latency.", OptionImpact.HIGH, () -> true, false);
             experimentalPage.addOptionGroup(experimentalGroup);
             mod.addPage(experimentalPage);
 

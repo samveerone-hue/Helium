@@ -83,7 +83,7 @@ public final class HeliumConfigScreen {
         List<AbstractConfigListEntry> experimentalEntries = new ArrayList<>();
         experimentalEntries.add(eb.startBooleanToggle(Text.literal("Fast Startup"), experimental.fastStartup)
                 .setDefaultValue(false)
-                .setTooltip(Text.literal("Preloads Helium's hot classes in parallel without running their static initializers, reducing later startup stalls."))
+                .setTooltip(Text.literal("Preloads Helium's hot classes without running static initializers. Takes effect after restart."))
                 .setSaveConsumer(v -> experimental.fastStartup = v).build());
         experimentalEntries.add(eb.startBooleanToggle(Text.literal("Model Cache"), experimental.modelCache)
                 .setDefaultValue(false)
@@ -96,28 +96,13 @@ public final class HeliumConfigScreen {
                 .setDefaultValue(false)
                 .setTooltip(Text.literal("Uses Java's Vector API for Helium batch multiplication/dot-product kernels when the runtime exposes it; otherwise uses a scalar fallback."))
                 .setSaveConsumer(v -> experimental.simdMath = v).build());
-        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Async Light Updates"), experimental.asyncLightUpdates)
-                .setDefaultValue(false)
-                .setTooltip(Text.literal("Prepares and coalesces block-light update work on a background thread; vanilla light propagation remains on its owning thread."))
-                .setSaveConsumer(v -> experimental.asyncLightUpdates = v).build());
-        experimentalEntries.add(eb.startIntSlider(Text.literal("Async Light Batch"), experimental.asyncLightMaxPerTick, 8, 256)
-                .setDefaultValue(64)
-                .setSaveConsumer(v -> experimental.asyncLightMaxPerTick = v).build());
-        experimentalEntries.add(eb.startBooleanToggle(Text.literal("Network Optimizations"), experimental.networkOptimizations)
-                .setDefaultValue(false)
-                .setTooltip(Text.literal("Experimental network buffer reuse and maintenance. This does not alter protocol semantics."))
-                .setSaveConsumer(v -> experimental.networkOptimizations = v).build());
-        experimentalEntries.add(eb.startBooleanToggle(Text.literal("GL State Cache"), experimental.glStateCache)
-                .setDefaultValue(false)
-                .setTooltip(Text.literal("Experimental GlStateManager state-cache layer. Automatically disabled when ImmediatelyFast is detected."))
-                .setSaveConsumer(v -> experimental.glStateCache = v).build());
         experimentalEntries.add(eb.startBooleanToggle(Text.literal("Packet Batching"), experimental.packetBatching)
                 .setDefaultValue(false)
-                .setTooltip(Text.literal("Coalesce outgoing Netty flushes once per connection tick. Can add up to one tick of network latency; disabled by default."))
+                .setTooltip(Text.literal("Coalesce outgoing Netty flushes. The configured interval can add up to two connection ticks of latency."))
                 .setSaveConsumer(v -> experimental.packetBatching = v).build());
         experimentalEntries.add(eb.startIntSlider(Text.literal("Packet Batch Interval"), experimental.packetBatchTicks, 1, 2)
                 .setDefaultValue(1)
-                .setTooltip(Text.literal("Current runtime is capped at one connection tick."))
+                .setTooltip(Text.literal("Flush interval in connection ticks."))
                 .setSaveConsumer(v -> experimental.packetBatchTicks = v).build());
         experimentalCat.addEntry(eb.startSubCategory(Text.literal("Experimental Performance"), experimentalEntries).setExpanded(false).build());
 

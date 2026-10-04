@@ -2,7 +2,6 @@ package com.helium.mixin.network;
 
 import com.helium.HeliumClient;
 import com.helium.config.ExperimentalConfig;
-import com.helium.network.BufferOptimizer;
 import net.minecraft.network.ClientConnection;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -18,12 +17,8 @@ public abstract class ClientConnectionMixin {
     private long helium$tickCounter = 0;
 
     @Inject(method = "tick", at = @At("HEAD"))
-    private void helium$optimizeBuffers(CallbackInfo ci) {
-        long tick = helium$tickCounter++;
-        ExperimentalConfig experimental = ExperimentalConfig.load();
-        if (experimental.networkOptimizations) {
-            BufferOptimizer.tick(tick);
-        }
+    private void helium$countConnectionTicks(CallbackInfo ci) {
+        helium$tickCounter++;
     }
 
     /**

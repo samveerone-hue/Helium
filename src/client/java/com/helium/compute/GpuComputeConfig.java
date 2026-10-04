@@ -11,7 +11,19 @@ import java.nio.file.Path;
 
 public final class GpuComputeConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path PATH = FabricLoader.getInstance().getConfigDir().resolve("helium-gpu-compute.json");
+    private static final Path PATH = configPath();
+
+    private static Path configPath() {
+        try {
+            FabricLoader loader = FabricLoader.getInstance();
+            if (loader != null) {
+                return loader.getConfigDir().resolve("helium-gpu-compute.json");
+            }
+        } catch (Throwable ignored) {
+            // fall through to the safe fallback below
+        }
+        return Path.of(System.getProperty("user.home", "."), ".helium", "helium-gpu-compute.json");
+    }
 
     /** Master switch for the optional OpenCL co-processor. Disabled by default. */
     public boolean enabled = false;
@@ -54,5 +66,6 @@ public final class GpuComputeConfig {
             Files.createDirectories(PATH.getParent());
             Files.writeString(PATH, GSON.toJson(this));
         } catch (IOException ignored) {}
+        GpuComputeManager.updateConfig(this);
     }
 }

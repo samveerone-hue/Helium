@@ -15,8 +15,9 @@ public abstract class GlStateManagerMixin {
 
     private static boolean helium$cacheEnabled() {
         try {
-            ExperimentalConfig cfg = ExperimentalConfig.load();
+            ExperimentalConfig cfg = ExperimentalConfig.get();
             if (!cfg.glStateCache) return false;
+            if (!HeliumClient.isGlStateCacheAvailable()) return false;
             // ImmediatelyFast and other renderer-owned state caches can invalidate assumptions
             // outside GlStateManager; keep this feature off in that combination.
             if (HeliumClient.hasImmediatelyFast()) return false;

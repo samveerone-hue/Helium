@@ -7,6 +7,8 @@ import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
 
 import java.lang.reflect.Field;
@@ -18,6 +20,7 @@ public final class EntityModelPoseExtractor {
     private static volatile Field childrenField;
     private static final Map<Model<?>, PoseBinding> BINDINGS = new WeakHashMap<>();
     private static final Object BINDING_LOCK = new Object();
+    private static final ThreadLocal<MatrixStack> POSE_MATRICES = ThreadLocal.withInitial(MatrixStack::new);
 
     private EntityModelPoseExtractor() {}
 
@@ -45,6 +48,7 @@ public final class EntityModelPoseExtractor {
                     if (part == null) continue;
                     writePose(ptr + poseOffset(bone), part.pitch, part.yaw, part.roll);
                 }
+                writeHeadPivot(ptr, binding.headPath);
                 return true;
             } finally {
                 model.resetTransforms();
@@ -105,7 +109,9 @@ public final class EntityModelPoseExtractor {
                         || category == EntityAnimationCategory.SNIFFER
                         || category == EntityAnimationCategory.ARMADILLO) ? 6 : requiredBones;
                 if (found < minimum) return null;
-                PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts);
+                ModelPart[] headPath = findPartPath(root, parts[0]);
+                if (headPath == null) return null;
+                PoseBinding binding = new PoseBinding(category, stateClass, setAngles, parts, headPath);
                 BINDINGS.put(model, binding);
                 return binding;
             } catch (Throwable ignored) { return null; }
@@ -191,6 +197,38 @@ public final class EntityModelPoseExtractor {
         return null;
     }
 
+    private static ModelPart[] findPartPath(ModelPart part, ModelPart target) throws IllegalAccessException {
+        return findPartPath(part, target, new java.util.ArrayList<>(), true);
+    }
+
+    private static ModelPart[] findPartPath(ModelPart part, ModelPart target,
+                                             java.util.List<ModelPart> path, boolean root) throws IllegalAccessException {
+        if (!root) path.add(part);
+        if (part == target) return path.toArray(ModelPart[]::new);
+
+        Field field = childrenField;
+        if (field == null) {
+            field = findChildrenField(part.getClass());
+            if (field == null) {
+                if (!root) path.remove(path.size() - 1);
+                return null;
+            }
+            childrenField = field;
+        }
+
+        @SuppressWarnings("unchecked")
+        Map<String, ModelPart> children = (Map<String, ModelPart>) field.get(part);
+        if (children != null) {
+            for (ModelPart child : children.values()) {
+                ModelPart[] found = findPartPath(child, target, path, false);
+                if (found != null) return found;
+            }
+        }
+
+        if (!root) path.remove(path.size() - 1);
+        return null;
+    }
+
     private static Field findChildrenField(Class<?> cls) {
         for (Field f : cls.getDeclaredFields()) {
             if (Map.class.isAssignableFrom(f.getType())) {
@@ -201,6 +239,24 @@ public final class EntityModelPoseExtractor {
         return null;
     }
 
+    private static void writeHeadPivot(long ptr, ModelPart[] headPath) {
+        MatrixStack matrices = POSE_MATRICES.get();
+        matrices.push();
+        try {
+            matrices.scale(16.0f, -16.0f, 16.0f);
+            matrices.translate(0.0f, -1.5f, 0.0f);
+            for (ModelPart part : headPath) part.applyTransform(matrices);
+            Matrix4f transform = matrices.peek().getPositionMatrix();
+
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_X, transform.m30());
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_Y, transform.m31());
+            MemoryUtil.memPutFloat(ptr + EntityInstance.OFFSET_HEAD_PIVOT_Z, transform.m32());
+        } catch (Throwable ignored) {
+        } finally {
+            matrices.pop();
+        }
+    }
+
     private static void writePose(long ptr, float pitch, float yaw, float roll) {
         MemoryUtil.memPutFloat(ptr, pitch);
         MemoryUtil.memPutFloat(ptr + 4L, yaw);
@@ -208,5 +264,6 @@ public final class EntityModelPoseExtractor {
         MemoryUtil.memPutFloat(ptr + 12L, 0.0f);
     }
 
-    private record PoseBinding(EntityAnimationCategory category, Class<?> stateClass, Method setAngles, ModelPart[] parts) {}
+    private record PoseBinding(EntityAnimationCategory category, Class<?> stateClass, Method setAngles,
+                               ModelPart[] parts, ModelPart[] headPath) {}
 }
