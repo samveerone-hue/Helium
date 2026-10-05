@@ -39,6 +39,7 @@ public final class ConfigClamps {
 
     public static int experimentalPacketBatchTicks(int value) { return clamp(value, 1, 2); }
     public static int experimentalModelCacheMaxMb(int value) { return clamp(value, 16, 512); }
+    public static int experimentalAsyncLightMaxPerTick(int value) { return clamp(value, 8, 256); }
 
     private static int clamp(int value, int min, int max) {
         return Math.max(min, Math.min(max, value));
