@@ -11,7 +11,17 @@ import java.nio.file.Path;
 
 public class HeliumConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("helium.json");
+    private static final Path CONFIG_PATH = configPath();
+
+    private static Path configPath() {
+        try {
+            FabricLoader loader = FabricLoader.getInstance();
+            if (loader != null) return loader.getConfigDir().resolve("helium.json");
+        } catch (RuntimeException ignored) {
+            // Unit tests and non-Fabric tools may load config classes before Fabric initializes.
+        }
+        return Path.of(System.getProperty("user.home", "."), ".helium", "helium.json");
+    }
     public boolean modEnabled = true;
     public boolean fastMath = false;
     public boolean glStateCache = false;
@@ -143,7 +153,7 @@ public class HeliumConfig {
                     cfg.save();
                     return cfg;
                 }
-            } catch (IOException e) { HeliumClient.LOGGER.warn("failed to load config, using defaults", e); }
+            } catch (IOException | RuntimeException e) { HeliumClient.LOGGER.warn("failed to load config, using defaults", e); }
         }
         HeliumConfig cfg = new HeliumConfig();
         cfg.sanitize();
@@ -163,8 +173,17 @@ public class HeliumConfig {
     }
 
     public boolean exportToFile(Path path) {
-        try { Files.createDirectories(path.getParent()); Files.writeString(path, GSON.toJson(this)); HeliumClient.LOGGER.info("config exported to {}", path); return true; }
-        catch (IOException e) { HeliumClient.LOGGER.warn("failed to export config to {}", path, e); return false; }
+        try {
+            Path target = path.toAbsolutePath();
+            Path parent = target.getParent();
+            if (parent != null) Files.createDirectories(parent);
+            Files.writeString(target, GSON.toJson(this));
+            HeliumClient.LOGGER.info("config exported to {}", target);
+            return true;
+        } catch (IOException | RuntimeException e) {
+            HeliumClient.LOGGER.warn("failed to export config to {}", path, e);
+            return false;
+        }
     }
 
     public static HeliumConfig importFromFile(Path path) {
@@ -178,7 +197,7 @@ public class HeliumConfig {
                 HeliumClient.LOGGER.info("config imported to runtime with removed features disabled");
                 return imported;
             }
-        } catch (IOException e) { HeliumClient.LOGGER.warn("failed to import config from {}", path, e); }
+        } catch (IOException | RuntimeException e) { HeliumClient.LOGGER.warn("failed to import config from {}", path, e); }
         return null;
     }
 
