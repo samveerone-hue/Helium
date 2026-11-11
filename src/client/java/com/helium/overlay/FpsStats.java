@@ -14,10 +14,15 @@ public final class FpsStats {
     private int fpsCount = 0;
     private long lastResetTime = System.currentTimeMillis();
     private long lastDisplayUpdateTime = System.currentTimeMillis();
+    private long lastFrameNanos;
+    private double frameIntervalMs;
 
     public void updateFps(int fps) {
         synchronized (lock) {
             this.currentFps = fps;
+            long frameNow = System.nanoTime();
+            if (lastFrameNanos != 0L) frameIntervalMs = (frameNow - lastFrameNanos) / 1_000_000.0;
+            lastFrameNanos = frameNow;
 
             long now = System.currentTimeMillis();
             if (now - lastDisplayUpdateTime >= DISPLAY_UPDATE_INTERVAL_MS) {
@@ -58,6 +63,10 @@ public final class FpsStats {
         synchronized (lock) { return fpsCount > 0 ? (int) (fpsSum / fpsCount) : 0; }
     }
 
+    public double getFrameIntervalMs() {
+        synchronized (lock) { return frameIntervalMs; }
+    }
+
     public void reset() {
         synchronized (lock) {
             currentFps = 0;
@@ -66,6 +75,8 @@ public final class FpsStats {
             maxFps = 0;
             fpsSum = 0;
             fpsCount = 0;
+                        lastFrameNanos = 0L;
+                        frameIntervalMs = 0.0;
             lastResetTime = System.currentTimeMillis();
         }
     }

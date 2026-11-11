@@ -1,3 +1,5 @@
+    private static final AtomicLong cumulativeAllocatedBytes = new AtomicLong(0);
+    public static long getCumulativeAllocatedBytes() { return cumulativeAllocatedBytes.get(); }
 package com.helium.memory;
 
 import com.helium.HeliumClient;
@@ -5,10 +7,9 @@ import com.helium.HeliumClient;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.lang.ref.WeakReference;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
+import java.lang.ref.ReferenceQueue;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicLong;
@@ -23,11 +24,11 @@ public final class NativeMemoryManager {
     private static final ConcurrentLinkedDeque<ByteBuffer>[] POOLS = new ConcurrentLinkedDeque[POOL_SIZES.length];
 
     private static final ConcurrentHashMap<Long, AllocationInfo> allocations = new ConcurrentHashMap<>();
-    private static final Map<ByteBuffer, Long> bufferToId = Collections.synchronizedMap(new IdentityHashMap<>());
-    private static final AtomicLong cleanupCounter = new AtomicLong(0);
-    private static final int CLEANUP_INTERVAL = 1000;
+    private static final ReferenceQueue<ByteBuffer> collectedBuffers = new ReferenceQueue<>();
+    private static final Map<BufferReference, Long> bufferToId = new HashMap<>();
     private static final AtomicLong allocationIdCounter = new AtomicLong(0);
     private static final AtomicLong totalAllocatedBytes = new AtomicLong(0);
+        private static final AtomicLong cumulativeAllocatedBytes = new AtomicLong(0);
     private static final AtomicLong totalPooledBytes = new AtomicLong(0);
 
     private static volatile long maxMemoryBytes = 64L * 1024 * 1024;
@@ -46,6 +47,7 @@ public final class NativeMemoryManager {
 
     public static ByteBuffer allocate(int size) {
         if (!initialized || size <= 0) return null;
+        cleanupStaleAllocations();
 
         int poolIndex = findPoolIndex(size);
         int actualSize = poolIndex >= 0 ? POOL_SIZES[poolIndex] : size;
@@ -71,6 +73,7 @@ public final class NativeMemoryManager {
             try {
                 buffer = ByteBuffer.allocateDirect(actualSize).order(ByteOrder.nativeOrder());
                 totalAllocatedBytes.addAndGet(actualSize);
+                cumulativeAllocatedBytes.addAndGet(actualSize);
             } catch (OutOfMemoryError e) {
                 HeliumClient.LOGGER.error("failed to allocate {} bytes of native memory", actualSize);
                 return null;
@@ -78,15 +81,22 @@ public final class NativeMemoryManager {
         }
 
         long id = allocationIdCounter.incrementAndGet();
-        allocations.put(id, new AllocationInfo(new WeakReference<>(buffer), actualSize, poolIndex));
-        bufferToId.put(buffer, id);
+        BufferReference reference = new BufferReference(buffer, collectedBuffers, id);
+        allocations.put(id, new AllocationInfo(actualSize, poolIndex));
+        synchronized (bufferToId) {
+            bufferToId.put(reference, id);
+        }
         return buffer;
     }
 
     public static void free(ByteBuffer buffer) {
         if (!initialized || buffer == null || !buffer.isDirect()) return;
+        cleanupStaleAllocations();
 
-        Long id = bufferToId.remove(buffer);
+        Long id;
+        synchronized (bufferToId) {
+            id = bufferToId.remove(new BufferReference(buffer, null, -1));
+        }
         AllocationInfo info = id == null ? null : allocations.remove(id);
         if (info == null) return;
 
@@ -102,14 +112,16 @@ public final class NativeMemoryManager {
             totalAllocatedBytes.addAndGet(-info.size);
         }
 
-        if (cleanupCounter.incrementAndGet() % CLEANUP_INTERVAL == 0) cleanupStaleAllocations();
     }
 
     private static void cleanupStaleAllocations() {
-        Iterator<Map.Entry<Long, AllocationInfo>> it = allocations.entrySet().iterator();
-        while (it.hasNext()) {
-            AllocationInfo info = it.next().getValue();
-            if (info.bufferRef.get() == null) it.remove();
+        BufferReference reference;
+        while ((reference = (BufferReference) collectedBuffers.poll()) != null) {
+            synchronized (bufferToId) {
+                bufferToId.remove(reference);
+            }
+            AllocationInfo info = allocations.remove(reference.allocationId);
+            if (info != null) totalAllocatedBytes.addAndGet(-info.size);
         }
     }
 
@@ -123,7 +135,10 @@ public final class NativeMemoryManager {
         for (int i = POOL_SIZES.length - 1; i >= 0 && evicted < bytesNeeded; i--) {
             ByteBuffer buf;
             while ((buf = POOLS[i].pollLast()) != null && evicted < bytesNeeded) {
-                Long id = bufferToId.remove(buf);
+                Long id;
+                synchronized (bufferToId) {
+                    id = bufferToId.remove(new BufferReference(buf, null, -1));
+                }
                 if (id != null) allocations.remove(id);
                 evicted += buf.capacity();
                 totalPooledBytes.addAndGet(-buf.capacity());
@@ -160,16 +175,20 @@ public final class NativeMemoryManager {
         }
     }
 
-    public static long getTotalAllocatedBytes() { return totalAllocatedBytes.get(); }
+    public static long getTotalAllocatedBytes() { cleanupStaleAllocations(); return totalAllocatedBytes.get(); }
+        public static long getCumulativeAllocatedBytes() { return cumulativeAllocatedBytes.get(); }
     public static long getTotalPooledBytes() { return totalPooledBytes.get(); }
-    public static long getActiveBytes() { return totalAllocatedBytes.get() - totalPooledBytes.get(); }
+    public static long getActiveBytes() { cleanupStaleAllocations(); return totalAllocatedBytes.get() - totalPooledBytes.get(); }
     public static long getMaxMemoryBytes() { return maxMemoryBytes; }
-    public static int getAllocationCount() { return allocations.size(); }
+    public static int getAllocationCount() { cleanupStaleAllocations(); return allocations.size(); }
 
     public static void shutdown() {
         for (int i = 0; i < POOLS.length; i++) if (POOLS[i] != null) POOLS[i].clear();
         allocations.clear();
-        bufferToId.clear();
+        synchronized (bufferToId) {
+            bufferToId.clear();
+        }
+        while (collectedBuffers.poll() != null) {}
         totalAllocatedBytes.set(0);
         totalPooledBytes.set(0);
         initialized = false;
@@ -187,5 +206,29 @@ public final class NativeMemoryManager {
                 maxMemoryBytes / (1024 * 1024), getAllocationCount());
     }
 
-    private record AllocationInfo(WeakReference<ByteBuffer> bufferRef, int size, int poolIndex) {}
+    private record AllocationInfo(int size, int poolIndex) {}
+
+    private static final class BufferReference extends WeakReference<ByteBuffer> {
+        private final long allocationId;
+        private final int identityHash;
+
+        private BufferReference(ByteBuffer buffer, ReferenceQueue<ByteBuffer> queue, long allocationId) {
+            super(buffer, queue);
+            this.allocationId = allocationId;
+            this.identityHash = System.identityHashCode(buffer);
+        }
+
+        @Override
+        public int hashCode() {
+            return identityHash;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof BufferReference reference)) return false;
+            ByteBuffer buffer = get();
+            return buffer != null && buffer == reference.get();
+        }
+    }
 }

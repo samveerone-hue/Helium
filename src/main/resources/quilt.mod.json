@@ -6,7 +6,7 @@
     "version": "${version}",
     "metadata": {
       "name": "Helium",
-      "description": "Client-side performance optimizations for Minecraft. Faster math, less GC pressure, smarter rendering. Zero visual changes. Requires Sodium.",
+      "description": "Client-side performance and rendering optimizations for Minecraft, with optional visual features.",
       "contributors": {},
       "contact": {},
       "license": "MIT",
@@ -31,15 +31,21 @@
       },
       {
         "id": "minecraft",
-        "versions": ">=1.21.1 <=1.21.11"
+        "versions": ">=1.21.11 <=1.21.11"
       },
       {
         "id": "java",
-        "versions": ">=21"
+        "versions": ">=25"
       },
       {
+        "id": "cloth-config",
+        "versions": ">=15.0.0"
+      }
+    ],
+    "suggests": [
+      {
         "id": "sodium",
-        "versions": ">=0.5.0"
+        "versions": ">=0.8.14 <0.9.0"
       }
     ]
   },

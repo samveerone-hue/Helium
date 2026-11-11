@@ -53,6 +53,7 @@ public abstract class ServerListWidgetMixin {
         HeliumConfig config = HeliumClient.getConfig();
         if (config == null || !config.modEnabled || !config.fastServerPing) return;
 
+        FastServerPingHelper.cancelQueuedTasks(SERVER_PINGER_THREAD_POOL);
         int serverCount = servers != null ? servers.size() : 0;
         helium$ensurePool(serverCount);
     }

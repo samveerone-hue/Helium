@@ -2,7 +2,10 @@ package com.helium.overlay;
 
 import com.helium.HeliumClient;
 import com.helium.config.HeliumConfig;
+import com.helium.memory.NativeMemoryManager;
 import com.helium.particle.ParticleLimiter;
+import com.helium.render.AsyncChunkMeshing;
+import com.helium.rentities.entities.EntityBatchRenderer;
 import com.helium.tweaks.AsyncPackReloader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -20,6 +23,11 @@ public final class OverlayRenderer {
     private static final int SPINNER_SPEED_MS = 80;
 
     private static final FpsStats fpsStats = new FpsStats();
+    private static long lastNativeSampleNanos;
+    private static long lastNativeAllocationBytes;
+    private static double nativeAllocationRateMbPerSecond;
+    private static long peakHeapBytes;
+    private static long peakNativeBytes;
 
     private static volatile java.lang.reflect.Field _fpsfield;
     private static volatile boolean _fpsfieldresolved;
@@ -81,13 +89,29 @@ public final class OverlayRenderer {
 
         if (config.overlayShowFpsMinMaxAvg) {
             lines.add(String.format("↓%d ↑%d ~%d", fpsStats.getMinFps(), fpsStats.getMaxFps(), fpsStats.getAvgFps()));
+                lines.add(String.format("Frame interval: %.2f ms", fpsStats.getFrameIntervalMs()));
+                lines.add(String.format("Entity batch: %d | Chunks queued: %d",
+                    EntityBatchRenderer.getLastBatchCount(), AsyncChunkMeshing.size()));
+                lines.add(String.format("GPU fence poll: %.3f ms",
+                    EntityBatchRenderer.getLastFencePollDurationNanos() / 1_000_000.0));
+                addFeatureStatus(lines, config);
         }
 
         if (config.overlayShowMemory) {
             Runtime rt = Runtime.getRuntime();
             long usedMb = (rt.totalMemory() - rt.freeMemory()) / 1024 / 1024;
             long maxMb = rt.maxMemory() / 1024 / 1024;
-            lines.add(String.format("%dMB / %dMB", usedMb, maxMb));
+            peakHeapBytes = Math.max(peakHeapBytes, rt.totalMemory() - rt.freeMemory());
+            lines.add(String.format("Heap: %d / %d MB (peak %d MB)", usedMb, maxMb, peakHeapBytes / 1024 / 1024));
+            if (NativeMemoryManager.isInitialized()) {
+                long nativeBytes = NativeMemoryManager.getTotalAllocatedBytes();
+                peakNativeBytes = Math.max(peakNativeBytes, nativeBytes);
+                lines.add(String.format("Native: %d active / %d pooled MB",
+                        NativeMemoryManager.getActiveBytes() / 1024 / 1024,
+                        NativeMemoryManager.getTotalPooledBytes() / 1024 / 1024));
+                lines.add(String.format("Native peak: %d MB", peakNativeBytes / 1024 / 1024));
+                lines.add(String.format("Native alloc: %.2f MB/s", getNativeAllocationRateMbPerSecond()));
+            }
         }
 
         if (config.overlayShowParticles && config.particleLimiting && ParticleLimiter.isInitialized()) {
@@ -122,6 +146,45 @@ public final class OverlayRenderer {
         }
 
         return lines.toArray(new String[0]);
+    }
+
+    private static void addFeatureStatus(java.util.List<String> lines, HeliumConfig config) {
+        java.util.List<String> renderFeatures = new java.util.ArrayList<>();
+        addIfEnabled(renderFeatures, config.entityCulling, "entity cull");
+        addIfEnabled(renderFeatures, config.blockEntityCulling, "block cull");
+        addIfEnabled(renderFeatures, config.particleCulling, "particle cull");
+        addIfEnabled(renderFeatures, config.entityGpuBatching, "entity GPU");
+        addIfEnabled(renderFeatures, config.temporalReprojection, "temporal");
+        if (!renderFeatures.isEmpty()) lines.add("Render: " + String.join(", ", renderFeatures));
+
+        java.util.List<String> engineFeatures = new java.util.ArrayList<>();
+        addIfEnabled(engineFeatures, config.nativeMemory, "native memory");
+        addIfEnabled(engineFeatures, config.renderPipelining, "chunk pipeline");
+        addIfEnabled(engineFeatures, config.adaptiveChunkScheduling, "adaptive chunks");
+        addIfEnabled(engineFeatures, config.asyncLightUpdates, "async lighting");
+        if (!engineFeatures.isEmpty()) lines.add("Engine: " + String.join(", ", engineFeatures));
+    }
+
+    private static void addIfEnabled(java.util.List<String> features, boolean enabled, String name) {
+        if (enabled) features.add(name);
+    }
+
+    private static synchronized double getNativeAllocationRateMbPerSecond() {
+        long now = System.nanoTime();
+        long total = NativeMemoryManager.getCumulativeAllocatedBytes();
+        if (lastNativeSampleNanos == 0L) {
+            lastNativeSampleNanos = now;
+            lastNativeAllocationBytes = total;
+        } else {
+            long elapsed = now - lastNativeSampleNanos;
+            if (elapsed >= 500_000_000L) {
+                nativeAllocationRateMbPerSecond = Math.max(0L, total - lastNativeAllocationBytes)
+                        * 1_000_000_000.0 / elapsed / (1024.0 * 1024.0);
+                lastNativeSampleNanos = now;
+                lastNativeAllocationBytes = total;
+            }
+        }
+        return nativeAllocationRateMbPerSecond;
     }
 
     private static OverlayPosition parsePosition(String posStr) {

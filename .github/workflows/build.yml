@@ -33,8 +33,8 @@ jobs:
       - name: Make gradlew Executable
         run: chmod +x ./gradlew
 
-      - name: Run Pure JUnit Tests
-        run: ./gradlew test --no-daemon --tests com.helium.ConfigAndGpuMathTest --tests com.helium.TableGaussianGeneratorTest
+      - name: Test benchmark report
+        run: python3 -m unittest scripts.test_benchmark_report
 
       - name: Build with Gradle
         run: ./gradlew build --no-daemon

@@ -1,6 +1,6 @@
 # Helium
 
-Lightweight client-side performance mod for Minecraft.
+Lightweight client-side performance mod for Minecraft, with optional visual features.
 
 > This is the development repository for Helium. For normal installation, use the published Modrinth build.
 
@@ -121,11 +121,11 @@ The config screen exposes the Rentities toggles under Rendering, while GPU compu
 
 The `1.21.11` branch is continuously checked by GitHub Actions. A workflow is only considered verified after `build` completes successfully; an in-progress workflow is not a green result.
 
-The build targets Java 21 bytecode even when CI runs on a newer JDK.
+The build targets Java 21 bytecode. Minecraft 1.21.11 requires Java 25 at runtime.
 
 ## Building from source
 
-Helium is compiled for **Java 21**.
+Helium is compiled for Java 21 bytecode and requires Java 25 to run Minecraft 1.21.11.
 
 ```bash
 git clone https://github.com/samveerone-hue/Helium.git
@@ -161,8 +161,8 @@ src/
 | Dependency | Type | Purpose |
 |---|---|---|
 | Fabric API | Required | Fabric/Minecraft integration |
-| Sodium | Compile-only / integration | Helium configuration and renderer integration |
-| Cloth Config | Build dependency | Config UI support |
+| Sodium | Optional integration | Renderer and configuration integration |
+| Cloth Config | Required | Config UI support |
 | ModMenu | Optional | Mod-list integration |
 
 ## Contributing

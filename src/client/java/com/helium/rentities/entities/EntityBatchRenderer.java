@@ -18,14 +18,8 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import org.joml.Matrix4f;
 import org.lwjgl.system.MemoryUtil;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Field;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.lwjgl.opengl.GL11C.*;
 import static org.lwjgl.opengl.GL13C.GL_ACTIVE_TEXTURE;
@@ -98,12 +92,7 @@ public class EntityBatchRenderer {
      * accessor can be handled by the caller's existing null/default checks.
      */
     private static Object invokeAccessor(java.lang.invoke.MethodHandle handle, Object state) {
-        if (handle == null) return null;
-        try {
-            return handle.invoke(state);
-        } catch (Throwable t) {
-            return null;
-        }
+        return EntityCompatibility.invokeAccessor(handle, state);
     }
 
 
@@ -114,17 +103,15 @@ public class EntityBatchRenderer {
     private long renderFrame;
 
     private static final int MAX_QUEUE = EntityInstance.MAX_INSTANCES;
+    private static final EntityBatchQueue batchQueue = new EntityBatchQueue(MAX_QUEUE);
     private Set<String> cachedWhitelist = Set.of();
     private Set<String> cachedBlacklist = Set.of();
     private boolean cachedWhitelistOnly;
     private int cachedFilterHash;
-    private static final EntityType<?>[] queuedTypes = new EntityType[MAX_QUEUE];
-    private static final EntityType<?>[] extractionTypes = new EntityType[MAX_QUEUE];
-    private static final int[] queuedOriginalIndices = new int[MAX_QUEUE];
-    private static final AtomicInteger queueSize = new AtomicInteger(0);
-    private static final Object QUEUE_LOCK = new Object();
-    private static final ThreadLocal<Deque<Integer>> RESERVED_SLOTS =
-            ThreadLocal.withInitial(ArrayDeque::new);
+    private static final EntityType<?>[] queuedTypes = batchQueue.queuedTypes;
+    private static final EntityType<?>[] extractionTypes = batchQueue.extractionTypes;
+    private static final int[] queuedOriginalIndices = batchQueue.originalIndices;
+    private static final Object QUEUE_LOCK = batchQueue.lock();
     private static long extractionBuffer;
 
     // Stored VP matrix from terrain render pass
@@ -155,8 +142,12 @@ public class EntityBatchRenderer {
             EntityCullingPipeline.CMD_SSBO_BINDING,
             EntityCullingPipeline.VISIBLE_SSBO_BINDING);
     private int currentBufferIdx = 0;
+    private int pendingBatchCount;
+    private boolean batchingDisabled;
+    private static volatile int lastBatchCount;
 
     private GlShader entityShader;
+    private final EntityShaderManager shaderManager = new EntityShaderManager();
     private int uViewProjection = -1;
     private int uGameTime = -1;
     private int uEntityTextures = -1; // sampler2D uEntityTexture — bound per draw call
@@ -171,16 +162,6 @@ public class EntityBatchRenderer {
 
     private final EntityMeshBaker meshBaker;
     private final com.helium.rentities.EntityErrorRenderer errorRenderer;
-
-    private static final Map<Class<?>, Map<String, Field>> fieldCache = new ConcurrentHashMap<>();
-
-    /*
-     * Keys are "class → logical field name" pairs for fields we could not resolve.
-     * Warnings are logged once per key so mapping-broken diagnostics do not spam
-     * the log every frame.
-     */
-    private static final Set<String> reflectionMissingWarned =
-            java.util.Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     // Entity type -> texture ResourceLocation; GL ids cached separately in entityGlTexIds
     public final java.util.Map<EntityType<?>, Object> entityTextureLocs = new ConcurrentHashMap<>();
@@ -237,30 +218,8 @@ public class EntityBatchRenderer {
                                                  EntityType<?> type) {
         if (INSTANCE == null) return false;
         synchronized (QUEUE_LOCK) {
-            int idx = queueSize.getAndIncrement();
-            if (idx >= MAX_QUEUE) {
-                queueSize.decrementAndGet();
-                if (isDebugLogging()) {
-                    HeliumClient.LOGGER.warn(
-                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
-                            MAX_QUEUE);
-                }
-                return false;
-            }
-
-            queuedTypes[idx] = type;
-            extractionTypes[idx] = type;
-            queuedOriginalIndices[idx] = idx;
-
-            if (!INSTANCE.writeEntityInstance(
-                    extractionBuffer + (long) idx * EntityInstance.STRIDE, state, x, y, z)) {
-                queuedTypes[idx] = null;
-                extractionTypes[idx] = null;
-                queuedOriginalIndices[idx] = 0;
-                queueSize.decrementAndGet();
-                return false;
-            }
-            return true;
+            if (INSTANCE.batchingDisabled || INSTANCE.pendingBatchCount > 0) return false;
+            return batchQueue.enqueue(INSTANCE, extractionBuffer, type, state, x, y, z, isDebugLogging());
         }
     }
 
@@ -271,21 +230,8 @@ public class EntityBatchRenderer {
     public static long reserveInstance(EntityType<?> type) {
         if (INSTANCE == null) return 0L;
         synchronized (QUEUE_LOCK) {
-            int idx = queueSize.getAndIncrement();
-            if (idx >= MAX_QUEUE) {
-                queueSize.decrementAndGet();
-                if (isDebugLogging()) {
-                    HeliumClient.LOGGER.warn(
-                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
-                            MAX_QUEUE);
-                }
-                return 0L;
-            }
-            queuedTypes[idx] = type;
-            extractionTypes[idx] = type;
-            queuedOriginalIndices[idx] = idx;
-            RESERVED_SLOTS.get().addLast(idx);
-            return extractionBuffer + (long) idx * EntityInstance.STRIDE;
+            if (INSTANCE.batchingDisabled || INSTANCE.pendingBatchCount > 0) return 0L;
+            return batchQueue.reserve(extractionBuffer, type, isDebugLogging());
         }
     }
 
@@ -293,50 +239,16 @@ public class EntityBatchRenderer {
     public static void releaseReservedInstance(EntityType<?> type) {
         if (INSTANCE == null) return;
         synchronized (QUEUE_LOCK) {
-            Deque<Integer> slots = RESERVED_SLOTS.get();
-            Integer slot = slots.peekLast();
-            if (slot == null || slot < 0 || slot >= MAX_QUEUE) return;
-            if (queuedTypes[slot] != type || extractionTypes[slot] != type) return;
-            slots.pollLast();
-            queuedTypes[slot] = null;
-            extractionTypes[slot] = null;
-            queuedOriginalIndices[slot] = 0;
-            // Keep queueSize as a high-water mark. doFlush compacts cancelled slots.
+            batchQueue.release(type);
         }
     }
 
     public static boolean queueEntityState(Object state, double x, double y, double z) {
         if (INSTANCE == null) return false;
         synchronized (QUEUE_LOCK) {
-            int idx = queueSize.getAndIncrement();
-            if (idx >= MAX_QUEUE) {
-                queueSize.decrementAndGet();
-                if (isDebugLogging()) {
-                    HeliumClient.LOGGER.warn(
-                            "[Rentities] Instance queue full ({}); falling back to vanilla rendering",
-                            MAX_QUEUE);
-                }
-                return false;
-            }
-
+            if (INSTANCE.batchingDisabled || INSTANCE.pendingBatchCount > 0) return false;
             EntityType<?> type = getEntityType(state);
-            queuedTypes[idx] = type;
-            extractionTypes[idx] = type;
-            queuedOriginalIndices[idx] = idx;
-
-            if (!INSTANCE.writeEntityInstance(
-                    extractionBuffer + (long) idx * EntityInstance.STRIDE,
-                    state,
-                    x,
-                    y,
-                    z)) {
-                queuedTypes[idx] = null;
-                extractionTypes[idx] = null;
-                queuedOriginalIndices[idx] = 0;
-                queueSize.decrementAndGet();
-                return false;
-            }
-            return true;
+            return batchQueue.enqueue(INSTANCE, extractionBuffer, type, state, x, y, z, isDebugLogging());
         }
     }
 
@@ -405,27 +317,47 @@ public class EntityBatchRenderer {
         }
     }
 
+    public static int getLastBatchCount() { return lastBatchCount; }
+
+    public static long getLastFencePollDurationNanos() {
+        return INSTANCE == null ? 0L : INSTANCE.fenceRing.lastWaitDurationNanos();
+    }
+
     private void doFlush() {
         HeliumConfig config = HeliumClient.getConfig();
-        int rawCount = Math.min(queueSize.getAndSet(0), MAX_QUEUE);
-        int count = compactQueue(rawCount);
-        RESERVED_SLOTS.get().clear();
+        boolean retryingPendingBatch = pendingBatchCount > 0;
+        int rawCount = batchQueue.takeCount();
+        int count = retryingPendingBatch ? pendingBatchCount : batchQueue.compact(rawCount, extractionBuffer);
+        lastBatchCount = count;
+        batchQueue.clearReservations();
         if (count == 0) return;
 
         // Sort by entity type for contiguous SSBO blocks
-        sortByEntityType(count);
+        if (!retryingPendingBatch) batchQueue.sortByEntityType(count);
 
         // Advance the ring and wait for the GPU to finish with the slot we are about to
         // overwrite.
         currentBufferIdx = (currentBufferIdx + 1) % NUM_BUFFERS;
         int bufIdx = currentBufferIdx;
-        fenceRing.waitFor(bufIdx);
+        GpuFenceRing.WaitResult waitResult = fenceRing.waitFor(bufIdx);
+        if (waitResult == GpuFenceRing.WaitResult.TIMEOUT) {
+            pendingBatchCount = count;
+            return;
+        }
+        if (waitResult == GpuFenceRing.WaitResult.FAILED) {
+            batchingDisabled = true;
+            pendingBatchCount = 0;
+            batchQueue.clearReferences(count);
+            HeliumClient.LOGGER.error("[Rentities] GPU fence failed; entity batching disabled and vanilla rendering restored");
+            return;
+        }
+        pendingBatchCount = 0;
 
         if (storedViewProjection == null || entityShader == null || meshBaker.getVaoId() == 0) {
             if (isDebugLogging()) {
                 HeliumClient.LOGGER.warn("[Rentities] Batch flush aborted: render resources not ready");
             }
-            clearQueuedReferences(count);
+            batchQueue.clearReferences(count);
             return;
         }
 
@@ -597,7 +529,10 @@ public class EntityBatchRenderer {
                     renderBySortedEntityType(count);
                 }
 
-                fenceRing.signal(bufIdx);
+                if (!fenceRing.signal(bufIdx)) {
+                    batchingDisabled = true;
+                    HeliumClient.LOGGER.error("[Rentities] failed to create GPU fence; entity batching disabled");
+                }
 
                 if (isDebugLogging()) {
                     int err = glGetError();
@@ -616,67 +551,11 @@ public class EntityBatchRenderer {
         }
 
         // Clear queued references
-        for (int i = 0; i < count; i++) {
-            queuedTypes[i] = null;
-            extractionTypes[i] = null;
-        }
+        batchQueue.clearReferences(count);
     }
 
     public static void queueErrorEntity(double x, double y, double z) {
         if (INSTANCE != null) INSTANCE.errorRenderer.queueError(x, y, z);
-    }
-
-    private final long[] sortKeys = new long[MAX_QUEUE];
-
-    private int compactQueue(int rawCount) {
-        int write = 0;
-        for (int read = 0; read < rawCount; read++) {
-            if (queuedTypes[read] == null && extractionTypes[read] == null) continue;
-            if (write != read) {
-                queuedTypes[write] = queuedTypes[read];
-                extractionTypes[write] = extractionTypes[read];
-                queuedOriginalIndices[write] = write;
-                MemoryUtil.memCopy(
-                        extractionBuffer + (long) read * EntityInstance.STRIDE,
-                        extractionBuffer + (long) write * EntityInstance.STRIDE,
-                        EntityInstance.STRIDE);
-            }
-            write++;
-        }
-        for (int i = write; i < rawCount; i++) {
-            queuedTypes[i] = null;
-            extractionTypes[i] = null;
-            queuedOriginalIndices[i] = 0;
-        }
-        return write;
-    }
-
-    private void clearQueuedReferences(int count) {
-        for (int i = 0; i < count; i++) {
-            queuedTypes[i] = null;
-            extractionTypes[i] = null;
-            queuedOriginalIndices[i] = 0;
-        }
-    }
-
-    private void sortByEntityType(int count) {
-        for (int i = 0; i < count; i++) {
-            EntityType<?> type = queuedTypes[i];
-            int typeIdx = type != null ? EntityBatchRegistry.getEntityTypeIndex(type) : 0;
-            sortKeys[i] = ((long) typeIdx << 32) | (queuedOriginalIndices[i] & 0xFFFFFFFFL);
-        }
-        java.util.Arrays.sort(sortKeys, 0, count);
-        for (int i = 0; i < count; i++) {
-            int originalIdx = (int) (sortKeys[i] & 0xFFFFFFFFL);
-            queuedOriginalIndices[i] = originalIdx;
-        }
-        for (int i = 0; i < count; i++) {
-            queuedTypes[i] = getEntityTypeFromIdx(queuedOriginalIndices[i]);
-        }
-    }
-
-    private EntityType<?> getEntityTypeFromIdx(int idx) {
-        return extractionTypes[idx];
     }
 
     private static final int MAX_DRAW_GROUPS = 256;
@@ -817,129 +696,9 @@ public class EntityBatchRenderer {
         lastViewMatrix.m32(0.0f);
     }
 
-    private static class StateAccessor {
-        final java.lang.invoke.MethodHandle yaw, yawO, limbSwing, limbSwingAmt, headYaw, headYawO, headPitch, headPitchO, attackProgress;
-        final java.lang.invoke.MethodHandle deathTime, swimProgress, hurtTime, sneaking;
-        final java.lang.invoke.MethodHandle type, invisible, onGround, inWater;
-        final java.lang.invoke.MethodHandle entityId;
-
+    private static final class StateAccessor extends EntityCompatibility.StateAccessor {
         StateAccessor(Class<?> cls) {
-            this.yaw            = mhFloat(cls,   "bodyYaw", "yBodyRot", "field_53329", "M");
-            this.yawO           = mhFloat(cls,   "bodyYawO", "yBodyRotO", "prevYBodyRot");
-            this.limbSwing      = mhFloat(cls,   "field_53446", "walkAnimationPos", "ab");
-            this.limbSwingAmt   = mhFloat(cls,   "field_53447", "walkAnimationSpeed", "ac");
-            this.headYaw        = mhFloat(cls,   "headYaw", "yHeadRot", "field_53448", "ad");
-            this.headYawO       = mhFloat(cls,   "yHeadRotO", "prevYHeadRot");
-            this.headPitch      = mhFloat(cls,   "field_53449", "headPitch", "ae");
-            this.headPitchO     = mhFloat(cls,   "xRotO", "prevXRot");
-            this.attackProgress = mhFloat(cls,   "field_53450", "attackAnim", "af");
-            this.deathTime      = mhFloat(cls,   "field_53452", "deathTime", "ah");
-            this.swimProgress   = mhFloat(cls,   "field_53451", "swimAmount", "ag");
-            this.hurtTime       = mhBool(cls,    "field_53456", "isHurt", "al");
-            this.sneaking       = mhBool(cls,    "field_53455", "isSneaking", "ak");
-            this.type           = requireObj(cls, "field_58171", "entityType", "H");
-            this.invisible      = mhBool(cls,    "field_53333", "invisible", "Q");
-            this.onGround       = mhBool(cls,    "field_53334", "onGround", "R");
-            this.inWater        = mhBool(cls,    "field_53335", "inWater", "S");
-            this.entityId       = mhInt(cls,     "id", "field_53328", "N");
-        }
-
-        /**
-         * Logs a one-time warning naming the class, the failing state field and every
-         * candidate mapping name that was attempted. Because render-state classes are
-         * registered per-class through the ClassValue cache, this fires at most once per
-         * (class, field) pair instead of spamming the log every frame.
-         */
-        private static void warnUnresolved(Class<?> cls, String logical, String... names) {
-            String key = cls.getName() + "#" + logical;
-            if (!reflectionMissingWarned.add(key)) return;
-            StringBuilder sb = new StringBuilder();
-            sb.append('[');
-            for (int i = 0; i < names.length; i++) {
-                if (i > 0) sb.append(", ");
-                sb.append('"').append(names[i]).append('"');
-            }
-            sb.append(']');
-            HeliumClient.LOGGER.warn(
-                    "[Rentities] Reflection: could not resolve state field '{}' on class {} "
-                            + "(tried names: {})."
-                            + " Entities of this type may render with reduced/missing animation.",
-                    logical, cls.getName(), sb);
-        }
-
-        private static Field findField(Class<?> cls, Class<?> type, String logical, String... names) {
-            for (String name : names) {
-                Class<?> c = cls;
-                while (c != null) {
-                    try {
-                        Field f = c.getDeclaredField(name);
-                        if (type == null || f.getType() == type) {
-                            f.setAccessible(true);
-                            return f;
-                        }
-                    } catch (NoSuchFieldException ignored) {}
-                    c = c.getSuperclass();
-                }
-            }
-            warnUnresolved(cls, logical, names);
-            return null;
-        }
-
-        /** Optional float — null when absent; consumers already treat null as 0f. */
-        private static java.lang.invoke.MethodHandle mhFloat(Class<?> cls, String... names) {
-            Field f = findField(cls, float.class, "float", names);
-            if (f == null) return null;
-            try {
-                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
-                    .asType(java.lang.invoke.MethodType.methodType(float.class, Object.class));
-            } catch (Exception e) { return null; }
-        }
-
-        /** Optional boolean — null when absent; consumers already treat null as false. */
-        private static java.lang.invoke.MethodHandle mhBool(Class<?> cls, String... names) {
-            Field f = findField(cls, boolean.class, "boolean", names);
-            if (f == null) return null;
-            try {
-                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
-                    .asType(java.lang.invoke.MethodType.methodType(boolean.class, Object.class));
-            } catch (Exception e) { return null; }
-        }
-
-        /** Optional int — null when absent; consumers already treat null as unresolvable. */
-        private static java.lang.invoke.MethodHandle mhInt(Class<?> cls, String... names) {
-            Field f = findField(cls, int.class, "int", names);
-            if (f == null) return null;
-            try {
-                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
-                    .asType(java.lang.invoke.MethodType.methodType(int.class, Object.class));
-            } catch (Exception e) { return null; }
-        }
-
-        /**
-         * Mandatory object field. Missing it means the fallback queued-state
-         * extraction cannot know which entity type the state represents, so it
-         * could never render correctly. Produce a clear diagnostic and return null
-         * (callers already guard for null and will fall back to vanilla).
-         */
-        private static java.lang.invoke.MethodHandle requireObj(Class<?> cls, String... names) {
-            Field f = findField(cls, null, "object(mandatory)", names);
-            if (f == null) {
-                HeliumClient.LOGGER.error(
-                        "[RentEntities] MANDATORY reflection field missing for class {} "
-                                + "(tried names: {}). The entity state cannot be queued and "
-                                + "will fall back to vanilla rendering.",
-                        cls.getName(), java.util.Arrays.toString(names));
-                return null;
-            }
-            try {
-                return java.lang.invoke.MethodHandles.privateLookupIn(f.getDeclaringClass(), MethodHandles.lookup()).unreflectGetter(f)
-                    .asType(java.lang.invoke.MethodType.methodType(Object.class, Object.class));
-            } catch (Exception e) {
-                HeliumClient.LOGGER.error(
-                        "[RenderSystem] Failed to build method handle for mandatory field {}: {}",
-                        f.getName(), e.toString());
-                return null;
-            }
+            super(cls);
         }
     }
 
@@ -1164,38 +923,17 @@ public class EntityBatchRenderer {
     }
 
     private void compileShader() {
-        try {
-            String vertSrc = loadShader("assets/helium/shaders/rentities/entity/entity_vert.glsl");
-            String fragSrc = loadShader("assets/helium/shaders/rentities/entity/entity_frag.glsl");
-            entityShader = GlShader.builder()
-                    .vert(vertSrc)
-                    .frag(fragSrc)
-                    .compile();
-            entityShader.bind();
-            uViewProjection = entityShader.getUniformLocation("uViewProjection");
-            uGameTime       = entityShader.getUniformLocation("uGameTime");
-            uEntityTextures = entityShader.getUniformLocation("uEntityTexture");
-            uBaseInstance   = entityShader.getUniformLocation("uBaseInstance");
-            uIndirect       = entityShader.getUniformLocation("uIndirect");
-            uCameraPos     = entityShader.getUniformLocation("uCameraPos");
-            uSlimeOverlay  = entityShader.getUniformLocation("uSlimeOverlay");
-            uLightMap      = entityShader.getUniformLocation("uLightMap");
-            uHasLightMap   = entityShader.getUniformLocation("uHasLightMap");
-            glUseProgram(0);
-        } catch (Exception e) {
-            HeliumClient.LOGGER.error("Entity shader compilation failed", e);
-            entityShader = null;
-        }
-    }
-
-    private String loadShader(String path) {
-        try {
-            var stream = getClass().getClassLoader().getResourceAsStream(path);
-            if (stream == null) throw new RuntimeException("Shader not found: " + path);
-            return new String(stream.readAllBytes());
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to load entity shader: " + path, e);
-        }
+        EntityShaderManager.Program program = shaderManager.compile();
+        entityShader = program.shader();
+        uViewProjection = program.viewProjection();
+        uGameTime = program.gameTime();
+        uEntityTextures = program.entityTextures();
+        uBaseInstance = program.baseInstance();
+        uIndirect = program.indirect();
+        uCameraPos = program.cameraPos();
+        uSlimeOverlay = program.slimeOverlay();
+        uLightMap = program.lightMap();
+        uHasLightMap = program.hasLightMap();
     }
 
     private void refreshEntityFilterCache(HeliumConfig config) {

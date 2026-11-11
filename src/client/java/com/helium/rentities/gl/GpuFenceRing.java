@@ -10,55 +10,104 @@ import static org.lwjgl.opengl.GL32C.GL_WAIT_FAILED;
 import static org.lwjgl.opengl.GL32C.glClientWaitSync;
 import static org.lwjgl.opengl.GL32C.glDeleteSync;
 import static org.lwjgl.opengl.GL32C.glFenceSync;
-import static org.lwjgl.opengl.GL11C.glFinish;
 
 /** Per-slot GPU fences for a {@link GpuRingBuffer}. */
 public final class GpuFenceRing {
-
-    private static final long WAIT_CHUNK_NS = 1_000_000_000L;
+    private static final long NONBLOCKING_TIMEOUT_NS = 0L;
     private final long[] fences;
+    private final boolean[] failedSlots;
+    private final boolean[] warnedTimeouts;
+    private final SyncOperations syncOperations;
+    private volatile long lastWaitDurationNanos;
 
-    public GpuFenceRing(int slots) {
-        if (slots <= 0) throw new IllegalArgumentException("slots must be > 0");
-        this.fences = new long[slots];
+    public enum WaitResult { SIGNALED, TIMEOUT, FAILED }
+
+    interface SyncOperations {
+        int waitSync(long fence, int flags, long timeoutNanos);
+        void deleteSync(long fence);
+        long fenceSync(int condition, int flags);
     }
 
-    /** Blocks until the GPU is done with everything that read {@code slot}. */
-    public void waitFor(int slot) {
-        checkSlot(slot);
-        long fence = fences[slot];
-        if (fence == 0L) return;
+    public GpuFenceRing(int slots) {
+        this(slots, new SyncOperations() {
+            @Override
+            public int waitSync(long fence, int flags, long timeoutNanos) {
+                return glClientWaitSync(fence, flags, timeoutNanos);
+            }
 
-        int flags = GL_SYNC_FLUSH_COMMANDS_BIT;
-        int spins = 0;
-        while (true) {
-            int result = glClientWaitSync(fence, flags, WAIT_CHUNK_NS);
-            if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED) break;
-            if (result == GL_WAIT_FAILED) {
-                HeliumClient.LOGGER.error("[Entity] glClientWaitSync failed on ring slot {}; forcing GPU completion", slot);
-                glFinish();
-                break;
+            @Override
+            public void deleteSync(long fence) {
+                glDeleteSync(fence);
             }
-            flags = 0;
-            if (++spins == 1) {
-                HeliumClient.LOGGER.warn("[Entity] GPU more than {} frames behind on ring slot {}", fences.length, slot);
+
+            @Override
+            public long fenceSync(int condition, int flags) {
+                return glFenceSync(condition, flags);
             }
+        });
+    }
+
+    GpuFenceRing(int slots, SyncOperations syncOperations) {
+        if (slots <= 0) throw new IllegalArgumentException("slots must be > 0");
+        this.fences = new long[slots];
+        this.failedSlots = new boolean[slots];
+        this.warnedTimeouts = new boolean[slots];
+        this.syncOperations = syncOperations;
+    }
+
+    /** Waits for a bounded interval and leaves timed-out slots untouched for a later retry. */
+    public WaitResult waitFor(int slot) {
+        checkSlot(slot);
+        if (failedSlots[slot]) {
+            lastWaitDurationNanos = 0L;
+            return WaitResult.FAILED;
         }
-        glDeleteSync(fence);
-        fences[slot] = 0L;
+        long fence = fences[slot];
+        if (fence == 0L) {
+            lastWaitDurationNanos = 0L;
+            return WaitResult.SIGNALED;
+        }
+
+        long start = System.nanoTime();
+        int result = syncOperations.waitSync(fence, GL_SYNC_FLUSH_COMMANDS_BIT, NONBLOCKING_TIMEOUT_NS);
+        lastWaitDurationNanos = System.nanoTime() - start;
+        if (result == GL_ALREADY_SIGNALED || result == GL_CONDITION_SATISFIED) {
+            warnedTimeouts[slot] = false;
+            syncOperations.deleteSync(fence);
+            fences[slot] = 0L;
+            return WaitResult.SIGNALED;
+        }
+        if (result == GL_WAIT_FAILED) {
+            failedSlots[slot] = true;
+            syncOperations.deleteSync(fence);
+            fences[slot] = 0L;
+            HeliumClient.LOGGER.error("[Entity] GPU fence failed on ring slot {} after {} ms; disabling entity batching", slot,
+                    lastWaitDurationNanos / 1_000_000.0);
+            return WaitResult.FAILED;
+        }
+        if (!warnedTimeouts[slot]) {
+            warnedTimeouts[slot] = true;
+            HeliumClient.LOGGER.warn("[Entity] GPU fence on ring slot {} is not ready after {} ms; deferring batch",
+                    slot, lastWaitDurationNanos / 1_000_000.0);
+        }
+        return WaitResult.TIMEOUT;
     }
 
     /** Records that all commands issued so far must complete before {@code slot} is reused. */
-    public void signal(int slot) {
+    public boolean signal(int slot) {
         checkSlot(slot);
-        if (fences[slot] != 0L) waitFor(slot);
-        fences[slot] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        if (failedSlots[slot]) return false;
+        if (fences[slot] != 0L && waitFor(slot) != WaitResult.SIGNALED) return false;
+        fences[slot] = syncOperations.fenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+        return fences[slot] != 0L;
     }
+
+    public long lastWaitDurationNanos() { return lastWaitDurationNanos; }
 
     public void deleteAll() {
         for (int i = 0; i < fences.length; i++) {
             if (fences[i] != 0L) {
-                glDeleteSync(fences[i]);
+                syncOperations.deleteSync(fences[i]);
                 fences[i] = 0L;
             }
         }

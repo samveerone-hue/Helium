@@ -104,6 +104,6 @@
     "render.EntityMeshBakerBoneAliasMixin"
   ],
   "injectors": {
-    "defaultRequire": 0
+    "defaultRequire": 1
   }
 }
